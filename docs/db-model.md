@@ -25,6 +25,8 @@ erDiagram
     CHURCH ||--o{ PERSON : has
     CHURCH ||--o{ GROUP : has
     CHURCH ||--o{ EVENT : has
+    CHURCH ||--o{ HOUSEHOLD : has
+    HOUSEHOLD |o--o{ PERSON : "groups (optional)"
     PERSON ||--o| APP_USER : "may log in as"
     PERSON ||--o{ RELATIONSHIP : "linked to"
     PERSON ||--o{ GROUP_MEMBERSHIP : joins
@@ -74,6 +76,7 @@ The central entity. Everyone is a `person` — visitors, members, staff. Login i
 | university | varchar(200) | nullable (e.g. UTS, USYD) |
 | course | varchar(200) | nullable |
 | interests | jsonb (list of strings) | free tags for MVP; promote to `interest` M2M table if matching features arrive |
+| household_id | FK household, nullable | family grouping — directory "by family" filters and future child check-in depend on it |
 | membership_status | enum | `visitor` / `newcomer` / `regular` / `member` / `inactive` |
 | discipleship_stage | enum, nullable | `pre_evangelism` / `evangelism` / `conversion` / `maturity` / `leadership` — staff-assessed, never self-served |
 | faith_background | varchar(100), nullable | **sensitive** — see privacy note |
@@ -95,7 +98,7 @@ From the sheet's "Friends with". Symmetric-ish social edge; `invited_by` on `per
 | church_id | FK church | |
 | from_person_id | FK person | |
 | to_person_id | FK person | |
-| kind | enum | `friend` / `family` / `spouse` |
+| kind | enum | `friend` / `family` / `spouse` / `guardian` — guardian is the parent/child edge child check-in will need (post-MVP) |
 
 Constraints: `unique (from_person_id, to_person_id, kind)`, check `from_person_id < to_person_id` (store one row per pair; canonicalize order in `save()`). Indexes: `(church_id, from_person_id)`, `(church_id, to_person_id)` — "friends of X" queries both columns.
 
@@ -187,7 +190,7 @@ The FAITH Matrix, simplified. One open follow-up per person at a time.
 | church_id | FK church | |
 | person_id | FK person | |
 | source | enum | `event_visit` / `friend_invite` / `walk_in` / `other` |
-| engagement | enum | `possible` / `probable` / `likely` — FAITH classification, staff-assessed |
+| engagement | enum | `possible` / `probable` / `likely` — Follow-Up Engine tier (staff-assessed for MVP). Not to be confused with the FAITH Matrix (five-trait scoring ring: Faithful/Available/Intentional/Teachable/Hungry Heart), which is a post-MVP AI feature — see parking lot |
 | status | enum | `new` / `assigned` / `in_progress` / `connected` / `closed` |
 | assigned_to_id | FK app_user, nullable | |
 | due_at | date, nullable | |
@@ -214,7 +217,18 @@ Shared contact log for follow-ups and care cases — one table, not two.
 
 Constraint: `CheckConstraint(check=Q(follow_up_id__isnull=True) | Q(care_case_id__isnull=True), name='interaction_one_context')` — at most one FK set; both null is allowed (general pastoral log entry).
 
-## 11. care_case
+## 11. household
+
+Family grouping (requirements use "household" on the profile and "by family" directory filters). Deliberately minimal.
+
+| column | type | notes |
+|---|---|---|
+| church_id | FK church | |
+| name | varchar(200) | e.g. "The Chen family" |
+
+Membership is `person.household_id` — no join table; a person belongs to at most one household.
+
+## 12. care_case
 
 Care & prayer kanban (UI req §8). Prayer requests are `kind=prayer` — not a separate entity.
 
@@ -225,6 +239,7 @@ Care & prayer kanban (UI req §8). Prayer requests are `kind=prayer` — not a s
 | kind | enum | `pastoral` / `prayer` / `practical` |
 | title | varchar(200) | |
 | details | text | **sensitive** |
+| urgency | enum | `low` / `normal` / `high` / `crisis` — kanban cards surface this (UI req §9) |
 | status | enum | `open` / `in_progress` / `waiting` / `closed` |
 | is_confidential | boolean | true → pastors/admin only, regardless of role gates |
 | assigned_to_id | FK app_user, nullable | |
@@ -245,3 +260,5 @@ Care & prayer kanban (UI req §8). Prayer requests are `kind=prayer` — not a s
 ## Post-MVP parking lot
 
 Donations, message broadcasts, audit log, consent records, `interest` normalization, event recurrence (rrule), member self-service portal, AI next-step suggestions (weekly `claude -p` batch over follow-up queue — same pattern as WhatSuggest).
+
+From the full requirements (see [roadmap.md](roadmap.md)): FAITH Matrix trait scores (five per-person trait scores + confidence, AI-assessed — needs a `faith_assessment` table), anonymous prayer requests + "I prayed" counter (needs nullable `person_id` and a counter/reaction table on `care_case`), child check-in (guardian verification, allergy/medical badges — needs medical fields with the same sensitivity handling as pastoral notes), natural-language directory search, engagement scoring, i18n content tables.

@@ -13,11 +13,13 @@ Church membership + discipleship management app, built by and for our church com
 | [M0 Foundation](https://github.com/jerex763/unity/milestone/1) | Django + React scaffold, models, auth, CI | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/1) |
 | [M1 People Directory](https://github.com/jerex763/unity/milestone/2) | Person CRUD, search, profiles, import | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/2) |
 | [M2 Events & Check-in](https://github.com/jerex763/unity/milestone/3) | Events, registration, QR check-in | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/3) |
-| [M3 Follow-up Queue](https://github.com/jerex763/unity/milestone/4) | FAITH pipeline, interactions, dashboard | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/4) |
+| [M3 Follow-up Queue](https://github.com/jerex763/unity/milestone/4) | Follow-up pipeline, interactions, dashboard | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/4) |
 | [M4 Groups & Care](https://github.com/jerex763/unity/milestone/5) | Groups, health status, care kanban | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/5) |
 
 Full feature ledger with owners and completion dates: **[docs/features.md](docs/features.md)**
 All open work: **[Issues](https://github.com/jerex763/unity/issues)** · grouped by **[Milestones](https://github.com/jerex763/unity/milestones)**
+
+MVP is not the destination — the full 13-module vision and what's deferred/cut is in **[docs/roadmap.md](docs/roadmap.md)**. Frontend visual language: **[docs/design.md](docs/design.md)**.
 
 ## Stack
 
@@ -30,7 +32,7 @@ All open work: **[Issues](https://github.com/jerex763/unity/issues)** · grouped
 ## Repo structure
 
 ```
-docs/          # db-model.md (schema), features.md (ledger)
+docs/          # db-model.md (schema), features.md (ledger), roadmap.md (vision), design.md (UI direction)
 backend/       # Django project (coming — issue #1)
 frontend/      # React PWA (coming — issue #6)
 ```
