@@ -30,9 +30,15 @@ Example: `feat: person search endpoint with role-gated fields`
 
 - [ ] CI green (lint + tests)
 - [ ] Sensitive-data rules respected (see db-model.md privacy notes — pastoral fields are pastor/admin only)
+- [ ] Every sensitive endpoint has both allow and deny permission tests
+- [ ] Cross-church access is denied even when an object ID is known
+- [ ] Sensitive or destructive actions are included in the audit design
+- [ ] Screenshots, fixtures and tests use fictional or safely anonymized data only
 - [ ] features.md row updated
 - [ ] No secrets/credentials in code — use `.env`
 
 ## Questions / design changes
 
 Anything that changes the DB schema or cuts/adds scope: open an issue and discuss before coding. Small stuff: just ask in the group chat.
+
+If the team is unsure what to build next, use [docs/delivery-plan.md](docs/delivery-plan.md), the current milestone and the `next` backlog instead of relying on memory.

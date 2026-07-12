@@ -8,13 +8,13 @@ Source requirements: "Unity DB model" sheet, "UI requirements notes", "High-leve
 
 - Every domain table carries `church_id` (FK → `church`). Single-tenant deployment today; this is the cheap insurance for later productization. All unique constraints and queries are scoped by it.
 - All tables: `id` (bigint PK), `created_at`, `updated_at`.
-- No soft deletes in MVP. Destructive deletes are admin-only; revisit with audit log post-MVP.
+- Routine removal uses deactivate/anonymize rules from #30. Hard deletion is admin-only and audited from M0.
 - Enums are Django `TextChoices` (stored as short strings, not ints).
 - Names: `snake_case` tables/columns, singular entity names.
 
 ## Out of scope (deliberately)
 
-Giving/payments (use Tithe.ly/Pushpay links), communication hub, sentiment analysis, facial recognition, analytics warehouse, multilingual content, audit log, consent ledger, recurring-event rules (create individual events for MVP; add `rrule` later).
+Giving/payments (use Tithe.ly/Pushpay links), communication hub, sentiment analysis, facial recognition, analytics warehouse, multilingual content, member-facing consent management, recurring-event rules (create individual events for MVP; add `rrule` later). Basic audit and consent records are M0 requirements; see #27 and #28.
 
 ---
 
@@ -85,7 +85,7 @@ The central entity. Everyone is a `person` — visitors, members, staff. Login i
 
 **Privacy note:** `faith_background`, `discipleship_stage`, and everything in `care_case` are special-category data. MVP mitigations: field-level access — serializers expose them only to `role in (pastor, admin)`; encrypted at rest via Postgres disk encryption; excluded from any CSV export. Requirement-sheet traceability: *Religion* → `faith_background` (renamed, narrower pastoral meaning); *race/ethnicity* — **deliberately not modeled**, no MVP feature needs it and collecting it is pure liability; revisit only with a concrete feature and a consent flow.
 
-**Known gap (accepted for MVP):** serializer-level gating means Django admin, management commands, or raw ORM queries bypass sensitivity checks. Post-MVP mitigation: default manager on `care_case` filters `is_confidential=True` unless role is pastor/admin.
+**M0 requirement:** serializer-level gating alone is not sufficient because Django Admin, management commands, or raw ORM queries can bypass it. #31 must define and test query-, object- and field-level permission boundaries before real member data is used.
 
 Indexes: `(church_id, full_name)`, `(church_id, membership_status)`.
 
@@ -104,7 +104,7 @@ Constraints: `unique (from_person_id, to_person_id, kind)`, check `from_person_i
 
 ## 4. app_user
 
-Django's built-in `User` (auth, password, sessions) + profile fields. Most `person` rows never get one — only staff/leaders log in for MVP.
+Django authentication identity + access profile. Most `person` rows never get one — only staff/leaders log in for MVP. The exact custom User / ChurchMembership shape must be resolved in #26 before the first production migration; the table below records the current placeholder, not a final decision.
 
 | column | type | notes |
 |---|---|---|
@@ -251,7 +251,7 @@ Care & prayer kanban (UI req §8). Prayer requests are `kind=prayer` — not a s
 ## Django mapping notes
 
 - App layout: `people` (church, person, relationship, app_user), `groups` (group, group_membership), `events` (event, event_registration), `care` (follow_up, interaction, care_case). Small apps, one concern each.
-- `app_user` = `AUTH_USER_MODEL` kept as stock `User`; profile via OneToOne. Don't customize the user model pre-launch unless forced.
+- Resolve #26 before initial migrations. Use a minimal custom `AUTH_USER_MODEL` from day one and decide whether church/role access belongs in a separate `ChurchMembership`; changing the auth model after launch is deliberately avoided.
 - Enums as `models.TextChoices`; partial unique indexes via `UniqueConstraint(condition=...)`.
 - `interests` = `models.JSONField(default=list)`.
 - Row-level tenancy: a `ChurchScopedManager` (`.for_church(request.church)`) from day one, even with one church — it makes the later multi-tenant migration a settings change, not a rewrite.
@@ -259,6 +259,6 @@ Care & prayer kanban (UI req §8). Prayer requests are `kind=prayer` — not a s
 
 ## Post-MVP parking lot
 
-Donations, message broadcasts, audit log, consent records, `interest` normalization, event recurrence (rrule), member self-service portal, AI next-step suggestions (weekly `claude -p` batch over follow-up queue — same pattern as WhatSuggest).
+Donations, message broadcasts, member-facing consent controls, `interest` normalization, event recurrence (rrule), member self-service portal, AI next-step suggestions. Basic audit, consent source/version, backup/restore and safe data lifecycle are M0 foundations, not parking-lot work.
 
 From the full requirements (see [roadmap.md](roadmap.md)): FAITH Matrix trait scores (five per-person trait scores + confidence, AI-assessed — needs a `faith_assessment` table), anonymous prayer requests + "I prayed" counter (needs nullable `person_id` and a counter/reaction table on `care_case`), child check-in (guardian verification, allergy/medical badges — needs medical fields with the same sensitivity handling as pastoral notes), natural-language directory search, engagement scoring, i18n content tables.

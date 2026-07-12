@@ -15,6 +15,12 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 | 5 | DRF baseline + church scoping | [#5](https://github.com/jerex763/unity/issues/5) | ⬜ | | |
 | 6 | React PWA scaffold | [#6](https://github.com/jerex763/unity/issues/6) | ⬜ | | |
 | 7 | CI: lint + test on PR | [#7](https://github.com/jerex763/unity/issues/7) | ⬜ | | |
+| 26 | Custom User + ChurchMembership decision | [#26](https://github.com/jerex763/unity/issues/26) | ⬜ | | |
+| 27 | Audit log for sensitive/destructive actions | [#27](https://github.com/jerex763/unity/issues/27) | ⬜ | | |
+| 28 | Consent + privacy notice version record | [#28](https://github.com/jerex763/unity/issues/28) | ⬜ | | |
+| 29 | Automated backup + tested restore | [#29](https://github.com/jerex763/unity/issues/29) | ⬜ | | |
+| 30 | Deactivate, anonymize and delete safely | [#30](https://github.com/jerex763/unity/issues/30) | ⬜ | | |
+| 31 | Permission and privacy test matrix | [#31](https://github.com/jerex763/unity/issues/31) | ⬜ | | |
 
 ## M1 People Directory
 
@@ -33,8 +39,9 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 | 13 | Event API: CRUD | [#13](https://github.com/jerex763/unity/issues/13) | ⬜ | | |
 | 14 | Events UI: list + create/edit | [#14](https://github.com/jerex763/unity/issues/14) | ⬜ | | |
 | 15 | Registration: signup flow | [#15](https://github.com/jerex763/unity/issues/15) | ⬜ | | |
-| 16 | QR check-in | [#16](https://github.com/jerex763/unity/issues/16) | ⬜ | | |
+| 16 | QR check-in (post-pilot backlog; manual first) | [#16](https://github.com/jerex763/unity/issues/16) | ⬜ | | |
 | 17 | Walk-in quick-add | [#17](https://github.com/jerex763/unity/issues/17) | ⬜ | | |
+| 33 | Manual event check-in | [#33](https://github.com/jerex763/unity/issues/33) | ⬜ | | |
 
 ## M3 Follow-up Queue
 
@@ -45,7 +52,13 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 | 20 | Interaction log | [#20](https://github.com/jerex763/unity/issues/20) | ⬜ | | |
 | 21 | My follow-ups dashboard | [#21](https://github.com/jerex763/unity/issues/21) | ⬜ | | |
 
-## M4 Groups & Care
+## Pilot Release Gate
+
+| # | Feature | Issue | Status | Owner | Completed |
+|---|---|---|---|---|---|
+| 32 | End-to-end pilot + next-step review | [#32](https://github.com/jerex763/unity/issues/32) | ⬜ | | |
+
+## M4 Groups & Care (preserved post-pilot backlog)
 
 | # | Feature | Issue | Status | Owner | Completed |
 |---|---|---|---|---|---|

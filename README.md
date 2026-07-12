@@ -10,16 +10,17 @@ Church membership + discipleship management app, built by and for our church com
 
 | Milestone | Scope | Progress |
 |---|---|---|
-| [M0 Foundation](https://github.com/jerex763/unity/milestone/1) | Django + React scaffold, models, auth, CI | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/1) |
+| [M0 Foundation](https://github.com/jerex763/unity/milestone/1) | Scaffold, models, auth, tenancy, privacy foundations, backup, CI | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/1) |
 | [M1 People Directory](https://github.com/jerex763/unity/milestone/2) | Person CRUD, search, profiles, import | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/2) |
-| [M2 Events & Check-in](https://github.com/jerex763/unity/milestone/3) | Events, registration, QR check-in | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/3) |
+| [M2 Events & Check-in](https://github.com/jerex763/unity/milestone/3) | Events, registration, manual check-in first; QR later | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/3) |
 | [M3 Follow-up Queue](https://github.com/jerex763/unity/milestone/4) | Follow-up pipeline, interactions, dashboard | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/4) |
+| [Pilot Release Gate](https://github.com/jerex763/unity/milestone/6) | One controlled end-to-end trial, feedback and restore test | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/6) |
 | [M4 Groups & Care](https://github.com/jerex763/unity/milestone/5) | Groups, health status, care kanban | ![](https://img.shields.io/github/milestones/progress-percent/jerex763/unity/5) |
 
 Full feature ledger with owners and completion dates: **[docs/features.md](docs/features.md)**
 All open work: **[Issues](https://github.com/jerex763/unity/issues)** · grouped by **[Milestones](https://github.com/jerex763/unity/milestones)**
 
-MVP is not the destination — the full 13-module vision and what's deferred/cut is in **[docs/roadmap.md](docs/roadmap.md)**. Frontend visual language: **[docs/design.md](docs/design.md)**.
+Start with **[docs/delivery-plan.md](docs/delivery-plan.md)** for what to do now, next and later. The full 13-module vision and what's deferred/cut remains in **[docs/roadmap.md](docs/roadmap.md)**. Frontend visual language: **[docs/design.md](docs/design.md)**.
 
 ## Stack
 
@@ -32,7 +33,7 @@ MVP is not the destination — the full 13-module vision and what's deferred/cut
 ## Repo structure
 
 ```
-docs/          # db-model.md (schema), features.md (ledger), roadmap.md (vision), design.md (UI direction)
+docs/          # delivery plan, schema, feature ledger, full vision and UI direction
 backend/       # Django project (coming — issue #1)
 frontend/      # React PWA (coming — issue #6)
 ```
@@ -54,4 +55,5 @@ Read **[CONTRIBUTING.md](CONTRIBUTING.md)** before your first PR. Short version:
 
 - Every domain table carries `church_id` from day one (multi-tenant insurance)
 - Sensitive data minimized and role-gated: pastoral notes are not general staff reading
+- No real member data before the M0 privacy, audit and restore exit gate passes
 - Small PRs, one issue each; working software over big-bang branches

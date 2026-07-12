@@ -2,6 +2,8 @@
 
 The requirement docs (Google Drive: functional requirements, UI requirements, DB model sheet) describe a 13-module product with an official 5-phase plan. This file maps that full vision to what we're building now, so nobody mistakes the MVP for the destination — or the destination for the MVP.
 
+This file preserves the destination. For the current delivery order, release gates and weekly team routine, see [delivery-plan.md](delivery-plan.md).
+
 ## Requirements-doc phases ↔ our milestones
 
 | Docs phase | Docs scope | Our milestone(s) |
@@ -12,26 +14,26 @@ The requirement docs (Google Drive: functional requirements, UI requirements, DB
 | Phase 4 | Insights dashboard + financial tools | post-MVP |
 | Phase 5 | Continuous AI training + localization | post-MVP |
 
-**Parallelism note for the team:** milestone order is priority order, not a strict dependency chain. After M0 lands, M1 / M2 / M4 can proceed in parallel. M3 depends on M2 (walk-in registration feeds follow-up auto-creation).
+**Parallelism note for the team:** milestone order is priority order, not a strict dependency chain. Finish M0's security and privacy exit gate first. M1 and M2 can then proceed in parallel. M3 depends on M2 (walk-in registration feeds follow-up auto-creation). M4 stays preserved in the backlog until the pilot identifies it as the next priority.
 
 ## Module-by-module status
 
 | Module (requirement docs) | Status | Notes |
 |---|---|---|
 | People & Directory | **MVP — M1** | Advanced filters ✓; natural-language search, engagement prediction, duplicate detection → post-MVP |
-| Events & Calendar | **MVP — M2** | CRUD + registration + QR check-in; AI scheduling/turnout prediction → post-MVP |
-| Check-In | **MVP — M2** | QR + manual; child check-in (guardian verification, allergy badges) → post-MVP; facial recognition → **cut** |
+| Events & Calendar | **MVP — M2** | CRUD + registration + manual check-in; QR and AI scheduling/turnout prediction → post-pilot |
+| Check-In | **MVP — M2** | Manual first; QR and child check-in (guardian verification, allergy badges) → post-pilot; facial recognition → **cut** |
 | Follow-Up Queue | **MVP — M3** | Possible/Probable/Likely tiers, staff-assessed; AI rationale chips, guided contact modal, FAITH trait scoring → post-MVP |
-| Groups & Ministries | **MVP — M4** | CRUD, membership, health status; AI participation monitoring → post-MVP |
-| Care & Prayer | **MVP — M4** | Kanban + urgency + confidential gating; anonymous prayer, "I prayed" counter, AI theme tagging → post-MVP |
+| Groups & Ministries | **Backlog — M4** | Preserved, but scheduled after the first pilot; AI participation monitoring → later |
+| Care & Prayer | **Backlog — M4** | Preserved, but scheduled after the first pilot; confidential data requires the M0 permission/audit foundation |
 | Home Dashboard | post-MVP | M3's "my follow-ups" view covers the highest-value leader card first |
 | Member self-service portal | post-MVP | MVP is staff/leader-facing; members interact via leaders until the core is solid |
 | Communication Hub | post-MVP | Broadcasts/automations later; **sentiment monitoring of member messages → cut** |
 | Giving & Stewardship | post-MVP | External giving links (Tithe.ly/Pushpay) first; never store card data ourselves |
 | Unity Assistant (AI co-pilot) | post-MVP | Docs phase 3; start with weekly batch AI suggestions before conversational UI |
 | Insights & Analytics | post-MVP | Docs phase 4 |
-| Settings & Privacy (consent toggles, data export/delete) | post-MVP | Required before any member-facing launch |
-| Onboarding / Consent flow | post-MVP | Ships with member portal |
+| Settings & Privacy | **M0 foundation + later UI** | Audit, basic consent record, backup/restore and safe data lifecycle are M0; member-facing controls expand later |
+| Onboarding / Consent flow | **M0 record + later self-service** | Store consent source/version in M0; member self-service onboarding ships with the portal |
 
 ## Permanently cut (decision record)
 
