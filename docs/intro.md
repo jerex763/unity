@@ -14,7 +14,7 @@ Unity 是我们教会自己做的一个手机小程序(网页版,不用下载安
 
 现在教会的日常运转散落在各处:
 
-- **活动报名**靠在 WhatsApp 群里反复编辑一条"1. James 2. Cheryl 3. ..."的接龙,改一次发一次,名单经常对不上
+- **活动报名**靠在 WhatsApp 群里反复编辑一条"1. 张三 2. 李四 3. ..."的接龙,改一次发一次,名单经常对不上
 - **新朋友来了一次就再也没来**,没人记得跟进,不是不想关心,是没有一个地方记着"该联系谁"
 - **成员信息**在各人手机里、各种表格里,想找"住在附近、对英语角有兴趣的朋友"根本无从查起
 
@@ -49,7 +49,7 @@ Unity is a small web app our church is building for ourselves (works in any phon
 
 Right now, day-to-day church life is scattered everywhere:
 
-- **Event signups** happen by editing a numbered list in a WhatsApp group — "1. James 2. Cheryl 3. ..." — re-posted every time someone joins, and the list is often wrong
+- **Event signups** happen by editing a numbered list in a WhatsApp group — "1. Alex 2. Sam 3. ..." — re-posted every time someone joins, and the list is often wrong
 - **Newcomers visit once and never return**, and nobody remembers to follow up. It's not that we don't care — there's just no single place that remembers *who to contact*
 - **Member information** lives in personal phones and scattered spreadsheets. Finding "friends who live nearby and are interested in English Corner" is simply impossible
 
