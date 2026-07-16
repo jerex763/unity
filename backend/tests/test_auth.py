@@ -2,9 +2,9 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from accounts.constants import ACTIVE_CHURCH_SESSION_KEY
 from accounts.models import ChurchMembership, User
 from accounts.permissions import Capability, has_capability, has_church_role
-from accounts.views import ACTIVE_CHURCH_SESSION_KEY
 from tenancy.models import Church
 
 pytestmark = pytest.mark.django_db

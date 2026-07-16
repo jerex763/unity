@@ -1,6 +1,19 @@
 from django.db import models
 
 
+class ChurchScopedQuerySet(models.QuerySet):
+    def for_church(self, church: "Church") -> "ChurchScopedQuerySet":
+        return self.filter(church=church)
+
+
+class ChurchScopedManager(models.Manager):
+    def get_queryset(self) -> ChurchScopedQuerySet:
+        return ChurchScopedQuerySet(self.model, using=self._db)
+
+    def for_church(self, church: "Church") -> ChurchScopedQuerySet:
+        return self.get_queryset().for_church(church)
+
+
 class TimeStampedModel(models.Model):
     """Shared creation and update timestamps for persisted domain models."""
 
@@ -15,6 +28,7 @@ class ChurchScopedModel(TimeStampedModel):
     """Base for records owned by exactly one church."""
 
     church = models.ForeignKey("tenancy.Church", on_delete=models.CASCADE)
+    objects = ChurchScopedManager()
 
     class Meta:
         abstract = True
