@@ -8,7 +8,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 
 | # | Feature | Issue | Status | Owner | Completed |
 |---|---|---|---|---|---|
-| 1 | Django project scaffold | [#1](https://github.com/jerex763/unity/issues/1) | ⬜ | | |
+| 1 | Django project scaffold | [#1](https://github.com/jerex763/unity/issues/1) | 🔨 | jerex763 | |
 | 2 | Models + initial migrations | [#2](https://github.com/jerex763/unity/issues/2) | ⬜ | | |
 | 3 | Django admin for all entities | [#3](https://github.com/jerex763/unity/issues/3) | ⬜ | | |
 | 4 | Auth: roles + login | [#4](https://github.com/jerex763/unity/issues/4) | ⬜ | | |

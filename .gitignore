@@ -5,6 +5,10 @@ __pycache__/
 venv/
 *.egg-info/
 .env
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Django
 db.sqlite3
