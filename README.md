@@ -35,7 +35,7 @@ Start with **[docs/delivery-plan.md](docs/delivery-plan.md)** for what to do now
 ```
 docs/          # delivery plan, schema, feature ledger, full vision and UI direction
 backend/       # Django + DRF API
-frontend/      # React PWA (coming — issue #6)
+frontend/      # React + TypeScript responsive PWA
 ```
 
 ## Getting started
@@ -56,6 +56,19 @@ python manage.py runserver
 ```
 
 The API health check is available at <http://localhost:8000/api/health/>.
+
+In a second terminal, start the frontend with Node.js 22+:
+
+```bash
+cd frontend
+npm ci
+cp .env.example .env
+npm run dev
+```
+
+The app is available at <http://localhost:5173>; development `/api` requests are
+proxied to Django. See [frontend/README.md](frontend/README.md) for quality checks
+and production builds.
 
 The authentication foundation uses a custom `User` from its first migration and
 stores church-specific roles in `ChurchMembership`. See
