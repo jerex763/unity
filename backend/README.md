@@ -22,6 +22,19 @@ python manage.py runserver
 
 Open <http://localhost:8000/api/health/> to verify the application is running.
 
+## Django Admin
+
+Create the first local administrator, then open <http://localhost:8000/admin/>:
+
+```bash
+python manage.py createsuperuser
+```
+
+All project models are registered with search and filters. Until the role-based
+permissions and church scoping in #4 and #5 land, project admin pages are
+superuser-only. As a second layer of protection, non-superuser Person forms omit
+`faith_background` and `discipleship_stage` when access is relaxed later.
+
 ## Authentication foundation
 
 Unity uses `accounts.User` as its custom user model from the first migration.
