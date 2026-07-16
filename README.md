@@ -50,16 +50,17 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e '.[dev]'
 cp .env.example .env
+python manage.py migrate
 python manage.py check
 python manage.py runserver
 ```
 
 The API health check is available at <http://localhost:8000/api/health/>.
 
-> **Migration gate:** do not run the initial project migrations against a shared or
-> production database yet. [Issue #26](https://github.com/jerex763/unity/issues/26)
-> must first define the minimal custom user and `ChurchMembership`. Local databases
-> created before #26 lands are disposable and may need to be recreated.
+The authentication foundation uses a custom `User` from its first migration and
+stores church-specific roles in `ChurchMembership`. See
+[ADR 0001](docs/adr/0001-authentication-and-church-membership.md) before adding
+authentication or tenant-scoped features.
 
 See [backend/README.md](backend/README.md) for configuration, testing and production
 settings.
