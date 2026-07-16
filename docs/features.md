@@ -10,7 +10,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 |---|---|---|---|---|---|
 | 1 | Django project scaffold | [#1](https://github.com/jerex763/unity/issues/1) | ✅ | jerex763 | 2026-07-16 |
 | 2 | Models + initial migrations | [#2](https://github.com/jerex763/unity/issues/2) | ✅ | jerex763 | 2026-07-16 |
-| 3 | Django admin for all entities | [#3](https://github.com/jerex763/unity/issues/3) | 🔨 | jerex763 | |
+| 3 | Django admin for all entities | [#3](https://github.com/jerex763/unity/issues/3) | ✅ | jerex763 | 2026-07-16 |
 | 4 | Auth: roles + login | [#4](https://github.com/jerex763/unity/issues/4) | ⬜ | | |
 | 5 | DRF baseline + church scoping | [#5](https://github.com/jerex763/unity/issues/5) | ⬜ | | |
 | 6 | React PWA scaffold | [#6](https://github.com/jerex763/unity/issues/6) | ⬜ | | |
