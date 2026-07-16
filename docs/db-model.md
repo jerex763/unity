@@ -139,6 +139,10 @@ Role gates (enforced in views/serializers, not DB):
 - `leader` — own groups' members (non-sensitive fields), own assigned follow-ups, non-confidential care cases
 - `member` — self-service only (own profile, event signup) — post-MVP
 
+Session login selects one active `ChurchMembership` and records its church in
+`active_church_id`. Multi-church users must select a church explicitly. Permission
+helpers map each role to named capabilities and always evaluate within that church.
+
 ## 5. group
 
 Small groups, ministries, activities (badminton, English Corner...).
