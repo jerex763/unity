@@ -26,8 +26,10 @@ erDiagram
     CHURCH ||--o{ GROUP : has
     CHURCH ||--o{ EVENT : has
     CHURCH ||--o{ HOUSEHOLD : has
+    CHURCH ||--o{ CHURCH_MEMBERSHIP : grants
+    APP_USER ||--o{ CHURCH_MEMBERSHIP : holds
     HOUSEHOLD |o--o{ PERSON : "groups (optional)"
-    PERSON ||--o| APP_USER : "may log in as"
+    PERSON |o--o| CHURCH_MEMBERSHIP : "may link when login is granted"
     PERSON ||--o{ RELATIONSHIP : "linked to"
     PERSON ||--o{ GROUP_MEMBERSHIP : joins
     GROUP ||--o{ GROUP_MEMBERSHIP : contains
@@ -102,15 +104,34 @@ From the sheet's "Friends with". Symmetric-ish social edge; `invited_by` on `per
 
 Constraints: `unique (from_person_id, to_person_id, kind)`, check `from_person_id < to_person_id` (store one row per pair; canonicalize order in `save()`). Indexes: `(church_id, from_person_id)`, `(church_id, to_person_id)` — "friends of X" queries both columns.
 
-## 4. app_user
+## 4. app_user and church_membership
 
-Django authentication identity + access profile. Most `person` rows never get one — only staff/leaders log in for MVP. The exact custom User / ChurchMembership shape must be resolved in #26 before the first production migration; the table below records the current placeholder, not a final decision.
+Authentication identity is deliberately separate from church access and the
+`person` directory. Most `person` rows never get a login. `app_user` is the
+minimal custom Django `AUTH_USER_MODEL`; it does not carry church, role or
+pastoral fields.
+
+### app_user
 
 | column | type | notes |
 |---|---|---|
-| user | OneToOne → auth.User | |
-| person_id | OneToOne → person | required — church derived via `person.church_id` (no duplicate `church_id` column; avoids divergence) |
+| Django auth fields | `AbstractUser` | username/password, active/staff flags and standard permissions |
+
+### church_membership
+
+One login may hold different roles in different churches. Historical inactive
+memberships are retained.
+
+| column | type | notes |
+|---|---|---|
+| user_id | FK app_user | |
+| church_id | FK church | indexed through the access lookup index |
 | role | enum | `admin` / `pastor` / `leader` / `member` |
+| is_active | boolean | default true |
+| person_id | OneToOne person, nullable | added with `person` in #2; must belong to the same church |
+
+Constraint: `unique (user_id, church_id) where is_active` — one active access
+record per login and church while preserving inactive history.
 
 Role gates (enforced in views/serializers, not DB):
 - `admin` — everything incl. destructive ops
@@ -250,8 +271,8 @@ Care & prayer kanban (UI req §8). Prayer requests are `kind=prayer` — not a s
 
 ## Django mapping notes
 
-- App layout: `people` (church, person, relationship, app_user), `groups` (group, group_membership), `events` (event, event_registration), `care` (follow_up, interaction, care_case). Small apps, one concern each.
-- Resolve #26 before initial migrations. Use a minimal custom `AUTH_USER_MODEL` from day one and decide whether church/role access belongs in a separate `ChurchMembership`; changing the auth model after launch is deliberately avoided.
+- App layout: `accounts` (custom user and church membership), `tenancy` (church), `people` (person and relationship), `groups` (group and group membership), `events` (event and registration), `care` (follow-up, interaction and care case). Small apps, one concern each.
+- `AUTH_USER_MODEL` is `accounts.User` from the first migration. Church and role access always comes from an active `ChurchMembership`; see [ADR 0001](adr/0001-authentication-and-church-membership.md).
 - Enums as `models.TextChoices`; partial unique indexes via `UniqueConstraint(condition=...)`.
 - `interests` = `models.JSONField(default=list)`.
 - Row-level tenancy: a `ChurchScopedManager` (`.for_church(request.church)`) from day one, even with one church — it makes the later multi-tenant migration a settings change, not a rewrite.

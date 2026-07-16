@@ -15,20 +15,20 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e '.[dev]'
 cp .env.example .env
+python manage.py migrate
 python manage.py check
 python manage.py runserver
 ```
 
 Open <http://localhost:8000/api/health/> to verify the application is running.
 
-## Migration gate
+## Authentication foundation
 
-This scaffold intentionally defines no project models or migrations. Do not run
-initial project migrations against a shared or production database until
-[Issue #26](https://github.com/jerex763/unity/issues/26) has defined the minimal
-custom user model and `ChurchMembership`. Django's user model is difficult to
-replace after tables have been created. Any local database created before #26
-lands must be treated as disposable.
+Unity uses `accounts.User` as its custom user model from the first migration.
+Church access and roles live in `ChurchMembership`, not on the user. `Person`
+records remain separate from login identities. Read
+[ADR 0001](../docs/adr/0001-authentication-and-church-membership.md) before
+changing authentication or tenancy.
 
 ## Configuration
 
