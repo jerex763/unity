@@ -37,6 +37,25 @@ session.
 Role capabilities are defined in `accounts/permissions.py`. They always require
 an active membership in the church being checked.
 
+## Church scoping
+
+`ActiveChurchMiddleware` revalidates the session membership on every request and
+sets `request.church` plus `request.church_membership`. Invalid or inactive access
+is removed from the session.
+
+DRF list and detail views over church-owned models must inherit
+`ChurchScopedQuerysetMixin`; it filters before object lookup, so an ID belonging
+to another church returns 404. Background jobs, commands and other ORM code must
+scope explicitly:
+
+```python
+Person.objects.for_church(church)
+```
+
+Do not use an unscoped `objects.all()` in a request path. Views requiring a named
+role capability should combine `HasActiveChurchMembership` and
+`HasChurchCapability`.
+
 ## Django Admin
 
 Create the first local administrator, then open <http://localhost:8000/admin/>:

@@ -283,7 +283,7 @@ Care & prayer kanban (UI req §8). Prayer requests are `kind=prayer` — not a s
 - `AUTH_USER_MODEL` is `accounts.User` from the first migration. Church and role access always comes from an active `ChurchMembership`; see [ADR 0001](adr/0001-authentication-and-church-membership.md).
 - Enums as `models.TextChoices`; partial unique indexes via `UniqueConstraint(condition=...)`.
 - `interests` = `models.JSONField(default=list)`.
-- Row-level tenancy: a `ChurchScopedManager` (`.for_church(request.church)`) from day one, even with one church — it makes the later multi-tenant migration a settings change, not a rewrite.
+- Row-level tenancy: `ActiveChurchMiddleware` revalidates the session membership on every request. Church-owned model managers expose `.for_church(church)`, and DRF views use `ChurchScopedQuerysetMixin` so filtering happens before list or object lookup. Background code must scope explicitly rather than relying on request state.
 - Cross-table church consistency is validated by model/forms and must also be enforced by serializers in API work; request-level queryset scoping remains in #5.
 - Sensitive-field gating in DRF serializers (`get_fields()` by role), not in templates.
 

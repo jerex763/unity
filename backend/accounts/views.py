@@ -14,10 +14,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .constants import ACTIVE_CHURCH_SESSION_KEY
 from .models import ChurchMembership, User
 from .serializers import LoginSerializer
-
-ACTIVE_CHURCH_SESSION_KEY = "active_church_id"
 
 
 class InvalidCredentials(APIException):
