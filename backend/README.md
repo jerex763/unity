@@ -22,6 +22,21 @@ python manage.py runserver
 
 Open <http://localhost:8000/api/health/> to verify the application is running.
 
+## Session authentication
+
+The MVP API uses Django sessions. `POST /api/auth/login/` accepts `username`,
+`password` and an optional `church_id`. Accounts with one active membership are
+selected automatically; accounts with multiple active memberships must choose a
+church. The response sets a CSRF cookie and stores `active_church_id` in the
+session.
+
+- `POST /api/auth/login/` — start a session
+- `GET /api/auth/session/` — read the current user and church role
+- `POST /api/auth/logout/` — end the session; requires the CSRF header
+
+Role capabilities are defined in `accounts/permissions.py`. They always require
+an active membership in the church being checked.
+
 ## Django Admin
 
 Create the first local administrator, then open <http://localhost:8000/admin/>:
