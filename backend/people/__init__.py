@@ -1,0 +1,1 @@
+"""People directory domain models."""

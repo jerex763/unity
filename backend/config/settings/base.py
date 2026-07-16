@@ -20,6 +20,10 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
+    "care.apps.CareConfig",
+    "events.apps.EventsConfig",
+    "groups.apps.GroupsConfig",
+    "people.apps.PeopleConfig",
     "tenancy.apps.TenancyConfig",
     "django.contrib.admin",
     "django.contrib.auth",

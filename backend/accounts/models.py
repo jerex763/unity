@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
@@ -59,6 +60,13 @@ class ChurchMembership(models.Model):
         on_delete=models.CASCADE,
         related_name="memberships",
     )
+    person = models.OneToOneField(
+        "people.Person",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="auth_membership",
+    )
     role = models.CharField(max_length=20, choices=Role.choices)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -79,3 +87,14 @@ class ChurchMembership(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} — {self.church} ({self.role})"
+
+    def clean(self) -> None:
+        super().clean()
+        if self.person_id and self.person.church_id != self.church_id:
+            raise ValidationError(
+                {
+                    "person": (
+                        "Person and church membership must belong to the same church."
+                    )
+                }
+            )
