@@ -34,13 +34,35 @@ Start with **[docs/delivery-plan.md](docs/delivery-plan.md)** for what to do now
 
 ```
 docs/          # delivery plan, schema, feature ledger, full vision and UI direction
-backend/       # Django project (coming — issue #1)
+backend/       # Django + DRF API
 frontend/      # React PWA (coming — issue #6)
 ```
 
 ## Getting started
 
-> Scaffold not yet merged. Once #1 and #6 land, this section gets real setup steps (docker-compose, migrate, seed, npm dev). Until then, start from [docs/db-model.md](docs/db-model.md).
+The backend requires Python 3.12+ and Postgres. From the repository root:
+
+```bash
+docker compose up -d db
+cd backend
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev]'
+cp .env.example .env
+python manage.py check
+python manage.py runserver
+```
+
+The API health check is available at <http://localhost:8000/api/health/>.
+
+> **Migration gate:** do not run the initial project migrations against a shared or
+> production database yet. [Issue #26](https://github.com/jerex763/unity/issues/26)
+> must first define the minimal custom user and `ChurchMembership`. Local databases
+> created before #26 lands are disposable and may need to be recreated.
+
+See [backend/README.md](backend/README.md) for configuration, testing and production
+settings.
 
 ## How we work
 
