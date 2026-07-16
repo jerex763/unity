@@ -14,7 +14,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 | 4 | Auth: roles + login | [#4](https://github.com/jerex763/unity/issues/4) | ✅ | jerex763 | 2026-07-16 |
 | 5 | DRF baseline + church scoping | [#5](https://github.com/jerex763/unity/issues/5) | ✅ | jerex763 | 2026-07-16 |
 | 6 | React PWA scaffold | [#6](https://github.com/jerex763/unity/issues/6) | ✅ | jerex763 | 2026-07-16 |
-| 7 | CI: lint + test on PR | [#7](https://github.com/jerex763/unity/issues/7) | 🔨 | jerex763 | |
+| 7 | CI: lint + test on PR | [#7](https://github.com/jerex763/unity/issues/7) | ✅ | jerex763 | 2026-07-16 |
 | 26 | Custom User + ChurchMembership decision | [#26](https://github.com/jerex763/unity/issues/26) | ✅ | jerex763 | 2026-07-16 |
 | 27 | Audit log for sensitive/destructive actions | [#27](https://github.com/jerex763/unity/issues/27) | ⬜ | | |
 | 28 | Consent + privacy notice version record | [#28](https://github.com/jerex763/unity/issues/28) | ⬜ | | |
