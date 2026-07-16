@@ -24,7 +24,7 @@ dev = [
 prod = ["gunicorn>=23,<24"]
 
 [tool.setuptools.packages.find]
-include = ["accounts*", "config*", "tenancy*"]
+include = ["accounts*", "care*", "config*", "events*", "groups*", "people*", "tenancy*"]
 
 [tool.black]
 line-length = 88
@@ -39,6 +39,10 @@ select = ["E", "F", "I", "UP", "B", "DJ"]
 
 [tool.ruff.lint.per-file-ignores]
 "*/migrations/*.py" = ["E501"]
+"care/models.py" = ["DJ001"]
+"events/models.py" = ["DJ001"]
+"groups/models.py" = ["DJ001"]
+"people/models.py" = ["DJ001"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"

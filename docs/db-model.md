@@ -1,13 +1,13 @@
 # Unity — Database Model v1
 
-Scope: MVP three pillars — **People directory**, **Newcomer follow-up**, **Events + registration/check-in** — plus the care/prayer entity needed by the follow-up flow. Designed to translate 1:1 into Django models on Postgres.
+Scope: MVP three pillars — **People directory**, **Newcomer follow-up**, **Events + registration/check-in** — plus the care/prayer entity needed by the follow-up flow. The 12 numbered sections describe 13 project tables because authentication and church membership are separate. Designed to translate 1:1 into Django models on Postgres.
 
 Source requirements: "Unity DB model" sheet, "UI requirements notes", "High-level functional requirement notes" (Google Drive, 2026-07).
 
 ## Conventions
 
 - Every domain table carries `church_id` (FK → `church`). Single-tenant deployment today; this is the cheap insurance for later productization. All unique constraints and queries are scoped by it.
-- All tables: `id` (bigint PK), `created_at`, `updated_at`.
+- All project domain tables: `id` (bigint PK), `created_at`, `updated_at`. The custom Django auth user retains Django's standard timestamp fields.
 - Routine removal uses deactivate/anonymize rules from #30. Hard deletion is admin-only and audited from M0.
 - Enums are Django `TextChoices` (stored as short strings, not ints).
 - Names: `snake_case` tables/columns, singular entity names.
@@ -158,6 +158,7 @@ Small groups, ministries, activities (badminton, English Corner...).
 
 | column | type | notes |
 |---|---|---|
+| church_id | FK church | denormalized tenant boundary; must match group and person |
 | group_id | FK group | |
 | person_id | FK person | |
 | role | enum | `leader` / `co_leader` / `member` |
@@ -183,12 +184,15 @@ Constraint: `unique (group_id, person_id) where left_at is null` (partial unique
 
 No recurrence in MVP — duplicate-event helper in UI instead. Index: `(church_id, starts_at)`.
 
+Constraints: `ends_at > starts_at`; capacity is null or greater than zero.
+
 ## 8. event_registration
 
 Replaces the WhatsApp numbered-list ritual. Check-in is folded in (no separate attendance table).
 
 | column | type | notes |
 |---|---|---|
+| church_id | FK church | denormalized tenant boundary; must match event and person |
 | event_id | FK event | |
 | person_id | FK person | |
 | status | enum | `registered` / `waitlisted` / `cancelled` / `walk_in` |
@@ -276,6 +280,7 @@ Care & prayer kanban (UI req §8). Prayer requests are `kind=prayer` — not a s
 - Enums as `models.TextChoices`; partial unique indexes via `UniqueConstraint(condition=...)`.
 - `interests` = `models.JSONField(default=list)`.
 - Row-level tenancy: a `ChurchScopedManager` (`.for_church(request.church)`) from day one, even with one church — it makes the later multi-tenant migration a settings change, not a rewrite.
+- Cross-table church consistency is validated by model/forms and must also be enforced by serializers in API work; request-level queryset scoping remains in #5.
 - Sensitive-field gating in DRF serializers (`get_fields()` by role), not in templates.
 
 ## Post-MVP parking lot
