@@ -27,3 +27,13 @@ export type WorkerChoice = {
   username: string
   name: string
 }
+
+export type Interaction = {
+  id: number
+  kind: 'call' | 'message' | 'visit' | 'meeting' | 'other'
+  occurred_at: string
+  summary: string
+  visibility: 'staff' | 'leaders' | 'pastors_only'
+  author: string
+  created_at: string
+}

@@ -2,7 +2,13 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { apiRequest } from '../api/client'
-import type { FollowUp, FollowUpStatus, WorkerChoice } from './types'
+import { useAuth } from '../auth/useAuth'
+import type {
+  FollowUp,
+  FollowUpStatus,
+  Interaction,
+  WorkerChoice,
+} from './types'
 
 const statuses: FollowUpStatus[] = [
   'new',
@@ -32,6 +38,7 @@ function editFields(item: FollowUp): EditFields {
 
 export function FollowUpQueuePage() {
   const { t } = useTranslation()
+  const { session } = useAuth()
   const [items, setItems] = useState<FollowUp[]>([])
   const [workers, setWorkers] = useState<WorkerChoice[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -40,6 +47,13 @@ export function FollowUpQueuePage() {
   const [fields, setFields] = useState<EditFields | null>(null)
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [interactions, setInteractions] = useState<Interaction[]>([])
+  const [interactionKind, setInteractionKind] =
+    useState<Interaction['kind']>('call')
+  const [interactionVisibility, setInteractionVisibility] =
+    useState<Interaction['visibility']>('staff')
+  const [interactionSummary, setInteractionSummary] = useState('')
+  const [interactionError, setInteractionError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -67,6 +81,33 @@ export function FollowUpQueuePage() {
     setEditing(item)
     setFields(editFields(item))
     setSaveError('')
+    setInteractionError('')
+    void apiRequest<Interaction[]>(`/follow-ups/${item.id}/interactions/`)
+      .then(setInteractions)
+      .catch(() => setInteractionError(t('followUps.interactions.loadError')))
+  }
+
+  async function addInteraction(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editing) return
+    setInteractionError('')
+    try {
+      const interaction = await apiRequest<Interaction>(
+        `/follow-ups/${editing.id}/interactions/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            kind: interactionKind,
+            visibility: interactionVisibility,
+            summary: interactionSummary,
+          }),
+        },
+      )
+      setInteractions((current) => [interaction, ...current])
+      setInteractionSummary('')
+    } catch {
+      setInteractionError(t('followUps.interactions.saveError'))
+    }
   }
 
   function update<Key extends keyof EditFields>(
@@ -282,6 +323,95 @@ export function FollowUpQueuePage() {
               </button>
             </div>
           </form>
+          <section className="interaction-log">
+            <h3>{t('followUps.interactions.title')}</h3>
+            {interactions.length ? (
+              <div className="interaction-list">
+                {interactions.map((interaction) => (
+                  <article key={interaction.id}>
+                    <strong>
+                      {t(`followUps.interactions.kinds.${interaction.kind}`)}
+                    </strong>
+                    <span>
+                      {interaction.author} ·{' '}
+                      {new Intl.DateTimeFormat(undefined, {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      }).format(new Date(interaction.occurred_at))}
+                    </span>
+                    <p>{interaction.summary}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p>{t('followUps.interactions.empty')}</p>
+            )}
+            <form className="interaction-form" onSubmit={addInteraction}>
+              <label>
+                <span>{t('followUps.interactions.kind')}</span>
+                <select
+                  onChange={(event) =>
+                    setInteractionKind(
+                      event.target.value as Interaction['kind'],
+                    )
+                  }
+                  value={interactionKind}
+                >
+                  {(
+                    ['call', 'message', 'visit', 'meeting', 'other'] as const
+                  ).map((kind) => (
+                    <option key={kind} value={kind}>
+                      {t(`followUps.interactions.kinds.${kind}`)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t('followUps.interactions.visibility')}</span>
+                <select
+                  onChange={(event) =>
+                    setInteractionVisibility(
+                      event.target.value as Interaction['visibility'],
+                    )
+                  }
+                  value={interactionVisibility}
+                >
+                  <option value="staff">
+                    {t('followUps.interactions.visibilities.staff')}
+                  </option>
+                  <option value="leaders">
+                    {t('followUps.interactions.visibilities.leaders')}
+                  </option>
+                  {session?.membership.role !== 'leader' ? (
+                    <option value="pastors_only">
+                      {t('followUps.interactions.visibilities.pastors_only')}
+                    </option>
+                  ) : null}
+                </select>
+              </label>
+              <label className="wide-field">
+                <span>{t('followUps.interactions.summary')}</span>
+                <textarea
+                  onChange={(event) =>
+                    setInteractionSummary(event.target.value)
+                  }
+                  required
+                  rows={2}
+                  value={interactionSummary}
+                />
+              </label>
+              <button className="secondary-button" type="submit">
+                {t('followUps.interactions.add')}
+              </button>
+            </form>
+            {interactionError ? (
+              <p className="form-error" role="alert">
+                {interactionError}
+              </p>
+            ) : null}
+          </section>
         </section>
       ) : null}
     </main>

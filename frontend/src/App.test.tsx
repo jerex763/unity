@@ -498,6 +498,19 @@ describe('Follow-up queue', () => {
       .mockResolvedValueOnce(
         jsonResponse([{ id: 1, username: 'alex', name: 'Alex Chen' }]),
       )
+      .mockResolvedValueOnce(
+        jsonResponse([
+          {
+            id: 81,
+            kind: 'call',
+            occurred_at: '2026-07-17T02:00:00Z',
+            summary: 'Fictional welcome call',
+            visibility: 'staff',
+            author: 'alex',
+            created_at: '2026-07-17T02:00:00Z',
+          },
+        ]),
+      )
       .mockResolvedValueOnce(jsonResponse(updated))
     vi.stubGlobal('fetch', fetchMock)
     const user = userEvent.setup()
@@ -512,13 +525,14 @@ describe('Follow-up queue', () => {
     ).toBeVisible()
     expect(await screen.findByText('Mia Chen')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Update' }))
+    expect(await screen.findByText('Fictional welcome call')).toBeVisible()
     await user.selectOptions(screen.getByLabelText('Stage'), 'connected')
     await user.selectOptions(screen.getByLabelText('Engagement'), 'likely')
     await user.selectOptions(screen.getByLabelText('Assigned to'), '1')
     await user.click(screen.getByRole('button', { name: 'Save update' }))
 
     expect(await screen.findByText('Likely')).toBeVisible()
-    expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/follow-ups/71/')
-    expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'PATCH' })
+    expect(fetchMock.mock.calls[4]?.[0]).toBe('/api/follow-ups/71/')
+    expect(fetchMock.mock.calls[4]?.[1]).toMatchObject({ method: 'PATCH' })
   })
 })

@@ -188,6 +188,28 @@ const resources = {
         eyebrow: 'Newcomer care',
         intro:
           'Move each conversation toward a clear, personal next connection.',
+        interactions: {
+          add: 'Add interaction',
+          empty: 'No contact has been logged yet.',
+          kind: 'Contact type',
+          kinds: {
+            call: 'Call',
+            meeting: 'Meeting',
+            message: 'Message',
+            other: 'Other',
+            visit: 'Visit',
+          },
+          loadError: 'We could not load the interaction history.',
+          saveError: 'We could not add this interaction. Retry.',
+          summary: 'Summary',
+          title: 'Interaction log',
+          visibilities: {
+            leaders: 'Leaders',
+            pastors_only: 'Pastors only',
+            staff: 'Staff',
+          },
+          visibility: 'Visibility',
+        },
         loadError: 'We could not load the follow-up queue. Retry.',
         loading: 'Loading follow-ups…',
         notSet: 'Not set',

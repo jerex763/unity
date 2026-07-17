@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from accounts.models import ChurchMembership, User
 
-from .models import FollowUp
+from .models import FollowUp, Interaction
 
 
 class FollowUpSerializer(serializers.ModelSerializer):
@@ -70,3 +70,31 @@ class FollowUpSerializer(serializers.ModelSerializer):
         elif new_status != FollowUp.Status.CLOSED:
             validated_data["closed_at"] = None
         return super().update(instance, validated_data)
+
+
+class InteractionSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source="author.username", read_only=True)
+
+    class Meta:
+        model = Interaction
+        fields = (
+            "id",
+            "kind",
+            "occurred_at",
+            "summary",
+            "visibility",
+            "author",
+            "created_at",
+        )
+        read_only_fields = ("id", "author", "created_at")
+
+    def validate_visibility(self, value: str) -> str:
+        membership = self.context["request"].church_membership
+        if (
+            membership.role == ChurchMembership.Role.LEADER
+            and value == Interaction.Visibility.PASTORS_ONLY
+        ):
+            raise serializers.ValidationError(
+                "Leaders cannot create pastors-only interactions."
+            )
+        return value
