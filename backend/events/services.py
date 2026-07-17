@@ -67,6 +67,9 @@ def register_for_event(
     registration.checkin_method = None
     registration.full_clean()
     registration.save()
+    from care.services import ensure_first_event_follow_up
+
+    ensure_first_event_follow_up(registration)
     return registration
 
 
@@ -93,6 +96,9 @@ def set_manual_check_in(
             locked.checked_in_at = timezone.now()
             locked.checkin_method = EventRegistration.CheckinMethod.MANUAL
             locked.save(update_fields=("checked_in_at", "checkin_method", "updated_at"))
+        from care.services import ensure_first_event_follow_up
+
+        ensure_first_event_follow_up(locked)
     elif locked.checked_in_at is not None or locked.checkin_method is not None:
         locked.checked_in_at = None
         locked.checkin_method = None

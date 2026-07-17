@@ -205,6 +205,9 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
                 "checkin_method": EventRegistration.CheckinMethod.MANUAL,
             },
         )
+        from care.services import ensure_first_event_follow_up
+
+        ensure_first_event_follow_up(registration)
         registration = EventRegistration.objects.select_related("person").get(
             pk=registration.pk
         )
