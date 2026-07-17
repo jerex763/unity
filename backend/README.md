@@ -154,6 +154,10 @@ Creating or importing a person never creates consent automatically.
   visible relationship link
 - `GET/POST /api/events/` — list church events or create an event
 - `GET/PUT/PATCH/DELETE /api/events/<id>/` — read or manage an event
+- `GET/POST /api/events/<id>/registrations/` — view the permitted roster or
+  register a visible person (members default to their linked Person)
+- `POST /api/events/<id>/registrations/<registration-id>/cancel/` — cancel a
+  permitted registration while preserving its history
 
 Admins and pastors see the active church directory. Leaders see active members
 of groups they lead or co-lead. Members can read only their linked Person and

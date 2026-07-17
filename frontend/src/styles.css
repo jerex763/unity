@@ -1236,6 +1236,87 @@ a {
   margin-top: 0.8rem;
 }
 
+.registration-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-beige);
+  border-radius: 0.9rem;
+  background: var(--color-surface);
+}
+
+.registration-panel h3 {
+  margin: 0 0 0.75rem;
+}
+
+.registration-panel > p {
+  color: var(--color-text-muted);
+}
+
+.registration-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.registration-list article {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--color-beige);
+}
+
+.registration-list article > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.registration-list span,
+.registration-list small {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.registration-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--color-beige);
+}
+
+.registration-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.registration-form label > span {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.registration-form input,
+.registration-form select {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #b8c0bb;
+  border-radius: 0.7rem;
+  color: var(--color-text);
+  background: var(--color-card);
+}
+
+.registration-form .event-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.registration-form .event-checkbox input {
+  width: 1.2rem;
+  min-height: 1.2rem;
+}
+
 .profile-loading,
 .profile-error {
   max-width: 36rem;

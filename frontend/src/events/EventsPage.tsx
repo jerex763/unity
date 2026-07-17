@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 
 import { apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
-import type { ChurchEvent, EventGroupChoice } from './types'
+import type { DirectoryPerson } from '../people/types'
+import type { ChurchEvent, EventGroupChoice, EventRegistration } from './types'
 
 type EventForm = {
   id: number | null
@@ -68,11 +69,21 @@ export function EventsPage() {
   const { session } = useAuth()
   const [events, setEvents] = useState<ChurchEvent[]>([])
   const [groups, setGroups] = useState<EventGroupChoice[]>([])
+  const [people, setPeople] = useState<DirectoryPerson[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [form, setForm] = useState<EventForm | null>(null)
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [activeRoster, setActiveRoster] = useState<number | null>(null)
+  const [rosters, setRosters] = useState<Record<number, EventRegistration[]>>(
+    {},
+  )
+  const [registrationPerson, setRegistrationPerson] = useState('')
+  const [needsTransport, setNeedsTransport] = useState(false)
+  const [registrationNote, setRegistrationNote] = useState('')
+  const [registrationError, setRegistrationError] = useState('')
+  const [isSavingRegistration, setIsSavingRegistration] = useState(false)
   const canEdit = session?.membership.role !== 'member'
 
   useEffect(() => {
@@ -80,11 +91,13 @@ export function EventsPage() {
     void Promise.all([
       apiRequest<ChurchEvent[]>('/events/'),
       apiRequest<EventGroupChoice[]>('/events/groups/'),
+      apiRequest<DirectoryPerson[]>('/people/'),
     ])
-      .then(([eventRows, groupRows]) => {
+      .then(([eventRows, groupRows, personRows]) => {
         if (!active) return
         setEvents(eventRows)
         setGroups(groupRows)
+        setPeople(personRows)
       })
       .catch(() => {
         if (active) setLoadError(t('events.loadError'))
@@ -141,6 +154,107 @@ export function EventsPage() {
       setSaveError(t('events.saveError'))
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function openRegistrations(event: ChurchEvent) {
+    if (activeRoster === event.id) {
+      setActiveRoster(null)
+      return
+    }
+    setRegistrationError('')
+    setActiveRoster(event.id)
+    try {
+      const rows = await apiRequest<EventRegistration[]>(
+        `/events/${event.id}/registrations/`,
+      )
+      setRosters((current) => ({ ...current, [event.id]: rows }))
+    } catch {
+      setRegistrationError(t('events.registrations.loadError'))
+    }
+  }
+
+  async function addRegistration(
+    event: FormEvent<HTMLFormElement>,
+    churchEvent: ChurchEvent,
+  ) {
+    event.preventDefault()
+    setRegistrationError('')
+    setIsSavingRegistration(true)
+    try {
+      const registration = await apiRequest<EventRegistration>(
+        `/events/${churchEvent.id}/registrations/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            ...(canEdit && registrationPerson
+              ? { person: Number(registrationPerson) }
+              : {}),
+            needs_transport: needsTransport,
+            note: registrationNote,
+          }),
+        },
+      )
+      setRosters((current) => ({
+        ...current,
+        [churchEvent.id]: [
+          ...(current[churchEvent.id] ?? []).filter(
+            (item) => item.id !== registration.id,
+          ),
+          registration,
+        ],
+      }))
+      if (
+        !canEdit ||
+        registration.person.id === session?.membership.person_id
+      ) {
+        setEvents((current) =>
+          current.map((item) =>
+            item.id === churchEvent.id
+              ? { ...item, my_registration: registration }
+              : item,
+          ),
+        )
+      }
+      setEvents(await apiRequest<ChurchEvent[]>('/events/'))
+      setRegistrationPerson('')
+      setNeedsTransport(false)
+      setRegistrationNote('')
+    } catch {
+      setRegistrationError(t('events.registrations.saveError'))
+    } finally {
+      setIsSavingRegistration(false)
+    }
+  }
+
+  async function cancelRegistration(
+    churchEvent: ChurchEvent,
+    registration: EventRegistration,
+  ) {
+    setRegistrationError('')
+    try {
+      const cancelled = await apiRequest<EventRegistration>(
+        `/events/${churchEvent.id}/registrations/${registration.id}/cancel/`,
+        { method: 'POST' },
+      )
+      setRosters((current) => ({
+        ...current,
+        [churchEvent.id]: (current[churchEvent.id] ?? []).map((item) =>
+          item.id === cancelled.id ? cancelled : item,
+        ),
+      }))
+      if (churchEvent.my_registration?.id === cancelled.id) {
+        setEvents((current) =>
+          current.map((item) =>
+            item.id === churchEvent.id
+              ? { ...item, my_registration: cancelled }
+              : item,
+          ),
+        )
+      }
+      setEvents(await apiRequest<ChurchEvent[]>('/events/'))
+    } catch {
+      setRegistrationError(t('events.registrations.cancelError'))
     }
   }
 
@@ -331,7 +445,9 @@ export function EventsPage() {
                   }`}
                 >
                   {event.registration_open
-                    ? t('events.open')
+                    ? event.places_available
+                      ? t('events.open')
+                      : t('events.waitlistOpen')
                     : t('events.closed')}
                 </span>
               </div>
@@ -366,7 +482,140 @@ export function EventsPage() {
                   >
                     {t('events.duplicate')}
                   </button>
+                  <button
+                    className="text-button"
+                    onClick={() => void openRegistrations(event)}
+                    type="button"
+                  >
+                    {t('events.registrations.manage')}
+                  </button>
                 </div>
+              ) : (
+                <div className="event-actions">
+                  <button
+                    className="secondary-button"
+                    disabled={!event.registration_open}
+                    onClick={() => void openRegistrations(event)}
+                    type="button"
+                  >
+                    {event.my_registration &&
+                    event.my_registration.status !== 'cancelled'
+                      ? t('events.registrations.viewMine')
+                      : event.places_available
+                        ? t('events.registrations.signUp')
+                        : t('events.registrations.joinWaitlist')}
+                  </button>
+                </div>
+              )}
+
+              {activeRoster === event.id ? (
+                <section
+                  className="registration-panel"
+                  aria-label={t('events.registrations.title')}
+                >
+                  <h3>{t('events.registrations.title')}</h3>
+                  {(rosters[event.id] ?? []).length ? (
+                    <div className="registration-list">
+                      {(rosters[event.id] ?? []).map((registration) => (
+                        <article key={registration.id}>
+                          <div>
+                            <strong>{registration.person.full_name}</strong>
+                            <span>
+                              {t(
+                                `events.registrations.statuses.${registration.status}`,
+                              )}
+                              {registration.needs_transport
+                                ? ` · ${t('events.registrations.transport')}`
+                                : ''}
+                            </span>
+                            {registration.note ? (
+                              <small>{registration.note}</small>
+                            ) : null}
+                          </div>
+                          {registration.status !== 'cancelled' ? (
+                            <button
+                              className="text-button"
+                              onClick={() =>
+                                void cancelRegistration(event, registration)
+                              }
+                              type="button"
+                            >
+                              {t('events.registrations.cancel')}
+                            </button>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>{t('events.registrations.empty')}</p>
+                  )}
+                  {event.registration_open ? (
+                    <form
+                      className="registration-form"
+                      onSubmit={(formEvent) =>
+                        void addRegistration(formEvent, event)
+                      }
+                    >
+                      {canEdit ? (
+                        <label>
+                          <span>{t('events.registrations.person')}</span>
+                          <select
+                            onChange={(changeEvent) =>
+                              setRegistrationPerson(changeEvent.target.value)
+                            }
+                            required
+                            value={registrationPerson}
+                          >
+                            <option value="">
+                              {t('events.registrations.choosePerson')}
+                            </option>
+                            {people.map((person) => (
+                              <option key={person.id} value={person.id}>
+                                {person.full_name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                      <label className="event-checkbox">
+                        <input
+                          checked={needsTransport}
+                          onChange={(changeEvent) =>
+                            setNeedsTransport(changeEvent.target.checked)
+                          }
+                          type="checkbox"
+                        />
+                        <span>{t('events.registrations.needsTransport')}</span>
+                      </label>
+                      <label>
+                        <span>{t('events.registrations.note')}</span>
+                        <input
+                          maxLength={200}
+                          onChange={(changeEvent) =>
+                            setRegistrationNote(changeEvent.target.value)
+                          }
+                          value={registrationNote}
+                        />
+                      </label>
+                      <button
+                        className="primary-button inline"
+                        disabled={isSavingRegistration}
+                        type="submit"
+                      >
+                        {isSavingRegistration
+                          ? t('events.registrations.saving')
+                          : event.places_available
+                            ? t('events.registrations.confirm')
+                            : t('events.registrations.confirmWaitlist')}
+                      </button>
+                    </form>
+                  ) : null}
+                  {registrationError ? (
+                    <p className="form-error" role="alert">
+                      {registrationError}
+                    </p>
+                  ) : null}
+                </section>
               ) : null}
             </div>
           </article>
