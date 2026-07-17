@@ -168,6 +168,7 @@ creates one open `event_visit` follow-up. Re-registration, later events, and
 manual check-in of historical rows are idempotent against that first-visit rule.
 
 - `GET /api/follow-ups/` — role-filtered follow-up pipeline
+- `GET /api/follow-ups/mine/` — current worker's open assignments, due first
 - `GET/PUT/PATCH /api/follow-ups/<id>/` — update an accessible follow-up
 - `GET /api/follow-ups/workers/` — permitted assignment choices
 - `GET/POST /api/follow-ups/<id>/interactions/` — visible follow-up contact log

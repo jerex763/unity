@@ -110,6 +110,34 @@ def test_leader_only_sees_and_updates_items_assigned_to_self() -> None:
     assert hidden_response.status_code == 404
 
 
+def test_my_follow_ups_only_returns_open_assignments_in_due_date_order() -> None:
+    church = Church.objects.create(name="Fictional My Follow-ups")
+    client, pastor = member(church, ChurchMembership.Role.PASTOR, "mine")
+    _, other = member(church, ChurchMembership.Role.LEADER, "mine.other")
+    later = follow_up(church, assigned_to=pastor.user, suffix="Later")
+    earlier = follow_up(church, assigned_to=pastor.user, suffix="Earlier")
+    no_due_date = follow_up(church, assigned_to=pastor.user, suffix="No Due Date")
+    closed = follow_up(church, assigned_to=pastor.user, suffix="Closed")
+    follow_up(church, assigned_to=other.user, suffix="Other Worker")
+    later.due_at = timezone.localdate() + timedelta(days=4)
+    earlier.due_at = timezone.localdate() - timedelta(days=1)
+    no_due_date.due_at = None
+    closed.status = FollowUp.Status.CLOSED
+    FollowUp.objects.bulk_update(
+        [later, earlier, no_due_date, closed],
+        ["due_at", "status"],
+    )
+
+    response = client.get(reverse("care:my-follow-up-list"))
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [
+        earlier.id,
+        later.id,
+        no_due_date.id,
+    ]
+
+
 def test_member_is_denied_and_cross_church_follow_up_is_hidden() -> None:
     church = Church.objects.create(name="Fictional Follow-up Access")
     other_church = Church.objects.create(name="Fictional Follow-up Other")
@@ -118,6 +146,7 @@ def test_member_is_denied_and_cross_church_follow_up_is_hidden() -> None:
     hidden = follow_up(other_church, suffix="Other")
 
     assert member_client.get(reverse("care:follow-up-list")).status_code == 403
+    assert member_client.get(reverse("care:my-follow-up-list")).status_code == 403
     assert (
         pastor_client.get(
             reverse("care:follow-up-detail", args=(hidden.id,))

@@ -6,12 +6,14 @@ from .views import (
     FollowUpInteractionListCreateView,
     FollowUpListView,
     FollowUpWorkerChoicesView,
+    MyFollowUpListView,
 )
 
 app_name = "care"
 
 urlpatterns = [
     path("", FollowUpListView.as_view(), name="follow-up-list"),
+    path("mine/", MyFollowUpListView.as_view(), name="my-follow-up-list"),
     path("workers/", FollowUpWorkerChoicesView.as_view(), name="worker-choices"),
     path(
         "<int:parent_id>/interactions/",

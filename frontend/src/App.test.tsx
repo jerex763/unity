@@ -60,6 +60,7 @@ describe('App authentication flow', () => {
       .fn()
       .mockResolvedValueOnce(jsonResponse({}, 403))
       .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse([]))
     vi.stubGlobal('fetch', fetchMock)
     const user = userEvent.setup()
 
@@ -71,8 +72,68 @@ describe('App authentication flow', () => {
     expect(
       await screen.findByRole('heading', { name: 'Welcome back, Alex' }),
     ).toBeVisible()
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/auth/login/')
+  })
+
+  it('shows open assignments due first on the dashboard', async () => {
+    const myFollowUps = [
+      {
+        id: 72,
+        person: {
+          id: 2,
+          full_name: 'Noah Park',
+          preferred_name: null,
+          phone: null,
+          email: 'noah@example.test',
+        },
+        source: 'walk_in',
+        engagement: 'possible',
+        status: 'assigned',
+        assigned_to: 1,
+        assigned_to_name: 'alex',
+        due_at: '2026-07-19',
+        closed_at: null,
+        outcome: null,
+        created_at: '2026-07-17T01:00:00Z',
+        updated_at: '2026-07-17T01:00:00Z',
+      },
+      {
+        id: 73,
+        person: {
+          id: 3,
+          full_name: 'Ava Singh',
+          preferred_name: null,
+          phone: '+61000000003',
+          email: null,
+        },
+        source: 'event_visit',
+        engagement: 'likely',
+        status: 'in_progress',
+        assigned_to: 1,
+        assigned_to_name: 'alex',
+        due_at: null,
+        closed_at: null,
+        outcome: null,
+        created_at: '2026-07-17T02:00:00Z',
+        updated_at: '2026-07-17T02:00:00Z',
+      },
+    ]
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse(myFollowUps))
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderApp('/')
+
+    expect(
+      await screen.findByRole('region', { name: 'My follow-ups' }),
+    ).toBeVisible()
+    expect(await screen.findByText('Noah Park')).toBeVisible()
+    expect(screen.getByText('Ava Singh')).toBeVisible()
+    expect(screen.getByText('No due date')).toBeVisible()
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/follow-ups/mine/')
   })
 })
 
