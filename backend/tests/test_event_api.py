@@ -131,7 +131,8 @@ def test_event_counts_capacity_and_signup_window_are_exposed() -> None:
     assert response.status_code == 200
     assert response.json()["registered_count"] == 1
     assert response.json()["waitlisted_count"] == 1
-    assert response.json()["registration_open"] is False
+    assert response.json()["registration_open"] is True
+    assert response.json()["places_available"] is False
 
 
 def test_event_api_validates_times_capacity_and_group_scope() -> None:

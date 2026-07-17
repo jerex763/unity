@@ -33,6 +33,7 @@ def membership_payload(membership: ChurchMembership) -> dict[str, object]:
         "church_id": membership.church_id,
         "church_name": membership.church.name,
         "role": membership.role,
+        "person_id": membership.person_id,
     }
 
 

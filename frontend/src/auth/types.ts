@@ -9,6 +9,7 @@ export type SessionPayload = {
     church_id: number
     church_name: string
     role: 'admin' | 'pastor' | 'leader' | 'member'
+    person_id: number | null
   }
 }
 

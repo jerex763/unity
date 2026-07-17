@@ -65,6 +65,7 @@ def test_login_selects_only_membership_and_exposes_safe_session_payload(
             "church_id": church.id,
             "church_name": church.name,
             "role": membership.role,
+            "person_id": None,
         },
     }
     assert "password" not in response.json()["user"]

@@ -18,6 +18,7 @@ const session = {
     church_id: 1,
     church_name: 'Unity Church',
     role: 'leader' as const,
+    person_id: null,
   },
 }
 
@@ -323,6 +324,8 @@ describe('Events', () => {
     signup_opens: true,
     signup_closes_at: '2026-07-25T01:00:00Z',
     registration_open: true,
+    places_available: true,
+    my_registration: null,
     registered_count: 12,
     waitlisted_count: 0,
     created_by: 'alex',
@@ -345,6 +348,40 @@ describe('Events', () => {
       .mockResolvedValueOnce(
         jsonResponse([{ id: 11, name: 'Friday Community' }]),
       )
+      .mockResolvedValueOnce(
+        jsonResponse([
+          {
+            id: 1,
+            full_name: 'Mia Chen',
+            preferred_name: 'Mimi',
+            membership_status: 'newcomer',
+            email: 'mia@example.test',
+            phone: '+61000000001',
+            photo_url: null,
+            suburb: 'Burwood',
+            university: 'USYD',
+            groups: [],
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse([
+          {
+            id: 51,
+            person: {
+              id: 1,
+              full_name: 'Mia Chen',
+              preferred_name: 'Mimi',
+            },
+            status: 'registered',
+            needs_transport: true,
+            note: 'Pickup near station',
+            registered_at: '2026-07-10T02:00:00Z',
+            checked_in_at: null,
+            checkin_method: null,
+          },
+        ]),
+      )
       .mockResolvedValueOnce(jsonResponse(created))
     vi.stubGlobal('fetch', fetchMock)
     const user = userEvent.setup()
@@ -359,6 +396,11 @@ describe('Events', () => {
     ).toBeVisible()
     expect(await screen.findByText('Community Lunch')).toBeVisible()
     expect(screen.getByText('12 / 40 registered')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Registration list' }))
+    expect(await screen.findByText('Pickup near station')).toBeVisible()
+    expect(screen.getByText(/Transport needed/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Registration list' }))
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }))
     expect(screen.getByLabelText('Event title')).toHaveValue(
@@ -387,7 +429,7 @@ describe('Events', () => {
     await user.click(screen.getByRole('button', { name: 'Save event' }))
 
     expect(await screen.findByText('Welcome Dinner')).toBeVisible()
-    expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/events/')
-    expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'POST' })
+    expect(fetchMock.mock.calls[5]?.[0]).toBe('/api/events/')
+    expect(fetchMock.mock.calls[5]?.[1]).toMatchObject({ method: 'POST' })
   })
 })

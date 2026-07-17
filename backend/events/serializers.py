@@ -1,10 +1,64 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from accounts.access import groups_visible_to
+from accounts.access import groups_visible_to, people_visible_to
 from groups.models import Group
+from people.models import Person
 
-from .models import Event
+from .models import Event, EventRegistration
+from .services import registration_is_open
+
+
+class EventRegistrationSerializer(serializers.ModelSerializer):
+    person = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EventRegistration
+        fields = (
+            "id",
+            "person",
+            "status",
+            "needs_transport",
+            "note",
+            "registered_at",
+            "checked_in_at",
+            "checkin_method",
+        )
+        read_only_fields = fields
+
+    def get_person(self, instance: EventRegistration) -> dict[str, object]:
+        return {
+            "id": instance.person_id,
+            "full_name": instance.person.full_name,
+            "preferred_name": instance.person.preferred_name,
+        }
+
+
+class EventRegistrationCreateSerializer(serializers.Serializer):
+    person = serializers.PrimaryKeyRelatedField(
+        queryset=Person.objects.none(),
+        required=False,
+    )
+    needs_transport = serializers.BooleanField(default=False)
+    note = serializers.CharField(allow_blank=True, max_length=200, required=False)
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        membership = self.context["request"].church_membership
+        self.fields["person"].queryset = people_visible_to(
+            Person.objects.all(),
+            membership,
+        )
+
+    def validate(self, attrs: dict[str, object]) -> dict[str, object]:
+        membership = self.context["request"].church_membership
+        if "person" not in attrs:
+            if membership.person is None:
+                raise serializers.ValidationError(
+                    {"person": "Choose a person for this registration."}
+                )
+            attrs["person"] = membership.person
+        return attrs
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -18,6 +72,8 @@ class EventSerializer(serializers.ModelSerializer):
     registered_count = serializers.SerializerMethodField()
     waitlisted_count = serializers.SerializerMethodField()
     registration_open = serializers.SerializerMethodField()
+    places_available = serializers.SerializerMethodField()
+    my_registration = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -34,6 +90,8 @@ class EventSerializer(serializers.ModelSerializer):
             "signup_opens",
             "signup_closes_at",
             "registration_open",
+            "places_available",
+            "my_registration",
             "registered_count",
             "waitlisted_count",
             "created_by",
@@ -43,6 +101,8 @@ class EventSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "registration_open",
+            "places_available",
+            "my_registration",
             "registered_count",
             "waitlisted_count",
             "created_by",
@@ -82,15 +142,17 @@ class EventSerializer(serializers.ModelSerializer):
         return value
 
     def get_registration_open(self, instance: Event) -> bool:
-        if not instance.signup_opens:
-            return False
-        now = timezone.now()
-        if instance.signup_closes_at and instance.signup_closes_at <= now:
-            return False
-        if instance.starts_at <= now:
-            return False
+        return registration_is_open(instance, now=timezone.now())
+
+    def get_places_available(self, instance: Event) -> bool:
         registered_count = getattr(instance, "registered_count", 0)
         return instance.capacity is None or registered_count < instance.capacity
+
+    def get_my_registration(self, instance: Event) -> dict[str, object] | None:
+        registrations = getattr(instance, "my_event_registration", ())
+        if not registrations:
+            return None
+        return EventRegistrationSerializer(registrations[0]).data
 
     def get_registered_count(self, instance: Event) -> int:
         return getattr(instance, "registered_count", 0)
