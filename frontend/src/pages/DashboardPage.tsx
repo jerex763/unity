@@ -14,7 +14,7 @@ const cards = [
     title: 'dashboard.eventsTitle',
     body: 'dashboard.eventsBody',
     icon: 'E',
-    to: null,
+    to: '/events',
   },
   {
     title: 'dashboard.followUpsTitle',
@@ -51,7 +51,9 @@ export function DashboardPage() {
               <p>{t(card.body)}</p>
               {card.to ? (
                 <Link className="card-link" to={card.to}>
-                  {t('dashboard.openDirectory')}
+                  {card.to === '/events'
+                    ? t('dashboard.openEvents')
+                    : t('dashboard.openDirectory')}
                 </Link>
               ) : (
                 <span className="chip">{t('dashboard.comingSoon')}</span>

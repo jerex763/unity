@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -290,7 +290,7 @@ describe('Person profile', () => {
     expect(screen.getByText('Friday Community')).toBeVisible()
 
     await user.click(screen.getByRole('tab', { name: 'Events' }))
-    expect(screen.getByText('Community Lunch')).toBeVisible()
+    expect(await screen.findByText('Community Lunch')).toBeVisible()
 
     await user.click(screen.getByRole('tab', { name: 'Follow-ups' }))
     expect(screen.getByText('Connected with Friday Community.')).toBeVisible()
@@ -306,5 +306,88 @@ describe('Person profile', () => {
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/people/1/')
     expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'PATCH' })
+  })
+})
+
+describe('Events', () => {
+  const event = {
+    id: 21,
+    group: 11,
+    group_name: 'Friday Community',
+    title: 'Community Lunch',
+    description: 'A fictional community lunch.',
+    starts_at: '2026-07-25T02:00:00Z',
+    ends_at: '2026-07-25T04:00:00Z',
+    location: 'Main Hall',
+    capacity: 40,
+    signup_opens: true,
+    signup_closes_at: '2026-07-25T01:00:00Z',
+    registration_open: true,
+    registered_count: 12,
+    waitlisted_count: 0,
+    created_by: 'alex',
+    created_at: '2026-07-01T00:00:00Z',
+    updated_at: '2026-07-01T00:00:00Z',
+  }
+
+  it('lists events and supports duplicate and create workflows', async () => {
+    const created = {
+      ...event,
+      id: 22,
+      group: null,
+      group_name: undefined,
+      title: 'Welcome Dinner',
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse([event]))
+      .mockResolvedValueOnce(
+        jsonResponse([{ id: 11, name: 'Friday Community' }]),
+      )
+      .mockResolvedValueOnce(jsonResponse(created))
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+
+    renderApp('/events')
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Upcoming events',
+        level: 1,
+      }),
+    ).toBeVisible()
+    expect(await screen.findByText('Community Lunch')).toBeVisible()
+    expect(screen.getByText('12 / 40 registered')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Duplicate' }))
+    expect(screen.getByLabelText('Event title')).toHaveValue(
+      'Community Lunch copy',
+    )
+    expect(screen.getByLabelText('Hosted by')).toHaveValue('11')
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(
+      screen.getByRole('heading', { name: 'Edit event', level: 2 }),
+    ).toBeVisible()
+    expect(screen.getByLabelText('Event title')).toHaveValue('Community Lunch')
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await user.click(screen.getByRole('button', { name: 'Create event' }))
+    fireEvent.change(screen.getByLabelText('Event title'), {
+      target: { value: 'Welcome Dinner' },
+    })
+    fireEvent.change(screen.getByLabelText('Starts'), {
+      target: { value: '2026-07-30T18:00' },
+    })
+    fireEvent.change(screen.getByLabelText('Ends'), {
+      target: { value: '2026-07-30T20:00' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Save event' }))
+
+    expect(await screen.findByText('Welcome Dinner')).toBeVisible()
+    expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/events/')
+    expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'POST' })
   })
 })

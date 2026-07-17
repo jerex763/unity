@@ -8,7 +8,7 @@ from rest_framework.test import APIClient
 from accounts.constants import ACTIVE_CHURCH_SESSION_KEY
 from accounts.models import ChurchMembership, User
 from events.models import Event, EventRegistration
-from groups.models import Group
+from groups.models import Group, GroupMembership
 from people.models import Person
 from tenancy.models import Church
 
@@ -227,3 +227,37 @@ def test_event_detail_never_crosses_active_church() -> None:
 
     assert client.get(url).status_code == 404
     assert client.patch(url, {"title": "Crossed"}, format="json").status_code == 404
+
+
+def test_event_group_choices_follow_group_visibility() -> None:
+    church = Church.objects.create(name="Fictional Event Group Choices")
+    leader_person = Person.objects.create(church=church, full_name="Group Leader")
+    leader = make_membership(
+        church,
+        role=ChurchMembership.Role.LEADER,
+        suffix="group.choices",
+        person=leader_person,
+    )
+    joined = Group.objects.create(
+        church=church,
+        name="Joined Group",
+        kind=Group.Kind.ACTIVITY,
+    )
+    hidden = Group.objects.create(
+        church=church,
+        name="Hidden Group",
+        kind=Group.Kind.ACTIVITY,
+    )
+    GroupMembership.objects.create(
+        church=church,
+        group=joined,
+        person=leader_person,
+        role=GroupMembership.Role.LEADER,
+        joined_at=timezone.localdate(),
+    )
+    client = authenticated_client(leader)
+
+    response = client.get(reverse("events:event-group-choices"))
+
+    assert response.json() == [{"id": joined.id, "name": joined.name}]
+    assert hidden.id not in {item["id"] for item in response.json()}
