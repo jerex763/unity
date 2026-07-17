@@ -3,7 +3,7 @@ from datetime import datetime
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import ConsentRecord
+from .models import ConsentRecord, Person
 
 
 class ConsentRecordSerializer(serializers.ModelSerializer):
@@ -31,3 +31,7 @@ class ConsentRecordSerializer(serializers.ModelSerializer):
                 "The consent decision time cannot be in the future."
             )
         return value
+
+
+class HardDeletePersonSerializer(serializers.Serializer):
+    reason = serializers.ChoiceField(choices=Person.HardDeleteReason.choices)
