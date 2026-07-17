@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/useAuth'
 
@@ -7,12 +8,19 @@ const cards = [
     title: 'dashboard.directoryTitle',
     body: 'dashboard.directoryBody',
     icon: 'P',
+    to: '/people',
   },
-  { title: 'dashboard.eventsTitle', body: 'dashboard.eventsBody', icon: 'E' },
+  {
+    title: 'dashboard.eventsTitle',
+    body: 'dashboard.eventsBody',
+    icon: 'E',
+    to: null,
+  },
   {
     title: 'dashboard.followUpsTitle',
     body: 'dashboard.followUpsBody',
     icon: 'F',
+    to: null,
   },
 ] as const
 
@@ -41,7 +49,13 @@ export function DashboardPage() {
             <div>
               <h2>{t(card.title)}</h2>
               <p>{t(card.body)}</p>
-              <span className="chip">{t('dashboard.comingSoon')}</span>
+              {card.to ? (
+                <Link className="card-link" to={card.to}>
+                  {t('dashboard.openDirectory')}
+                </Link>
+              ) : (
+                <span className="chip">{t('dashboard.comingSoon')}</span>
+              )}
             </div>
           </article>
         ))}

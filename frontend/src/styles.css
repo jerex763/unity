@@ -38,7 +38,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -200,6 +201,7 @@ a {
     'topbar'
     'content'
     'bottom';
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr auto;
 }
 
@@ -246,6 +248,7 @@ a {
 
 .page-content {
   width: 100%;
+  min-width: 0;
   max-width: 76rem;
   margin: 0 auto;
   padding: 2rem 1rem 6.5rem;
@@ -319,6 +322,11 @@ a {
   font-weight: 700;
 }
 
+.card-link {
+  font-weight: 750;
+  text-underline-offset: 0.2em;
+}
+
 .bottom-nav {
   position: fixed;
   z-index: 20;
@@ -353,6 +361,340 @@ a {
 .empty-state {
   max-width: 38rem;
   padding: 4rem 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  margin: -1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.directory-page {
+  width: 100%;
+  min-width: 0;
+  max-width: 68rem;
+}
+
+.directory-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.directory-heading h1 {
+  margin: 0 0 0.45rem;
+  font-size: clamp(2rem, 10vw, 3.75rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.directory-heading > div > p:last-child {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.directory-total {
+  display: none;
+  min-width: 5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-card);
+  color: var(--color-text-muted);
+  background: var(--color-card);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.directory-total strong {
+  display: block;
+  color: var(--color-primary-strong);
+  font-size: 1.4rem;
+}
+
+.directory-controls {
+  min-width: 0;
+  position: sticky;
+  z-index: 8;
+  top: 4.5rem;
+  padding: 0.75rem 0 1rem;
+  background: linear-gradient(
+    to bottom,
+    var(--color-surface) 85%,
+    rgb(251 248 241 / 0%)
+  );
+}
+
+.search-field {
+  position: relative;
+  display: block;
+}
+
+.search-field input {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.8rem 1rem 0.8rem 3rem;
+  border: 1px solid #b8c0bb;
+  border-radius: 1rem;
+  color: var(--color-text);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.search-field input:focus {
+  border-color: var(--color-primary);
+}
+
+.search-icon {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 1rem;
+  color: var(--color-primary);
+  font-size: 1.35rem;
+  transform: translateY(-54%);
+}
+
+.filter-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  gap: 0.6rem;
+  padding: 0.7rem 0 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-row label {
+  flex: 0 0 auto;
+}
+
+.filter-row label > span {
+  display: none;
+}
+
+.filter-row select,
+.clear-filters {
+  min-height: 2.6rem;
+  padding: 0.55rem 2rem 0.55rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-chip);
+  color: var(--color-text);
+  background: var(--color-card);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.clear-filters {
+  padding-right: 0.8rem;
+  border-color: transparent;
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+}
+
+.directory-list {
+  display: grid;
+  gap: 0.7rem;
+  padding-top: 0.4rem;
+}
+
+.person-row {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-card);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.person-avatar {
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 1rem;
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.person-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.person-summary {
+  min-width: 0;
+}
+
+.person-name-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.person-name-line h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-summary > p {
+  margin: 0.25rem 0 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-chip,
+.group-chip {
+  display: inline-block;
+  flex: 0 0 auto;
+  border-radius: var(--radius-chip);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.status-chip {
+  padding: 0.25rem 0.5rem;
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+}
+
+.status-newcomer,
+.status-visitor {
+  color: #6f4b12;
+  background: #f8ebcd;
+}
+
+.status-inactive {
+  color: var(--color-text-muted);
+  background: #eef0ee;
+}
+
+.person-groups {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.group-chip {
+  max-width: 11rem;
+  padding: 0.25rem 0.5rem;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 0.5rem;
+}
+
+.contact-link {
+  flex: 1;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.7rem;
+  color: white;
+  background: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-align: center;
+  text-decoration: none;
+}
+
+.contact-link.secondary {
+  border: 1px solid var(--color-border);
+  color: var(--color-primary-strong);
+  background: var(--color-card);
+}
+
+.directory-message {
+  display: grid;
+  min-height: 19rem;
+  place-items: center;
+  align-content: center;
+  padding: 2rem;
+  border: 1px dashed #c8cec9;
+  border-radius: var(--radius-card);
+  background: rgb(255 255 255 / 45%);
+  text-align: center;
+}
+
+.directory-message h2 {
+  margin: 0.9rem 0 0.4rem;
+  font-size: 1.35rem;
+}
+
+.directory-message p {
+  max-width: 26rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.message-mark {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 40% 60% 55% 45%;
+  color: var(--color-urgent);
+  background: #f8e9e2;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.message-mark.leaf {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-size: 2rem;
+}
+
+.skeleton-row {
+  height: 6.4rem;
+  border-color: transparent;
+  background: linear-gradient(100deg, #f2eee5 20%, #fff 40%, #f2eee5 60%);
+  background-size: 200% 100%;
+  animation: directory-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes directory-shimmer {
+  to {
+    background-position-x: -200%;
+  }
 }
 
 @media (min-width: 48rem) {
@@ -393,7 +735,7 @@ a {
     grid-template-areas:
       'topbar topbar'
       'sidebar content';
-    grid-template-columns: 14rem 1fr;
+    grid-template-columns: 14rem minmax(0, 1fr);
     grid-template-rows: auto 1fr;
   }
 
@@ -442,6 +784,74 @@ a {
 
   .dashboard-card {
     flex-direction: column;
+  }
+
+  .directory-heading {
+    margin-bottom: 2rem;
+  }
+
+  .directory-total {
+    display: block;
+  }
+
+  .directory-controls {
+    position: static;
+    display: grid;
+    align-items: end;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--color-beige);
+    border-radius: var(--radius-card);
+    margin-bottom: 1.25rem;
+    background: var(--color-card);
+    grid-template-columns: minmax(15rem, 1.5fr) minmax(0, 2fr);
+  }
+
+  .filter-row {
+    align-items: end;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .filter-row label {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .filter-row label > span {
+    display: block;
+    margin: 0 0 0.35rem 0.35rem;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .filter-row select,
+  .clear-filters {
+    width: 100%;
+    border-radius: 0.7rem;
+  }
+
+  .clear-filters {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .person-row {
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .person-actions {
+    min-width: 8rem;
+    grid-column: auto;
+  }
+
+  .contact-link {
+    min-width: 4rem;
   }
 
   .bottom-nav {

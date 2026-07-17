@@ -101,6 +101,9 @@ def test_leader_can_list_create_and_update_without_sensitive_fields() -> None:
     assert list_response.status_code == 200
     assert len(list_response.json()) == 2
     assert list_response.json()[0]["id"] == existing.id
+    assert list_response.json()[0]["groups"] == [
+        {"id": group.id, "name": "Fictional Led Group"}
+    ]
     assert "faith_background" not in list_response.json()[0]
     assert "discipleship_stage" not in list_response.json()[0]
     assert create_response.status_code == 201

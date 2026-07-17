@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.request import Request
@@ -9,6 +10,7 @@ from accounts.access import people_visible_to
 from accounts.permissions import Capability
 from audit.models import AuditEvent
 from audit.services import record_audit_event
+from groups.models import GroupMembership
 from tenancy.permissions import HasActiveChurchMembership, HasChurchCapability
 
 from .lifecycle import anonymize_person, deactivate_person, hard_delete_person
@@ -27,7 +29,18 @@ class PersonQuerysetMixin:
 
     def get_queryset(self):
         return people_visible_to(
-            Person.objects.select_related("household", "invited_by"),
+            Person.objects.select_related("household", "invited_by").prefetch_related(
+                Prefetch(
+                    "group_memberships",
+                    queryset=GroupMembership.objects.filter(
+                        left_at__isnull=True,
+                        group__is_active=True,
+                    )
+                    .select_related("group")
+                    .order_by("group__name", "group_id"),
+                    to_attr="active_group_memberships",
+                )
+            ),
             self.request.church_membership,
         )
 
