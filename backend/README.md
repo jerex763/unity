@@ -160,6 +160,8 @@ Creating or importing a person never creates consent automatically.
   permitted registration while preserving its history
 - `POST /api/events/<id>/walk-ins/` — ministry-worker quick-add for a minimal
   visitor plus manual walk-in attendance
+- `POST /api/events/<id>/registrations/<registration-id>/check-in/` — set or
+  undo manual attendance (`{"checked_in": true|false}`)
 
 Admins and pastors see the active church directory. Leaders see active members
 of groups they lead or co-lead. Members can read only their linked Person and

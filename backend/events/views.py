@@ -20,9 +20,10 @@ from .serializers import (
     EventRegistrationCreateSerializer,
     EventRegistrationSerializer,
     EventSerializer,
+    ManualCheckInSerializer,
     WalkInCreateSerializer,
 )
-from .services import cancel_registration, register_for_event
+from .services import cancel_registration, register_for_event, set_manual_check_in
 
 
 class EventQuerysetMixin:
@@ -211,3 +212,33 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
             EventRegistrationSerializer(registration).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class EventRegistrationCheckInView(EventRegistrationListCreateView):
+    permission_classes = (HasActiveChurchMembership, HasEventAccess)
+
+    def post(
+        self,
+        request: Request,
+        event_id: int,
+        registration_id: int,
+    ) -> Response:
+        event = self._event(request, event_id)
+        registration = generics.get_object_or_404(
+            EventRegistration.objects.select_related("person").for_church(
+                request.church
+            ),
+            pk=registration_id,
+            event=event,
+        )
+        serializer = ManualCheckInSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            updated = set_manual_check_in(
+                registration,
+                checked_in=serializer.validated_data["checked_in"],
+            )
+        except DjangoValidationError as error:
+            raise ValidationError({"detail": error.messages[0]}) from error
+        updated = EventRegistration.objects.select_related("person").get(pk=updated.pk)
+        return Response(EventRegistrationSerializer(updated).data)

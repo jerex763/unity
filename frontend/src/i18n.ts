@@ -43,6 +43,15 @@ const resources = {
       },
       events: {
         cancel: 'Cancel',
+        checkIn: {
+          error: 'We could not update attendance. Retry.',
+          mark: 'Check in',
+          search: 'Find attendee',
+          searchPlaceholder: 'Search the registration list…',
+          success: '{{name}} is checked in.',
+          undo: 'Undo check-in',
+          undoSuccess: '{{name}} check-in was removed.',
+        },
         churchWide: 'Church-wide',
         closed: 'Closed',
         create: 'Create event',

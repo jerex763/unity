@@ -1271,6 +1271,46 @@ a {
   gap: 0.15rem;
 }
 
+.registration-actions {
+  display: flex !important;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.25rem !important;
+}
+
+.registration-actions .secondary-button {
+  white-space: nowrap;
+}
+
+.roster-search {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.roster-search span {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.roster-search input {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #b8c0bb;
+  border-radius: 0.7rem;
+  background: var(--color-card);
+}
+
+.form-success {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  border-left: 3px solid var(--color-primary);
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+}
+
 .registration-list span,
 .registration-list small {
   color: var(--color-text-muted);

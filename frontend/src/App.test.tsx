@@ -382,6 +382,22 @@ describe('Events', () => {
           },
         ]),
       )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: 51,
+          person: {
+            id: 1,
+            full_name: 'Mia Chen',
+            preferred_name: 'Mimi',
+          },
+          status: 'registered',
+          needs_transport: true,
+          note: 'Pickup near station',
+          registered_at: '2026-07-10T02:00:00Z',
+          checked_in_at: '2026-07-25T02:01:00Z',
+          checkin_method: 'manual',
+        }),
+      )
       .mockResolvedValueOnce(jsonResponse(created))
     vi.stubGlobal('fetch', fetchMock)
     const user = userEvent.setup()
@@ -400,6 +416,11 @@ describe('Events', () => {
     await user.click(screen.getByRole('button', { name: 'Registration list' }))
     expect(await screen.findByText('Pickup near station')).toBeVisible()
     expect(screen.getByText(/Transport needed/)).toBeVisible()
+    await user.type(screen.getByLabelText('Find attendee'), 'nobody')
+    expect(screen.queryByText('Pickup near station')).not.toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Find attendee'))
+    await user.click(screen.getByRole('button', { name: 'Check in' }))
+    expect(await screen.findByText('Mia Chen is checked in.')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Add walk-in' }))
     expect(
       screen.getByRole('heading', { name: 'Quick-add walk-in', level: 4 }),
@@ -435,7 +456,7 @@ describe('Events', () => {
     await user.click(screen.getByRole('button', { name: 'Save event' }))
 
     expect(await screen.findByText('Welcome Dinner')).toBeVisible()
-    expect(fetchMock.mock.calls[5]?.[0]).toBe('/api/events/')
-    expect(fetchMock.mock.calls[5]?.[1]).toMatchObject({ method: 'POST' })
+    expect(fetchMock.mock.calls[6]?.[0]).toBe('/api/events/')
+    expect(fetchMock.mock.calls[6]?.[1]).toMatchObject({ method: 'POST' })
   })
 })

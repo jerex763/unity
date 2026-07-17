@@ -5,6 +5,7 @@ from .views import (
     EventGroupChoicesView,
     EventListCreateView,
     EventRegistrationCancelView,
+    EventRegistrationCheckInView,
     EventRegistrationListCreateView,
     EventWalkInCreateView,
 )
@@ -23,6 +24,11 @@ urlpatterns = [
         "<int:event_id>/registrations/<int:registration_id>/cancel/",
         EventRegistrationCancelView.as_view(),
         name="event-registration-cancel",
+    ),
+    path(
+        "<int:event_id>/registrations/<int:registration_id>/check-in/",
+        EventRegistrationCheckInView.as_view(),
+        name="event-registration-check-in",
     ),
     path(
         "<int:event_id>/walk-ins/",

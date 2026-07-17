@@ -86,6 +86,10 @@ class WalkInCreateSerializer(serializers.Serializer):
         return value.strip()
 
 
+class ManualCheckInSerializer(serializers.Serializer):
+    checked_in = serializers.BooleanField()
+
+
 class EventSerializer(serializers.ModelSerializer):
     group = serializers.PrimaryKeyRelatedField(
         allow_null=True,
