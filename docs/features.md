@@ -19,7 +19,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 | 27 | Audit log for sensitive/destructive actions | [#27](https://github.com/jerex763/unity/issues/27) | ✅ | jerex763 | 2026-07-17 |
 | 28 | Consent + privacy notice version record | [#28](https://github.com/jerex763/unity/issues/28) | ✅ | jerex763 | 2026-07-17 |
 | 29 | Automated backup + tested restore | [#29](https://github.com/jerex763/unity/issues/29) | ✅ | jerex763 | 2026-07-17 |
-| 30 | Deactivate, anonymize and delete safely | [#30](https://github.com/jerex763/unity/issues/30) | 🔨 | jerex763 | |
+| 30 | Deactivate, anonymize and delete safely | [#30](https://github.com/jerex763/unity/issues/30) | ✅ | jerex763 | 2026-07-17 |
 | 31 | Permission and privacy test matrix | [#31](https://github.com/jerex763/unity/issues/31) | ⬜ | | |
 
 ## M1 People Directory
