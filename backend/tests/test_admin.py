@@ -4,6 +4,7 @@ from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from accounts.models import ChurchMembership, User
+from audit.models import AuditEvent
 from care.models import CareCase, FollowUp, Interaction
 from events.models import Event, EventRegistration
 from groups.models import Group, GroupMembership
@@ -27,6 +28,7 @@ PROJECT_MODELS = {
     FollowUp,
     CareCase,
     Interaction,
+    AuditEvent,
 }
 
 ADMIN_CHANGELISTS = (
@@ -43,6 +45,7 @@ ADMIN_CHANGELISTS = (
     "admin:care_followup_changelist",
     "admin:care_carecase_changelist",
     "admin:care_interaction_changelist",
+    "admin:audit_auditevent_changelist",
 )
 
 

@@ -1,5 +1,8 @@
 from django.contrib import admin
+from django.http import HttpRequest
 
+from audit.models import AuditEvent
+from audit.services import record_audit_event
 from config.admin import SuperuserOnlyAdminMixin
 
 from .models import CareCase, FollowUp, Interaction
@@ -48,6 +51,23 @@ class CareCaseAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
     )
     list_select_related = ("church", "person", "assigned_to", "created_by")
     readonly_fields = ("created_at", "updated_at")
+
+    def get_object(
+        self,
+        request: HttpRequest,
+        object_id: str,
+        from_field: str | None = None,
+    ) -> CareCase | None:
+        care_case = super().get_object(request, object_id, from_field)
+        if care_case is not None and care_case.is_confidential:
+            record_audit_event(
+                action=AuditEvent.Action.CONFIDENTIAL_CARE_VIEWED,
+                actor=request.user,
+                church=care_case.church,
+                target=care_case,
+                request=request,
+            )
+        return care_case
 
 
 @admin.register(Interaction)

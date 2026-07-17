@@ -20,6 +20,7 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
+    "audit.apps.AuditConfig",
     "care.apps.CareConfig",
     "events.apps.EventsConfig",
     "groups.apps.GroupsConfig",
@@ -42,6 +43,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "audit.middleware.AuditRequestMiddleware",
     "tenancy.middleware.ActiveChurchMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
