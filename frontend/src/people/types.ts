@@ -36,6 +36,20 @@ export type PersonFollowUp = {
   outcome: string | null
 }
 
+export type PersonLink = {
+  id: number
+  full_name: string
+  preferred_name: string | null
+  photo_url: string | null
+}
+
+export type PersonRelationship = {
+  id: number
+  kind: 'friend' | 'family' | 'spouse' | 'guardian'
+  person: PersonLink
+  created_at: string
+}
+
 export type ProfilePerson = DirectoryPerson & {
   gender: 'male' | 'female' | 'unspecified'
   date_of_birth: string | null
@@ -44,6 +58,10 @@ export type ProfilePerson = DirectoryPerson & {
   occupation: string | null
   course: string | null
   interests: string[]
+  invited_by: number | null
+  inviter: PersonLink | null
+  invitees: PersonLink[]
+  relationships: PersonRelationship[]
   notes?: string
   faith_background?: string | null
   discipleship_stage?:

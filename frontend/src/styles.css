@@ -952,6 +952,57 @@ a {
   gap: 0.7rem;
 }
 
+.relationship-context {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.relationship-context > div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-beige);
+  border-radius: 0.9rem;
+  background: var(--color-surface);
+}
+
+.relationship-context span,
+.relationship-form label > span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.relationship-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.relationship-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-beige);
+}
+
+.relationship-form label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.relationship-form select {
+  width: 100%;
+  min-height: 2.8rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #b8c0bb;
+  border-radius: 0.7rem;
+  color: var(--color-text);
+  background: var(--color-card);
+}
+
 .profile-record-card {
   display: grid;
   min-width: 0;

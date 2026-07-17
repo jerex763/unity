@@ -11,7 +11,7 @@ from audit.models import AuditEvent
 from care.models import FollowUp
 from events.models import Event, EventRegistration
 from groups.models import Group, GroupMembership
-from people.models import Household, Person
+from people.models import Household, Person, Relationship
 from tenancy.models import Church
 
 pytestmark = pytest.mark.django_db
@@ -345,6 +345,142 @@ def test_routine_delete_is_not_an_api_method() -> None:
 
     assert response.status_code == 405
     assert Person.objects.filter(pk=person.pk).exists()
+
+
+def test_admin_can_manage_canonical_relationships_and_inviter_links() -> None:
+    church = Church.objects.create(name="Fictional Relationship Directory")
+    inviter = Person.objects.create(church=church, full_name="Fictional Inviter")
+    person = Person.objects.create(
+        church=church,
+        full_name="Fictional Relationship Subject",
+        invited_by=inviter,
+    )
+    friend = Person.objects.create(church=church, full_name="Fictional Friend")
+    admin = make_membership(
+        church,
+        role=ChurchMembership.Role.ADMIN,
+        suffix="relationships.admin",
+    )
+    client = authenticated_client(admin)
+    list_url = reverse("people:person-relationship-list", args=(person.id,))
+
+    create_response = client.post(
+        list_url,
+        {"person": friend.id, "kind": Relationship.Kind.FRIEND},
+        format="json",
+    )
+    detail_response = client.get(reverse("people:person-detail", args=(person.id,)))
+
+    assert create_response.status_code == 201
+    relationship = Relationship.objects.get(pk=create_response.json()["id"])
+    assert relationship.from_person_id == min(person.id, friend.id)
+    assert relationship.to_person_id == max(person.id, friend.id)
+    assert create_response.json()["person"]["id"] == friend.id
+    assert detail_response.json()["inviter"]["id"] == inviter.id
+    assert detail_response.json()["relationships"] == [create_response.json()]
+    assert client.get(reverse("people:person-detail", args=(inviter.id,))).json()[
+        "invitees"
+    ] == [
+        {
+            "id": person.id,
+            "full_name": person.full_name,
+            "preferred_name": None,
+            "photo_url": None,
+        }
+    ]
+
+    delete_response = client.delete(
+        reverse(
+            "people:person-relationship-detail",
+            args=(person.id, relationship.id),
+        )
+    )
+
+    assert delete_response.status_code == 204
+    assert not Relationship.objects.filter(pk=relationship.pk).exists()
+
+
+def test_relationship_api_rejects_self_duplicates_and_invisible_people() -> None:
+    church = Church.objects.create(name="Fictional Relationship Validation")
+    other_church = Church.objects.create(name="Fictional Relationship Other")
+    person = Person.objects.create(church=church, full_name="Fictional Subject")
+    friend = Person.objects.create(church=church, full_name="Fictional Friend")
+    outsider = Person.objects.create(
+        church=other_church,
+        full_name="Fictional Outsider",
+    )
+    admin = make_membership(
+        church,
+        role=ChurchMembership.Role.ADMIN,
+        suffix="relationships.validation",
+    )
+    client = authenticated_client(admin)
+    url = reverse("people:person-relationship-list", args=(person.id,))
+
+    first = client.post(
+        url,
+        {"person": friend.id, "kind": Relationship.Kind.FAMILY},
+        format="json",
+    )
+    duplicate = client.post(
+        url,
+        {"person": friend.id, "kind": Relationship.Kind.FAMILY},
+        format="json",
+    )
+    self_link = client.post(
+        url,
+        {"person": person.id, "kind": Relationship.Kind.FRIEND},
+        format="json",
+    )
+    cross_church = client.post(
+        url,
+        {"person": outsider.id, "kind": Relationship.Kind.FRIEND},
+        format="json",
+    )
+
+    assert first.status_code == 201
+    assert duplicate.status_code == 400
+    assert self_link.status_code == 400
+    assert cross_church.status_code == 400
+
+
+def test_member_relationship_view_does_not_disclose_invisible_people() -> None:
+    church = Church.objects.create(name="Fictional Relationship Privacy")
+    friend = Person.objects.create(church=church, full_name="Fictional Hidden Friend")
+    person = Person.objects.create(
+        church=church,
+        full_name="Fictional Own Person",
+        invited_by=friend,
+    )
+    Relationship.objects.create(
+        church=church,
+        from_person=person,
+        to_person=friend,
+        kind=Relationship.Kind.FRIEND,
+    )
+    member = make_membership(
+        church,
+        role=ChurchMembership.Role.MEMBER,
+        suffix="relationships.member",
+        person=person,
+    )
+    client = authenticated_client(member)
+    url = reverse("people:person-relationship-list", args=(person.id,))
+
+    detail = client.get(reverse("people:person-detail", args=(person.id,)))
+    list_response = client.get(url)
+    create_response = client.post(
+        url,
+        {"person": friend.id, "kind": Relationship.Kind.FAMILY},
+        format="json",
+    )
+
+    assert detail.status_code == 200
+    assert detail.json()["invited_by"] is None
+    assert detail.json()["inviter"] is None
+    assert detail.json()["relationships"] == []
+    assert list_response.json() == []
+    assert create_response.status_code == 403
 
 
 def add_profile_history(

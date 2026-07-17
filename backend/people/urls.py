@@ -7,6 +7,8 @@ from .views import (
     PersonDetailView,
     PersonHardDeleteView,
     PersonListCreateView,
+    PersonRelationshipDetailView,
+    PersonRelationshipListCreateView,
 )
 
 app_name = "people"
@@ -14,6 +16,16 @@ app_name = "people"
 urlpatterns = [
     path("", PersonListCreateView.as_view(), name="person-list"),
     path("<int:pk>/", PersonDetailView.as_view(), name="person-detail"),
+    path(
+        "<int:person_id>/relationships/",
+        PersonRelationshipListCreateView.as_view(),
+        name="person-relationship-list",
+    ),
+    path(
+        "<int:person_id>/relationships/<int:relationship_id>/",
+        PersonRelationshipDetailView.as_view(),
+        name="person-relationship-detail",
+    ),
     path(
         "<int:person_id>/consent/",
         PersonConsentView.as_view(),

@@ -1,12 +1,66 @@
 from datetime import date, datetime
 
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers
 
 from accounts.models import ChurchMembership
 from accounts.permissions import ROLE_CAPABILITIES, Capability
 
-from .models import ConsentRecord, Household, Person
+from .models import ConsentRecord, Household, Person, Relationship
+
+
+class PersonLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Person
+        fields = ("id", "full_name", "preferred_name", "photo_url")
+
+
+class RelationshipSerializer(serializers.ModelSerializer):
+    person = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Relationship
+        fields = ("id", "kind", "person", "created_at")
+        read_only_fields = fields
+
+    def get_person(self, instance: Relationship) -> dict[str, object]:
+        anchor_id = self.context["anchor_person_id"]
+        person = (
+            instance.to_person
+            if instance.from_person_id == anchor_id
+            else instance.from_person
+        )
+        return PersonLinkSerializer(person).data
+
+
+class RelationshipCreateSerializer(serializers.Serializer):
+    person = serializers.PrimaryKeyRelatedField(queryset=Person.objects.none())
+    kind = serializers.ChoiceField(choices=Relationship.Kind.choices)
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["person"].queryset = self.context["visible_people"]
+
+    def validate_person(self, value: Person) -> Person:
+        if value.pk == self.context["anchor_person"].pk:
+            raise serializers.ValidationError("A person cannot be related to themself.")
+        return value
+
+    def validate(self, attrs: dict[str, object]) -> dict[str, object]:
+        anchor = self.context["anchor_person"]
+        other = attrs["person"]
+        first_id, second_id = sorted((anchor.pk, other.pk))
+        if Relationship.objects.filter(
+            church=anchor.church,
+            from_person_id=first_id,
+            to_person_id=second_id,
+            kind=attrs["kind"],
+        ).exists():
+            raise serializers.ValidationError(
+                {"kind": "This relationship is already recorded."}
+            )
+        return attrs
 
 
 class PersonSerializer(serializers.ModelSerializer):
@@ -74,7 +128,11 @@ class PersonSerializer(serializers.ModelSerializer):
         church = getattr(request, "church", None)
         if church is not None:
             self.fields["household"].queryset = Household.objects.for_church(church)
+            membership = getattr(request, "church_membership", None)
+            visible_ids = self.context.get("visible_person_ids")
             invited_by = Person.objects.for_church(church)
+            if membership is not None and visible_ids is not None:
+                invited_by = invited_by.filter(pk__in=visible_ids)
             if isinstance(self.instance, Person):
                 invited_by = invited_by.exclude(pk=self.instance.pk)
             self.fields["invited_by"].queryset = invited_by
@@ -103,6 +161,12 @@ class PersonSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance: Person) -> dict[str, object]:
         data = super().to_representation(instance)
+        visible_person_ids = self.context.get("visible_person_ids")
+        if (
+            visible_person_ids is not None
+            and instance.invited_by_id not in visible_person_ids
+        ):
+            data["invited_by"] = None
         if not self._can_view_sensitive():
             for field_name in self.sensitive_fields:
                 data.pop(field_name, None)
@@ -168,12 +232,52 @@ class PersonSerializer(serializers.ModelSerializer):
 class PersonDetailSerializer(PersonSerializer):
     events_attended = serializers.SerializerMethodField()
     follow_up_history = serializers.SerializerMethodField()
+    inviter = serializers.SerializerMethodField()
+    invitees = serializers.SerializerMethodField()
+    relationships = serializers.SerializerMethodField()
 
     class Meta(PersonSerializer.Meta):
         fields = PersonSerializer.Meta.fields + (
+            "inviter",
+            "invitees",
+            "relationships",
             "events_attended",
             "follow_up_history",
         )
+
+    def _visible_people(self):
+        return Person.objects.filter(pk__in=self.context["visible_person_ids"])
+
+    def get_inviter(self, instance: Person) -> dict[str, object] | None:
+        if (
+            instance.invited_by_id is None
+            or instance.invited_by_id not in self.context["visible_person_ids"]
+        ):
+            return None
+        return PersonLinkSerializer(instance.invited_by).data
+
+    def get_invitees(self, instance: Person) -> list[dict[str, object]]:
+        invitees = (
+            self._visible_people()
+            .filter(invited_by=instance)
+            .order_by("full_name", "id")
+        )
+        return PersonLinkSerializer(invitees, many=True).data
+
+    def get_relationships(self, instance: Person) -> list[dict[str, object]]:
+        visible_ids = self.context["visible_person_ids"]
+        relationships = (
+            Relationship.objects.for_church(instance.church)
+            .filter(Q(from_person=instance) | Q(to_person=instance))
+            .filter(from_person_id__in=visible_ids, to_person_id__in=visible_ids)
+            .select_related("from_person", "to_person")
+            .order_by("kind", "id")
+        )
+        return RelationshipSerializer(
+            relationships,
+            many=True,
+            context={"anchor_person_id": instance.pk},
+        ).data
 
     def get_events_attended(self, instance: Person) -> list[dict[str, object]]:
         registrations = getattr(instance, "attended_event_registrations", ())
