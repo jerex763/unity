@@ -1,10 +1,11 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.access import people_visible_to
 from accounts.permissions import Capability
 from audit.models import AuditEvent
 from audit.services import record_audit_event
@@ -12,7 +13,33 @@ from tenancy.permissions import HasActiveChurchMembership, HasChurchCapability
 
 from .lifecycle import anonymize_person, deactivate_person, hard_delete_person
 from .models import ConsentRecord, Person
-from .serializers import ConsentRecordSerializer, HardDeletePersonSerializer
+from .permissions import HasPersonDirectoryAccess
+from .serializers import (
+    ConsentRecordSerializer,
+    HardDeletePersonSerializer,
+    PersonSerializer,
+)
+
+
+class PersonQuerysetMixin:
+    permission_classes = (HasActiveChurchMembership, HasPersonDirectoryAccess)
+    serializer_class = PersonSerializer
+
+    def get_queryset(self):
+        return people_visible_to(
+            Person.objects.select_related("household", "invited_by"),
+            self.request.church_membership,
+        )
+
+
+class PersonListCreateView(PersonQuerysetMixin, generics.ListCreateAPIView):
+    @transaction.atomic
+    def perform_create(self, serializer: PersonSerializer) -> None:
+        serializer.save(church=self.request.church)
+
+
+class PersonDetailView(PersonQuerysetMixin, generics.RetrieveUpdateAPIView):
+    http_method_names = ("get", "put", "patch", "head", "options")
 
 
 class PersonConsentView(APIView):

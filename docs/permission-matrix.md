@@ -7,7 +7,7 @@ church returns `404`.
 
 | Resource or action | Admin | Pastor | Leader | Member |
 |---|---|---|---|---|
-| People directory API | All people in active church | All people in active church | All people in active church | Own linked Person only |
+| People directory API | All people in active church | All people in active church | Active members of groups led/co-led by self | Own linked Person only |
 | Person CSV export | Allow | Deny | Deny | Deny |
 | Consent read/write | Allow | Allow | Deny | Deny |
 | Deactivate Person | Allow | Allow | Allow | Deny |
@@ -22,6 +22,10 @@ church returns `404`.
 worker's active `ChurchMembership`. It applies whether the person is a group
 leader, co-leader or member. Group-specific mutation rules may narrow this
 further when that API is implemented.
+
+`notes` is a general staff field and is absent from member self-service
+responses. `faith_background` and `discipleship_stage` are absent unless the
+active role is pastor or admin.
 
 Confidential care cases are excluded from unauthorized querysets entirely.
 Their title, details and existence must therefore be absent from API responses,

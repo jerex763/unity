@@ -136,8 +136,14 @@ def test_sensitive_object_ids_cannot_cross_church(
 @pytest.mark.parametrize(
     ("role", "expected_names"),
     (
-        (ChurchMembership.Role.ADMIN, {"Own Person", "Other Person"}),
-        (ChurchMembership.Role.PASTOR, {"Own Person", "Other Person"}),
+        (
+            ChurchMembership.Role.ADMIN,
+            {"Own Person", "Other Person", "Unrelated Person"},
+        ),
+        (
+            ChurchMembership.Role.PASTOR,
+            {"Own Person", "Other Person", "Unrelated Person"},
+        ),
         (ChurchMembership.Role.LEADER, {"Own Person", "Other Person"}),
         (ChurchMembership.Role.MEMBER, {"Own Person"}),
     ),
@@ -148,7 +154,8 @@ def test_people_api_policy_is_distinct_from_csv_export(
 ) -> None:
     church = Church.objects.create(name=f"Fictional People Policy {role}")
     own_person = Person.objects.create(church=church, full_name="Own Person")
-    Person.objects.create(church=church, full_name="Other Person")
+    other_person = Person.objects.create(church=church, full_name="Other Person")
+    Person.objects.create(church=church, full_name="Unrelated Person")
     other_church = Church.objects.create(name=f"Other People Policy {role}")
     Person.objects.create(church=other_church, full_name="Cross Church Person")
     membership = make_membership(
@@ -157,6 +164,26 @@ def test_people_api_policy_is_distinct_from_csv_export(
         suffix=f"people.{role}",
         person=own_person,
     )
+    if role == ChurchMembership.Role.LEADER:
+        led_group = Group.objects.create(
+            church=church,
+            name="Led Group",
+            kind=Group.Kind.SMALL_GROUP,
+        )
+        GroupMembership.objects.create(
+            church=church,
+            group=led_group,
+            person=own_person,
+            role=GroupMembership.Role.LEADER,
+            joined_at=timezone.localdate(),
+        )
+        GroupMembership.objects.create(
+            church=church,
+            group=led_group,
+            person=other_person,
+            role=GroupMembership.Role.MEMBER,
+            joined_at=timezone.localdate(),
+        )
 
     visible_names = set(
         people_visible_to(Person.objects.all(), membership).values_list(

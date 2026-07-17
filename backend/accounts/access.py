@@ -2,13 +2,6 @@ from django.db.models import QuerySet
 
 from .models import ChurchMembership
 
-STAFF_ROLES = frozenset(
-    {
-        ChurchMembership.Role.ADMIN,
-        ChurchMembership.Role.PASTOR,
-        ChurchMembership.Role.LEADER,
-    }
-)
 ALL_CHURCH_RECORD_ROLES = frozenset(
     {
         ChurchMembership.Role.ADMIN,
@@ -20,8 +13,19 @@ ALL_CHURCH_RECORD_ROLES = frozenset(
 def people_visible_to(queryset: QuerySet, membership: ChurchMembership) -> QuerySet:
     """Scope directory records to the active church and role."""
     scoped = queryset.for_church(membership.church)
-    if membership.role in STAFF_ROLES:
+    if membership.role in ALL_CHURCH_RECORD_ROLES:
         return scoped
+    if (
+        membership.role == ChurchMembership.Role.LEADER
+        and membership.person_id is not None
+    ):
+        return scoped.filter(
+            group_memberships__left_at__isnull=True,
+            group_memberships__group__is_active=True,
+            group_memberships__group__memberships__person_id=membership.person_id,
+            group_memberships__group__memberships__left_at__isnull=True,
+            group_memberships__group__memberships__role__in=("leader", "co_leader"),
+        ).distinct()
     if membership.person_id is not None:
         return scoped.filter(pk=membership.person_id)
     return scoped.none()

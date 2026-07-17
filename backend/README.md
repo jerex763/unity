@@ -127,3 +127,16 @@ explicit `unknown` state when no decision has been recorded. Authorized admins
 and pastors can `POST` a granted or declined decision; a later POST creates an
 immutable correction linked to the previous record instead of overwriting it.
 Creating or importing a person never creates consent automatically.
+
+## Person directory API
+
+- `GET/POST /api/people/` — list visible people or create a person
+- `GET/PUT/PATCH /api/people/<id>/` — read or update a visible person
+
+Admins and pastors see the active church directory. Leaders see active members
+of groups they lead or co-lead. Members can read only their linked Person and
+cannot write. `faith_background` and `discipleship_stage` are absent unless the
+role is pastor or admin; member responses also omit staff `notes`.
+
+Routine `DELETE` is intentionally unavailable. Use the documented deactivate,
+anonymize or reason-gated hard-delete lifecycle instead.
