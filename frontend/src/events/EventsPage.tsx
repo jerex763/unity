@@ -84,6 +84,11 @@ export function EventsPage() {
   const [registrationNote, setRegistrationNote] = useState('')
   const [registrationError, setRegistrationError] = useState('')
   const [isSavingRegistration, setIsSavingRegistration] = useState(false)
+  const [walkInEvent, setWalkInEvent] = useState<number | null>(null)
+  const [walkInName, setWalkInName] = useState('')
+  const [walkInPreferredName, setWalkInPreferredName] = useState('')
+  const [walkInEmail, setWalkInEmail] = useState('')
+  const [walkInPhone, setWalkInPhone] = useState('')
   const canEdit = session?.membership.role !== 'member'
 
   useEffect(() => {
@@ -255,6 +260,57 @@ export function EventsPage() {
       setEvents(await apiRequest<ChurchEvent[]>('/events/'))
     } catch {
       setRegistrationError(t('events.registrations.cancelError'))
+    }
+  }
+
+  async function addWalkIn(
+    formEvent: FormEvent<HTMLFormElement>,
+    churchEvent: ChurchEvent,
+  ) {
+    formEvent.preventDefault()
+    setRegistrationError('')
+    setIsSavingRegistration(true)
+    try {
+      const registration = await apiRequest<EventRegistration>(
+        `/events/${churchEvent.id}/walk-ins/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            full_name: walkInName,
+            preferred_name: walkInPreferredName,
+            email: walkInEmail,
+            phone: walkInPhone,
+            needs_transport: needsTransport,
+            note: registrationNote,
+          }),
+        },
+      )
+      setRosters((current) => ({
+        ...current,
+        [churchEvent.id]: [
+          ...(current[churchEvent.id] ?? []).filter(
+            (item) => item.id !== registration.id,
+          ),
+          registration,
+        ],
+      }))
+      const [eventRows, personRows] = await Promise.all([
+        apiRequest<ChurchEvent[]>('/events/'),
+        apiRequest<DirectoryPerson[]>('/people/'),
+      ])
+      setEvents(eventRows)
+      setPeople(personRows)
+      setWalkInEvent(null)
+      setWalkInName('')
+      setWalkInPreferredName('')
+      setWalkInEmail('')
+      setWalkInPhone('')
+      setNeedsTransport(false)
+      setRegistrationNote('')
+    } catch {
+      setRegistrationError(t('events.walkIn.saveError'))
+    } finally {
+      setIsSavingRegistration(false)
     }
   }
 
@@ -609,6 +665,101 @@ export function EventsPage() {
                             : t('events.registrations.confirmWaitlist')}
                       </button>
                     </form>
+                  ) : null}
+                  {canEdit && new Date(event.ends_at) > new Date() ? (
+                    <>
+                      <button
+                        className="secondary-button walk-in-toggle"
+                        onClick={() =>
+                          setWalkInEvent((current) =>
+                            current === event.id ? null : event.id,
+                          )
+                        }
+                        type="button"
+                      >
+                        {t('events.walkIn.add')}
+                      </button>
+                      {walkInEvent === event.id ? (
+                        <form
+                          className="registration-form walk-in-form"
+                          onSubmit={(formEvent) =>
+                            void addWalkIn(formEvent, event)
+                          }
+                        >
+                          <h4>{t('events.walkIn.title')}</h4>
+                          <label>
+                            <span>{t('events.walkIn.fullName')}</span>
+                            <input
+                              onChange={(changeEvent) =>
+                                setWalkInName(changeEvent.target.value)
+                              }
+                              required
+                              value={walkInName}
+                            />
+                          </label>
+                          <label>
+                            <span>{t('events.walkIn.preferredName')}</span>
+                            <input
+                              onChange={(changeEvent) =>
+                                setWalkInPreferredName(changeEvent.target.value)
+                              }
+                              value={walkInPreferredName}
+                            />
+                          </label>
+                          <label>
+                            <span>{t('events.walkIn.email')}</span>
+                            <input
+                              onChange={(changeEvent) =>
+                                setWalkInEmail(changeEvent.target.value)
+                              }
+                              type="email"
+                              value={walkInEmail}
+                            />
+                          </label>
+                          <label>
+                            <span>{t('events.walkIn.phone')}</span>
+                            <input
+                              onChange={(changeEvent) =>
+                                setWalkInPhone(changeEvent.target.value)
+                              }
+                              type="tel"
+                              value={walkInPhone}
+                            />
+                          </label>
+                          <label className="event-checkbox">
+                            <input
+                              checked={needsTransport}
+                              onChange={(changeEvent) =>
+                                setNeedsTransport(changeEvent.target.checked)
+                              }
+                              type="checkbox"
+                            />
+                            <span>
+                              {t('events.registrations.needsTransport')}
+                            </span>
+                          </label>
+                          <label>
+                            <span>{t('events.registrations.note')}</span>
+                            <input
+                              maxLength={200}
+                              onChange={(changeEvent) =>
+                                setRegistrationNote(changeEvent.target.value)
+                              }
+                              value={registrationNote}
+                            />
+                          </label>
+                          <button
+                            className="primary-button inline"
+                            disabled={isSavingRegistration}
+                            type="submit"
+                          >
+                            {isSavingRegistration
+                              ? t('events.walkIn.saving')
+                              : t('events.walkIn.confirm')}
+                          </button>
+                        </form>
+                      ) : null}
+                    </>
                   ) : null}
                   {registrationError ? (
                     <p className="form-error" role="alert">

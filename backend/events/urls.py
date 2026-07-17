@@ -6,6 +6,7 @@ from .views import (
     EventListCreateView,
     EventRegistrationCancelView,
     EventRegistrationListCreateView,
+    EventWalkInCreateView,
 )
 
 app_name = "events"
@@ -22,6 +23,11 @@ urlpatterns = [
         "<int:event_id>/registrations/<int:registration_id>/cancel/",
         EventRegistrationCancelView.as_view(),
         name="event-registration-cancel",
+    ),
+    path(
+        "<int:event_id>/walk-ins/",
+        EventWalkInCreateView.as_view(),
+        name="event-walk-in-create",
     ),
     path("<int:pk>/", EventDetailView.as_view(), name="event-detail"),
 ]

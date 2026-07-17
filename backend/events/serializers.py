@@ -61,6 +61,31 @@ class EventRegistrationCreateSerializer(serializers.Serializer):
         return attrs
 
 
+class WalkInCreateSerializer(serializers.Serializer):
+    full_name = serializers.CharField(max_length=200)
+    preferred_name = serializers.CharField(
+        allow_blank=True,
+        max_length=100,
+        required=False,
+    )
+    email = serializers.EmailField(allow_blank=True, required=False)
+    phone = serializers.CharField(allow_blank=True, max_length=30, required=False)
+    needs_transport = serializers.BooleanField(default=False)
+    note = serializers.CharField(allow_blank=True, max_length=200, required=False)
+
+    def validate_full_name(self, value: str) -> str:
+        normalized = " ".join(value.split())
+        if not normalized:
+            raise serializers.ValidationError("Full name is required.")
+        return normalized
+
+    def validate_email(self, value: str) -> str:
+        return value.strip().lower()
+
+    def validate_phone(self, value: str) -> str:
+        return value.strip()
+
+
 class EventSerializer(serializers.ModelSerializer):
     group = serializers.PrimaryKeyRelatedField(
         allow_null=True,

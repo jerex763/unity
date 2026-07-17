@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
@@ -10,6 +11,7 @@ from rest_framework.views import APIView
 from accounts.access import groups_visible_to
 from accounts.models import ChurchMembership
 from groups.models import Group
+from people.models import Person
 from tenancy.permissions import HasActiveChurchMembership
 
 from .models import Event, EventRegistration
@@ -18,6 +20,7 @@ from .serializers import (
     EventRegistrationCreateSerializer,
     EventRegistrationSerializer,
     EventSerializer,
+    WalkInCreateSerializer,
 )
 from .services import cancel_registration, register_for_event
 
@@ -155,3 +158,56 @@ class EventRegistrationCancelView(EventRegistrationListCreateView):
             pk=cancelled.pk
         )
         return Response(EventRegistrationSerializer(cancelled).data)
+
+
+class EventWalkInCreateView(EventRegistrationListCreateView):
+    permission_classes = (HasActiveChurchMembership, HasEventAccess)
+
+    @transaction.atomic
+    def post(self, request: Request, event_id: int) -> Response:
+        event = generics.get_object_or_404(
+            Event.objects.select_for_update().for_church(request.church),
+            pk=event_id,
+        )
+        if event.ends_at <= timezone.now():
+            raise ValidationError({"detail": "Walk-in check-in is closed."})
+        serializer = WalkInCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = serializer.validated_data
+        people = Person.objects.for_church(request.church)
+        person = None
+        if values.get("email"):
+            person = people.filter(email__iexact=values["email"]).first()
+        if person is None and values.get("phone"):
+            person = people.filter(phone=values["phone"]).first()
+        if person is None:
+            person = Person(
+                church=request.church,
+                full_name=values["full_name"],
+                preferred_name=values.get("preferred_name") or None,
+                email=values.get("email") or None,
+                phone=values.get("phone") or None,
+                membership_status=Person.MembershipStatus.VISITOR,
+            )
+            person.full_clean(exclude={"interests"})
+            person.save()
+        registration, _ = EventRegistration.objects.update_or_create(
+            event=event,
+            person=person,
+            defaults={
+                "church": request.church,
+                "status": EventRegistration.Status.WALK_IN,
+                "needs_transport": values["needs_transport"],
+                "note": values.get("note", "").strip(),
+                "registered_at": timezone.now(),
+                "checked_in_at": timezone.now(),
+                "checkin_method": EventRegistration.CheckinMethod.MANUAL,
+            },
+        )
+        registration = EventRegistration.objects.select_related("person").get(
+            pk=registration.pk
+        )
+        return Response(
+            EventRegistrationSerializer(registration).data,
+            status=status.HTTP_201_CREATED,
+        )

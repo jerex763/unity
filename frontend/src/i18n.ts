@@ -108,6 +108,18 @@ const resources = {
         unlimited: 'Unlimited',
         waitlistOpen: 'Waitlist open',
         waitlisted: '{{count}} waitlisted',
+        walkIn: {
+          add: 'Add walk-in',
+          confirm: 'Add and check in',
+          email: 'Email',
+          fullName: 'Full name',
+          phone: 'Phone',
+          preferredName: 'Preferred name',
+          saveError:
+            'We could not add this walk-in. Check the details and retry.',
+          saving: 'Adding…',
+          title: 'Quick-add walk-in',
+        },
       },
       directory: {
         allGroups: 'All groups',
