@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 SAFE_METADATA_KEYS = frozenset(
     {
         "format",
+        "delete_reason",
         "new_active",
         "new_role",
         "previous_active",
@@ -27,6 +28,9 @@ SAFE_METADATA_KEYS = frozenset(
 )
 SAFE_FAILURE_REASONS = frozenset(
     {"InvalidCredentials", "PermissionDenied", "ValidationError"}
+)
+SAFE_DELETE_REASONS = frozenset(
+    {"created_in_error", "duplicate", "legal_request", "test_data"}
 )
 
 
@@ -54,6 +58,8 @@ def _safe_metadata(metadata: Mapping[str, object] | None) -> dict[str, object]:
         raise ValueError(f"Audit metadata keys are not approved: {names}")
     if "reason" in values and values["reason"] not in SAFE_FAILURE_REASONS:
         raise ValueError("Audit failure reasons must use an approved code.")
+    if "delete_reason" in values and values["delete_reason"] not in SAFE_DELETE_REASONS:
+        raise ValueError("Audit deletion reasons must use an approved code.")
     return values
 
 

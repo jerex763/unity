@@ -34,6 +34,8 @@ class AuditEvent(models.Model):
         PERSON_CREATED = "person.created", "Person created"
         PERSON_UPDATED = "person.updated", "Person updated"
         PERSON_DEACTIVATED = "person.deactivated", "Person deactivated"
+        PERSON_ANONYMIZED = "person.anonymized", "Person anonymized"
+        PERSON_HARD_DELETED = "person.hard_deleted", "Person hard deleted"
         MEMBERSHIP_ROLE_CHANGED = (
             "membership.role_changed",
             "Membership role changed",

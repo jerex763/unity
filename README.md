@@ -76,7 +76,9 @@ stores church-specific roles in `ChurchMembership`. See
 authentication or tenant-scoped features.
 
 See [backend/README.md](backend/README.md) for configuration, testing and production
-settings.
+settings. Operational safeguards are documented in the
+[backup/restore runbook](docs/backup-restore-runbook.md) and
+[person data lifecycle](docs/person-data-lifecycle.md).
 
 ## How we work
 

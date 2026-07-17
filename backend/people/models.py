@@ -17,6 +17,13 @@ class Household(ChurchScopedModel):
         return self.name
 
 
+class PersonQuerySet(ChurchScopedQuerySet):
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise ValidationError(
+            "Routine person deletion is disabled; use the authorized lifecycle service."
+        )
+
+
 class Person(ChurchScopedModel):
     class Gender(models.TextChoices):
         MALE = "male", "Male"
@@ -36,6 +43,12 @@ class Person(ChurchScopedModel):
         CONVERSION = "conversion", "Conversion"
         MATURITY = "maturity", "Maturity"
         LEADERSHIP = "leadership", "Leadership"
+
+    class HardDeleteReason(models.TextChoices):
+        CREATED_IN_ERROR = "created_in_error", "Created in error"
+        DUPLICATE = "duplicate", "Confirmed duplicate"
+        LEGAL_REQUEST = "legal_request", "Approved legal/privacy request"
+        TEST_DATA = "test_data", "Fictional test data cleanup"
 
     full_name = models.CharField(max_length=200)
     preferred_name = models.CharField(blank=True, max_length=100, null=True)
@@ -82,6 +95,10 @@ class Person(ChurchScopedModel):
         related_name="invitees",
     )
     notes = models.TextField(blank=True)
+    deactivated_at = models.DateTimeField(blank=True, null=True)
+    anonymized_at = models.DateTimeField(blank=True, null=True)
+
+    objects = PersonQuerySet.as_manager()
 
     class Meta:
         db_table = "person"
@@ -109,6 +126,17 @@ class Person(ChurchScopedModel):
             errors["invited_by"] = "Inviter and person must belong to the same church."
         if errors:
             raise ValidationError(errors)
+
+    def delete(
+        self,
+        using: str | None = None,
+        keep_parents: bool = False,
+        *,
+        hard_delete_reason: str | None = None,
+    ) -> tuple[int, dict[str, int]]:
+        if hard_delete_reason not in self.HardDeleteReason.values:
+            raise ValidationError("Hard deletion requires an approved explicit reason.")
+        return super().delete(using=using, keep_parents=keep_parents)
 
 
 class AppendOnlyConsentQuerySet(ChurchScopedQuerySet):
@@ -163,7 +191,7 @@ class ConsentRecord(ChurchScopedModel):
         "self",
         blank=True,
         null=True,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="corrections",
     )
 

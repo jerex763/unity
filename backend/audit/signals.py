@@ -17,7 +17,9 @@ def capture_person_state(
     **kwargs: Any,
 ) -> None:
     instance._audit_previous = (
-        sender.objects.filter(pk=instance.pk).values("membership_status").first()
+        sender.objects.filter(pk=instance.pk)
+        .values("membership_status", "anonymized_at")
+        .first()
         if instance.pk
         else None
     )
@@ -33,6 +35,8 @@ def audit_person_change(
     previous = getattr(instance, "_audit_previous", None)
     if created:
         action = AuditEvent.Action.PERSON_CREATED
+    elif previous and previous["anonymized_at"] is None and instance.anonymized_at:
+        action = AuditEvent.Action.PERSON_ANONYMIZED
     elif (
         previous
         and previous["membership_status"] != instance.membership_status
