@@ -49,7 +49,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 |---|---|---|---|---|---|
 | 18 | Auto-create follow-up on first visit | [#18](https://github.com/jerex763/unity/issues/18) | ✅ | jerex763 | 2026-07-17 |
 | 19 | Follow-up queue UI | [#19](https://github.com/jerex763/unity/issues/19) | ✅ | jerex763 | 2026-07-17 |
-| 20 | Interaction log | [#20](https://github.com/jerex763/unity/issues/20) | ⬜ | | |
+| 20 | Interaction log | [#20](https://github.com/jerex763/unity/issues/20) | ✅ | jerex763 | 2026-07-17 |
 | 21 | My follow-ups dashboard | [#21](https://github.com/jerex763/unity/issues/21) | ⬜ | | |
 
 ## Pilot Release Gate
