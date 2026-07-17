@@ -1483,6 +1483,72 @@ a {
   background: var(--color-card);
 }
 
+.interaction-log {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-beige);
+}
+
+.interaction-log h3 {
+  margin: 0 0 0.75rem;
+}
+
+.interaction-log > p {
+  color: var(--color-text-muted);
+}
+
+.interaction-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.interaction-list article {
+  padding: 0.75rem;
+  border: 1px solid var(--color-beige);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+}
+
+.interaction-list article > span {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.interaction-list article p {
+  margin: 0.45rem 0 0;
+  line-height: 1.45;
+}
+
+.interaction-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.interaction-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.interaction-form label > span {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.interaction-form select,
+.interaction-form textarea {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #b8c0bb;
+  border-radius: 0.7rem;
+  color: var(--color-text);
+  background: var(--color-card);
+}
+
 .registration-list span,
 .registration-list small {
   color: var(--color-text-muted);

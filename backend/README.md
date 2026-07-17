@@ -170,6 +170,9 @@ manual check-in of historical rows are idempotent against that first-visit rule.
 - `GET /api/follow-ups/` — role-filtered follow-up pipeline
 - `GET/PUT/PATCH /api/follow-ups/<id>/` — update an accessible follow-up
 - `GET /api/follow-ups/workers/` — permitted assignment choices
+- `GET/POST /api/follow-ups/<id>/interactions/` — visible follow-up contact log
+- `GET/POST /api/follow-ups/care-cases/<id>/interactions/` — visible care-case
+  contact log using the same interaction schema
 
 Admins and pastors see the active church directory. Leaders see active members
 of groups they lead or co-lead. Members can read only their linked Person and

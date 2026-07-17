@@ -2,13 +2,13 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.access import follow_ups_visible_to
+from accounts.access import care_cases_visible_to, follow_ups_visible_to
 from accounts.models import ChurchMembership, User
 from tenancy.permissions import HasActiveChurchMembership
 
-from .models import FollowUp
+from .models import CareCase, FollowUp, Interaction
 from .permissions import HasFollowUpAccess
-from .serializers import FollowUpSerializer
+from .serializers import FollowUpSerializer, InteractionSerializer
 
 
 class FollowUpQuerysetMixin:
@@ -60,3 +60,51 @@ class FollowUpWorkerChoicesView(APIView):
                 for worker in workers.order_by("first_name", "username", "id")
             ]
         )
+
+
+class InteractionListCreateMixin(generics.ListCreateAPIView):
+    permission_classes = (HasActiveChurchMembership, HasFollowUpAccess)
+    serializer_class = InteractionSerializer
+    parent_field: str
+
+    def get_parent(self):
+        if self.parent_field == "follow_up":
+            queryset = follow_ups_visible_to(
+                FollowUp.objects.select_related("person"),
+                self.request.church_membership,
+            )
+        else:
+            queryset = care_cases_visible_to(
+                CareCase.objects.select_related("person"),
+                self.request.church_membership,
+            )
+        return generics.get_object_or_404(
+            queryset,
+            pk=self.kwargs["parent_id"],
+        )
+
+    def get_queryset(self):
+        parent = self.get_parent()
+        queryset = Interaction.objects.for_church(self.request.church).filter(
+            **{self.parent_field: parent}
+        )
+        if self.request.church_membership.role == ChurchMembership.Role.LEADER:
+            queryset = queryset.exclude(visibility=Interaction.Visibility.PASTORS_ONLY)
+        return queryset.select_related("author").order_by("-occurred_at", "-id")
+
+    def perform_create(self, serializer: InteractionSerializer) -> None:
+        parent = self.get_parent()
+        serializer.save(
+            church=self.request.church,
+            person=parent.person,
+            author=self.request.user,
+            **{self.parent_field: parent},
+        )
+
+
+class FollowUpInteractionListCreateView(InteractionListCreateMixin):
+    parent_field = "follow_up"
+
+
+class CareCaseInteractionListCreateView(InteractionListCreateMixin):
+    parent_field = "care_case"
