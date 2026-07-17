@@ -460,3 +460,65 @@ describe('Events', () => {
     expect(fetchMock.mock.calls[6]?.[1]).toMatchObject({ method: 'POST' })
   })
 })
+
+describe('Follow-up queue', () => {
+  const followUp = {
+    id: 71,
+    person: {
+      id: 1,
+      full_name: 'Mia Chen',
+      preferred_name: 'Mimi',
+      phone: '+61000000001',
+      email: 'mia@example.test',
+    },
+    source: 'event_visit',
+    engagement: 'possible',
+    status: 'new',
+    assigned_to: null,
+    assigned_to_name: null,
+    due_at: '2026-07-20',
+    closed_at: null,
+    outcome: null,
+    created_at: '2026-07-17T01:00:00Z',
+    updated_at: '2026-07-17T01:00:00Z',
+  }
+
+  it('shows the pipeline and moves a follow-up after an update', async () => {
+    const updated = {
+      ...followUp,
+      status: 'connected',
+      engagement: 'likely',
+      assigned_to: 1,
+      assigned_to_name: 'alex',
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse([followUp]))
+      .mockResolvedValueOnce(
+        jsonResponse([{ id: 1, username: 'alex', name: 'Alex Chen' }]),
+      )
+      .mockResolvedValueOnce(jsonResponse(updated))
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+
+    renderApp('/follow-ups')
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Follow-up queue',
+        level: 1,
+      }),
+    ).toBeVisible()
+    expect(await screen.findByText('Mia Chen')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await user.selectOptions(screen.getByLabelText('Stage'), 'connected')
+    await user.selectOptions(screen.getByLabelText('Engagement'), 'likely')
+    await user.selectOptions(screen.getByLabelText('Assigned to'), '1')
+    await user.click(screen.getByRole('button', { name: 'Save update' }))
+
+    expect(await screen.findByText('Likely')).toBeVisible()
+    expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/follow-ups/71/')
+    expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'PATCH' })
+  })
+})

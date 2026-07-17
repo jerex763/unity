@@ -167,6 +167,10 @@ The first non-cancelled event registration for a Person still marked `visitor`
 creates one open `event_visit` follow-up. Re-registration, later events, and
 manual check-in of historical rows are idempotent against that first-visit rule.
 
+- `GET /api/follow-ups/` — role-filtered follow-up pipeline
+- `GET/PUT/PATCH /api/follow-ups/<id>/` — update an accessible follow-up
+- `GET /api/follow-ups/workers/` — permitted assignment choices
+
 Admins and pastors see the active church directory. Leaders see active members
 of groups they lead or co-lead. Members can read only their linked Person and
 cannot write. `faith_background` and `discipleship_stage` are absent unless the
