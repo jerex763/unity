@@ -83,6 +83,8 @@ export function EventsPage() {
   const [needsTransport, setNeedsTransport] = useState(false)
   const [registrationNote, setRegistrationNote] = useState('')
   const [registrationError, setRegistrationError] = useState('')
+  const [registrationNotice, setRegistrationNotice] = useState('')
+  const [rosterSearch, setRosterSearch] = useState('')
   const [isSavingRegistration, setIsSavingRegistration] = useState(false)
   const [walkInEvent, setWalkInEvent] = useState<number | null>(null)
   const [walkInName, setWalkInName] = useState('')
@@ -260,6 +262,41 @@ export function EventsPage() {
       setEvents(await apiRequest<ChurchEvent[]>('/events/'))
     } catch {
       setRegistrationError(t('events.registrations.cancelError'))
+    }
+  }
+
+  async function setCheckIn(
+    churchEvent: ChurchEvent,
+    registration: EventRegistration,
+    checkedIn: boolean,
+  ) {
+    setRegistrationError('')
+    setRegistrationNotice('')
+    try {
+      const updated = await apiRequest<EventRegistration>(
+        `/events/${churchEvent.id}/registrations/${registration.id}/check-in/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ checked_in: checkedIn }),
+        },
+      )
+      setRosters((current) => ({
+        ...current,
+        [churchEvent.id]: (current[churchEvent.id] ?? []).map((item) =>
+          item.id === updated.id ? updated : item,
+        ),
+      }))
+      setRegistrationNotice(
+        checkedIn
+          ? t('events.checkIn.success', {
+              name: registration.person.full_name,
+            })
+          : t('events.checkIn.undoSuccess', {
+              name: registration.person.full_name,
+            }),
+      )
+    } catch {
+      setRegistrationError(t('events.checkIn.error'))
     }
   }
 
@@ -570,37 +607,76 @@ export function EventsPage() {
                   aria-label={t('events.registrations.title')}
                 >
                   <h3>{t('events.registrations.title')}</h3>
+                  {canEdit ? (
+                    <label className="roster-search">
+                      <span>{t('events.checkIn.search')}</span>
+                      <input
+                        onChange={(changeEvent) =>
+                          setRosterSearch(changeEvent.target.value)
+                        }
+                        placeholder={t('events.checkIn.searchPlaceholder')}
+                        type="search"
+                        value={rosterSearch}
+                      />
+                    </label>
+                  ) : null}
                   {(rosters[event.id] ?? []).length ? (
                     <div className="registration-list">
-                      {(rosters[event.id] ?? []).map((registration) => (
-                        <article key={registration.id}>
-                          <div>
-                            <strong>{registration.person.full_name}</strong>
-                            <span>
-                              {t(
-                                `events.registrations.statuses.${registration.status}`,
-                              )}
-                              {registration.needs_transport
-                                ? ` · ${t('events.registrations.transport')}`
-                                : ''}
-                            </span>
-                            {registration.note ? (
-                              <small>{registration.note}</small>
-                            ) : null}
-                          </div>
-                          {registration.status !== 'cancelled' ? (
-                            <button
-                              className="text-button"
-                              onClick={() =>
-                                void cancelRegistration(event, registration)
-                              }
-                              type="button"
-                            >
-                              {t('events.registrations.cancel')}
-                            </button>
-                          ) : null}
-                        </article>
-                      ))}
+                      {(rosters[event.id] ?? [])
+                        .filter((registration) =>
+                          registration.person.full_name
+                            .toLocaleLowerCase()
+                            .includes(rosterSearch.trim().toLocaleLowerCase()),
+                        )
+                        .map((registration) => (
+                          <article key={registration.id}>
+                            <div>
+                              <strong>{registration.person.full_name}</strong>
+                              <span>
+                                {t(
+                                  `events.registrations.statuses.${registration.status}`,
+                                )}
+                                {registration.needs_transport
+                                  ? ` · ${t('events.registrations.transport')}`
+                                  : ''}
+                              </span>
+                              {registration.note ? (
+                                <small>{registration.note}</small>
+                              ) : null}
+                            </div>
+                            <div className="registration-actions">
+                              {canEdit &&
+                              registration.status !== 'cancelled' ? (
+                                <button
+                                  className="secondary-button"
+                                  onClick={() =>
+                                    void setCheckIn(
+                                      event,
+                                      registration,
+                                      !registration.checked_in_at,
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  {registration.checked_in_at
+                                    ? t('events.checkIn.undo')
+                                    : t('events.checkIn.mark')}
+                                </button>
+                              ) : null}
+                              {registration.status !== 'cancelled' ? (
+                                <button
+                                  className="text-button"
+                                  onClick={() =>
+                                    void cancelRegistration(event, registration)
+                                  }
+                                  type="button"
+                                >
+                                  {t('events.registrations.cancel')}
+                                </button>
+                              ) : null}
+                            </div>
+                          </article>
+                        ))}
                     </div>
                   ) : (
                     <p>{t('events.registrations.empty')}</p>
@@ -764,6 +840,11 @@ export function EventsPage() {
                   {registrationError ? (
                     <p className="form-error" role="alert">
                       {registrationError}
+                    </p>
+                  ) : null}
+                  {registrationNotice ? (
+                    <p className="form-success" role="status">
+                      {registrationNotice}
                     </p>
                   ) : null}
                 </section>

@@ -77,3 +77,24 @@ def cancel_registration(registration: EventRegistration) -> EventRegistration:
         locked.status = EventRegistration.Status.CANCELLED
         locked.save(update_fields=("status", "updated_at"))
     return locked
+
+
+@transaction.atomic
+def set_manual_check_in(
+    registration: EventRegistration,
+    *,
+    checked_in: bool,
+) -> EventRegistration:
+    locked = EventRegistration.objects.select_for_update().get(pk=registration.pk)
+    if locked.status == EventRegistration.Status.CANCELLED and checked_in:
+        raise ValidationError("A cancelled registration cannot be checked in.")
+    if checked_in:
+        if locked.checked_in_at is None:
+            locked.checked_in_at = timezone.now()
+            locked.checkin_method = EventRegistration.CheckinMethod.MANUAL
+            locked.save(update_fields=("checked_in_at", "checkin_method", "updated_at"))
+    elif locked.checked_in_at is not None or locked.checkin_method is not None:
+        locked.checked_in_at = None
+        locked.checkin_method = None
+        locked.save(update_fields=("checked_in_at", "checkin_method", "updated_at"))
+    return locked
