@@ -1317,6 +1317,15 @@ a {
   min-height: 1.2rem;
 }
 
+.walk-in-toggle {
+  margin-top: 0.9rem;
+}
+
+.walk-in-form h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
 .profile-loading,
 .profile-error {
   max-width: 36rem;

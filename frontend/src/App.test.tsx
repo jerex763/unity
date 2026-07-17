@@ -400,6 +400,12 @@ describe('Events', () => {
     await user.click(screen.getByRole('button', { name: 'Registration list' }))
     expect(await screen.findByText('Pickup near station')).toBeVisible()
     expect(screen.getByText(/Transport needed/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Add walk-in' }))
+    expect(
+      screen.getByRole('heading', { name: 'Quick-add walk-in', level: 4 }),
+    ).toBeVisible()
+    expect(screen.getByLabelText('Full name')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Add walk-in' }))
     await user.click(screen.getByRole('button', { name: 'Registration list' }))
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }))

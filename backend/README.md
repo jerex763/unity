@@ -158,6 +158,8 @@ Creating or importing a person never creates consent automatically.
   register a visible person (members default to their linked Person)
 - `POST /api/events/<id>/registrations/<registration-id>/cancel/` — cancel a
   permitted registration while preserving its history
+- `POST /api/events/<id>/walk-ins/` — ministry-worker quick-add for a minimal
+  visitor plus manual walk-in attendance
 
 Admins and pastors see the active church directory. Leaders see active members
 of groups they lead or co-lead. Members can read only their linked Person and
