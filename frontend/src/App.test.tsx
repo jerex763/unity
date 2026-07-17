@@ -202,6 +202,27 @@ describe('Person profile', () => {
     university: 'USYD',
     course: null,
     interests: ['Community'],
+    invited_by: 2,
+    inviter: {
+      id: 2,
+      full_name: 'Noah Park',
+      preferred_name: null,
+      photo_url: null,
+    },
+    invitees: [],
+    relationships: [
+      {
+        id: 41,
+        kind: 'friend',
+        person: {
+          id: 3,
+          full_name: 'Ava Singh',
+          preferred_name: null,
+          photo_url: null,
+        },
+        created_at: '2026-07-01T02:00:00Z',
+      },
+    ],
     notes: 'Met at a fictional welcome lunch.',
     groups: [
       {
@@ -239,6 +260,17 @@ describe('Person profile', () => {
       .fn()
       .mockResolvedValueOnce(jsonResponse(session))
       .mockResolvedValueOnce(jsonResponse(profile))
+      .mockResolvedValueOnce(
+        jsonResponse([
+          profile,
+          {
+            ...profile,
+            id: 2,
+            full_name: 'Noah Park',
+            relationships: [],
+          },
+        ]),
+      )
       .mockResolvedValueOnce(jsonResponse(updatedProfile))
     vi.stubGlobal('fetch', fetchMock)
     const user = userEvent.setup()
@@ -249,6 +281,10 @@ describe('Person profile', () => {
       await screen.findByRole('heading', { name: 'Mia Chen', level: 1 }),
     ).toBeVisible()
     expect(screen.getByText('Known as Mimi')).toBeVisible()
+
+    await user.click(screen.getByRole('tab', { name: 'Relationships' }))
+    expect(screen.getByText('Ava Singh')).toBeVisible()
+    expect(screen.getAllByText('Noah Park')).not.toHaveLength(0)
 
     await user.click(screen.getByRole('tab', { name: 'Groups' }))
     expect(screen.getByText('Friday Community')).toBeVisible()
@@ -267,8 +303,8 @@ describe('Person profile', () => {
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
     expect(await screen.findByText('Known as Mia')).toBeVisible()
-    expect(fetchMock).toHaveBeenCalledTimes(3)
-    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/people/1/')
-    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({ method: 'PATCH' })
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/people/1/')
+    expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'PATCH' })
   })
 })

@@ -4,9 +4,14 @@ import { Link, useParams } from 'react-router-dom'
 
 import { apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
-import type { ProfilePerson } from './types'
+import type {
+  DirectoryPerson,
+  PersonRelationship,
+  ProfilePerson,
+} from './types'
 
-type ProfileTab = 'overview' | 'groups' | 'events' | 'followUps'
+type ProfileTab =
+  'overview' | 'relationships' | 'groups' | 'events' | 'followUps'
 type ProfileState =
   | { status: 'loading'; person: null }
   | { status: 'ready'; person: ProfilePerson }
@@ -23,6 +28,7 @@ type EditFields = {
   notes: string
   faith_background: string
   discipleship_stage: string
+  invited_by: string
 }
 
 function formatDate(value: string) {
@@ -54,6 +60,7 @@ function editFields(person: ProfilePerson): EditFields {
     notes: person.notes ?? '',
     faith_background: person.faith_background ?? '',
     discipleship_stage: person.discipleship_stage ?? '',
+    invited_by: person.invited_by?.toString() ?? '',
   }
 }
 
@@ -70,15 +77,27 @@ export function ProfilePage() {
   const [fields, setFields] = useState<EditFields | null>(null)
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [people, setPeople] = useState<DirectoryPerson[]>([])
+  const [relationshipPerson, setRelationshipPerson] = useState('')
+  const [relationshipKind, setRelationshipKind] =
+    useState<PersonRelationship['kind']>('friend')
+  const [relationshipError, setRelationshipError] = useState('')
+  const [isSavingRelationship, setIsSavingRelationship] = useState(false)
 
   useEffect(() => {
     let active = true
-    void apiRequest<ProfilePerson>(`/people/${personId}/`)
-      .then((person) => {
-        if (active) {
-          setState({ status: 'ready', person })
-          setFields(editFields(person))
-        }
+    void apiRequest<ProfilePerson>(`/people/${personId}/`).then((person) => {
+      if (active) {
+        setState({ status: 'ready', person })
+        setFields(editFields(person))
+      }
+    })
+    void apiRequest<DirectoryPerson[]>('/people/')
+      .then((result) => {
+        if (active) setPeople(result)
+      })
+      .catch(() => {
+        if (active) setPeople([])
       })
       .catch(() => {
         if (active) setState({ status: 'error', person: null })
@@ -117,6 +136,7 @@ export function ProfilePage() {
           suburb: fields.suburb || null,
           university: fields.university || null,
           membership_status: fields.membership_status,
+          invited_by: fields.invited_by ? Number(fields.invited_by) : null,
           notes: fields.notes,
           ...(canViewSensitive
             ? {
@@ -133,6 +153,60 @@ export function ProfilePage() {
       setSaveError(t('profile.saveError'))
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function addRelationship(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!person || !relationshipPerson) return
+    setRelationshipError('')
+    setIsSavingRelationship(true)
+    try {
+      const relationship = await apiRequest<PersonRelationship>(
+        `/people/${person.id}/relationships/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            person: Number(relationshipPerson),
+            kind: relationshipKind,
+          }),
+        },
+      )
+      setState({
+        status: 'ready',
+        person: {
+          ...person,
+          relationships: [...person.relationships, relationship],
+        },
+      })
+      setRelationshipPerson('')
+      setRelationshipKind('friend')
+    } catch {
+      setRelationshipError(t('profile.relationships.saveError'))
+    } finally {
+      setIsSavingRelationship(false)
+    }
+  }
+
+  async function removeRelationship(relationship: PersonRelationship) {
+    if (!person) return
+    setRelationshipError('')
+    try {
+      await apiRequest(
+        `/people/${person.id}/relationships/${relationship.id}/`,
+        { method: 'DELETE' },
+      )
+      setState({
+        status: 'ready',
+        person: {
+          ...person,
+          relationships: person.relationships.filter(
+            (item) => item.id !== relationship.id,
+          ),
+        },
+      })
+    } catch {
+      setRelationshipError(t('profile.relationships.removeError'))
     }
   }
 
@@ -155,6 +229,14 @@ export function ProfilePage() {
 
   const tabs: Array<{ id: ProfileTab; label: string; count?: number }> = [
     { id: 'overview', label: t('profile.tabs.overview') },
+    {
+      id: 'relationships',
+      label: t('profile.tabs.relationships'),
+      count:
+        person.relationships.length +
+        person.invitees.length +
+        (person.inviter ? 1 : 0),
+    },
     {
       id: 'groups',
       label: t('profile.tabs.groups'),
@@ -358,6 +440,24 @@ export function ProfilePage() {
                   ))}
                 </select>
               </label>
+              <label>
+                <span>{t('profile.fields.invitedBy')}</span>
+                <select
+                  onChange={(event) =>
+                    updateField('invited_by', event.target.value)
+                  }
+                  value={fields.invited_by}
+                >
+                  <option value="">{t('profile.notRecorded')}</option>
+                  {people
+                    .filter((candidate) => candidate.id !== person.id)
+                    .map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.full_name}
+                      </option>
+                    ))}
+                </select>
+              </label>
               {person.notes !== undefined ? (
                 <label className="wide-field">
                   <span>{t('profile.fields.notes')}</span>
@@ -448,6 +548,130 @@ export function ProfilePage() {
               ) : null}
             </dl>
           )}
+        </section>
+      ) : null}
+
+      {activeTab === 'relationships' ? (
+        <section className="profile-panel">
+          <div className="profile-panel-heading">
+            <div>
+              <p className="eyebrow">{t('profile.relationships.eyebrow')}</p>
+              <h2>{t('profile.relationships.title')}</h2>
+            </div>
+          </div>
+
+          <div className="relationship-context">
+            <div>
+              <span>{t('profile.relationships.invitedBy')}</span>
+              <strong>
+                {person.inviter?.full_name ?? t('profile.notRecorded')}
+              </strong>
+            </div>
+            <div>
+              <span>{t('profile.relationships.peopleInvited')}</span>
+              <strong>
+                {person.invitees.length
+                  ? person.invitees
+                      .map((invitee) => invitee.full_name)
+                      .join(', ')
+                  : t('profile.relationships.none')}
+              </strong>
+            </div>
+          </div>
+
+          {person.relationships.length ? (
+            <div className="profile-card-list">
+              {person.relationships.map((relationship) => (
+                <article
+                  className="profile-record-card relationship-card"
+                  key={relationship.id}
+                >
+                  <div className="record-mark" aria-hidden="true">
+                    ↔
+                  </div>
+                  <div>
+                    <h3>{relationship.person.full_name}</h3>
+                    <p>
+                      {t(`profile.relationships.kinds.${relationship.kind}`)}
+                    </p>
+                  </div>
+                  {canEdit ? (
+                    <button
+                      aria-label={t('profile.relationships.removeNamed', {
+                        name: relationship.person.full_name,
+                      })}
+                      className="text-button"
+                      onClick={() => void removeRelationship(relationship)}
+                      type="button"
+                    >
+                      {t('profile.relationships.remove')}
+                    </button>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="profile-empty">{t('profile.relationships.empty')}</p>
+          )}
+
+          {canEdit ? (
+            <form className="relationship-form" onSubmit={addRelationship}>
+              <label>
+                <span>{t('profile.relationships.person')}</span>
+                <select
+                  onChange={(event) =>
+                    setRelationshipPerson(event.target.value)
+                  }
+                  required
+                  value={relationshipPerson}
+                >
+                  <option value="">
+                    {t('profile.relationships.choosePerson')}
+                  </option>
+                  {people
+                    .filter((candidate) => candidate.id !== person.id)
+                    .map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.full_name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                <span>{t('profile.relationships.kind')}</span>
+                <select
+                  onChange={(event) =>
+                    setRelationshipKind(
+                      event.target.value as PersonRelationship['kind'],
+                    )
+                  }
+                  value={relationshipKind}
+                >
+                  {(['friend', 'family', 'spouse', 'guardian'] as const).map(
+                    (kind) => (
+                      <option key={kind} value={kind}>
+                        {t(`profile.relationships.kinds.${kind}`)}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+              <button
+                className="primary-button inline"
+                disabled={isSavingRelationship}
+                type="submit"
+              >
+                {isSavingRelationship
+                  ? t('profile.relationships.adding')
+                  : t('profile.relationships.add')}
+              </button>
+              {relationshipError ? (
+                <p className="form-error" role="alert">
+                  {relationshipError}
+                </p>
+              ) : null}
+            </form>
+          ) : null}
         </section>
       ) : null}
 

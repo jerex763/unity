@@ -132,6 +132,10 @@ Creating or importing a person never creates consent automatically.
 
 - `GET/POST /api/people/` — list visible people or create a person
 - `GET/PUT/PATCH /api/people/<id>/` — read or update a visible person
+- `GET/POST /api/people/<id>/relationships/` — list or add visible
+  friend/family/spouse/guardian links
+- `DELETE /api/people/<id>/relationships/<relationship-id>/` — remove a
+  visible relationship link
 
 Admins and pastors see the active church directory. Leaders see active members
 of groups they lead or co-lead. Members can read only their linked Person and

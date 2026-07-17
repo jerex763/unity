@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.request import Request
@@ -16,13 +16,15 @@ from groups.models import GroupMembership
 from tenancy.permissions import HasActiveChurchMembership, HasChurchCapability
 
 from .lifecycle import anonymize_person, deactivate_person, hard_delete_person
-from .models import ConsentRecord, Person
+from .models import ConsentRecord, Person, Relationship
 from .permissions import HasPersonDirectoryAccess
 from .serializers import (
     ConsentRecordSerializer,
     HardDeletePersonSerializer,
     PersonDetailSerializer,
     PersonSerializer,
+    RelationshipCreateSerializer,
+    RelationshipSerializer,
 )
 
 
@@ -46,6 +48,16 @@ class PersonQuerysetMixin:
             ),
             self.request.church_membership,
         )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["visible_person_ids"] = set(
+            people_visible_to(
+                Person.objects.for_church(self.request.church),
+                self.request.church_membership,
+            ).values_list("id", flat=True)
+        )
+        return context
 
 
 class PersonListCreateView(PersonQuerysetMixin, generics.ListCreateAPIView):
@@ -83,6 +95,82 @@ class PersonDetailView(PersonQuerysetMixin, generics.RetrieveUpdateAPIView):
                 ),
             )
         )
+
+
+class PersonRelationshipListCreateView(APIView):
+    permission_classes = (HasActiveChurchMembership, HasPersonDirectoryAccess)
+
+    def _visible_people(self, request: Request):
+        return people_visible_to(
+            Person.objects.for_church(request.church),
+            request.church_membership,
+        )
+
+    def _person(self, request: Request, person_id: int) -> Person:
+        return get_object_or_404(self._visible_people(request), pk=person_id)
+
+    def _relationships(self, request: Request, person: Person):
+        visible_ids = self._visible_people(request).values("id")
+        return (
+            Relationship.objects.for_church(request.church)
+            .filter(Q(from_person=person) | Q(to_person=person))
+            .filter(from_person_id__in=visible_ids, to_person_id__in=visible_ids)
+            .select_related("from_person", "to_person")
+            .order_by("kind", "id")
+        )
+
+    def get(self, request: Request, person_id: int) -> Response:
+        person = self._person(request, person_id)
+        serializer = RelationshipSerializer(
+            self._relationships(request, person),
+            many=True,
+            context={"anchor_person_id": person.pk},
+        )
+        return Response(serializer.data)
+
+    @transaction.atomic
+    def post(self, request: Request, person_id: int) -> Response:
+        person = self._person(request, person_id)
+        visible_people = self._visible_people(request)
+        serializer = RelationshipCreateSerializer(
+            data=request.data,
+            context={"anchor_person": person, "visible_people": visible_people},
+        )
+        serializer.is_valid(raise_exception=True)
+        other = serializer.validated_data["person"]
+        relationship = Relationship.objects.create(
+            church=request.church,
+            from_person=person,
+            to_person=other,
+            kind=serializer.validated_data["kind"],
+        )
+        relationship = Relationship.objects.select_related(
+            "from_person", "to_person"
+        ).get(pk=relationship.pk)
+        return Response(
+            RelationshipSerializer(
+                relationship,
+                context={"anchor_person_id": person.pk},
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class PersonRelationshipDetailView(PersonRelationshipListCreateView):
+    @transaction.atomic
+    def delete(
+        self,
+        request: Request,
+        person_id: int,
+        relationship_id: int,
+    ) -> Response:
+        person = self._person(request, person_id)
+        relationship = get_object_or_404(
+            self._relationships(request, person),
+            pk=relationship_id,
+        )
+        relationship.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PersonConsentView(APIView):
