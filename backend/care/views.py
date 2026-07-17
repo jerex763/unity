@@ -1,3 +1,4 @@
+from django.db.models import F
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -24,6 +25,19 @@ class FollowUpQuerysetMixin:
 
 class FollowUpListView(FollowUpQuerysetMixin, generics.ListAPIView):
     pass
+
+
+class MyFollowUpListView(FollowUpQuerysetMixin, generics.ListAPIView):
+    def get_queryset(self):
+        return (
+            follow_ups_visible_to(
+                FollowUp.objects.select_related("person", "assigned_to"),
+                self.request.church_membership,
+            )
+            .filter(assigned_to=self.request.user)
+            .exclude(status=FollowUp.Status.CLOSED)
+            .order_by(F("due_at").asc(nulls_last=True), "created_at", "id")
+        )
 
 
 class FollowUpDetailView(
