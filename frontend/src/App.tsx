@@ -6,6 +6,7 @@ import { LoginPage } from './auth/LoginPage'
 import { AppShell } from './layout/AppShell'
 import { DashboardPage } from './pages/DashboardPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { DirectoryPage } from './people/DirectoryPage'
 
 function ProtectedShell() {
   const { t } = useTranslation()
@@ -15,19 +16,15 @@ function ProtectedShell() {
   return <AppShell />
 }
 
-function PlaceholderRoute() {
-  return <Navigate replace to="/" />
-}
-
 export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedShell />}>
         <Route index element={<DashboardPage />} />
-        <Route path="people" element={<PlaceholderRoute />} />
-        <Route path="events" element={<PlaceholderRoute />} />
-        <Route path="follow-ups" element={<PlaceholderRoute />} />
+        <Route path="people" element={<DirectoryPage />} />
+        <Route path="events" element={<Navigate replace to="/" />} />
+        <Route path="follow-ups" element={<Navigate replace to="/" />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

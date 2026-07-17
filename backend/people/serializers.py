@@ -10,6 +10,7 @@ from .models import ConsentRecord, Household, Person
 
 
 class PersonSerializer(serializers.ModelSerializer):
+    groups = serializers.SerializerMethodField()
     interests = serializers.ListField(
         child=serializers.CharField(max_length=100),
         max_length=20,
@@ -47,6 +48,7 @@ class PersonSerializer(serializers.ModelSerializer):
             "university",
             "course",
             "interests",
+            "groups",
             "household",
             "membership_status",
             "discipleship_stage",
@@ -86,6 +88,13 @@ class PersonSerializer(serializers.ModelSerializer):
             membership.role,
             frozenset(),
         )
+
+    def get_groups(self, instance: Person) -> list[dict[str, object]]:
+        memberships = getattr(instance, "active_group_memberships", ())
+        return [
+            {"id": membership.group_id, "name": membership.group.name}
+            for membership in memberships
+        ]
 
     def to_representation(self, instance: Person) -> dict[str, object]:
         data = super().to_representation(instance)

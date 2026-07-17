@@ -74,3 +74,112 @@ describe('App authentication flow', () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/auth/login/')
   })
 })
+
+describe('People directory', () => {
+  const people = [
+    {
+      id: 1,
+      full_name: 'Mia Chen',
+      preferred_name: 'Mimi',
+      membership_status: 'newcomer',
+      email: 'mia@example.test',
+      phone: '+61000000001',
+      photo_url: null,
+      suburb: 'Burwood',
+      university: 'USYD',
+      groups: [{ id: 11, name: 'Friday Community' }],
+    },
+    {
+      id: 2,
+      full_name: 'Noah Park',
+      preferred_name: null,
+      membership_status: 'member',
+      email: null,
+      phone: '+61000000002',
+      photo_url: null,
+      suburb: 'Rhodes',
+      university: 'UTS',
+      groups: [{ id: 12, name: 'Sunday Team' }],
+    },
+    {
+      id: 3,
+      full_name: 'Ava Singh',
+      preferred_name: null,
+      membership_status: 'regular',
+      email: 'ava@example.test',
+      phone: null,
+      photo_url: null,
+      suburb: null,
+      university: 'USYD',
+      groups: [{ id: 11, name: 'Friday Community' }],
+    },
+  ]
+
+  it('searches and filters the visible church directory', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(session))
+        .mockResolvedValueOnce(jsonResponse(people)),
+    )
+    const user = userEvent.setup()
+
+    renderApp('/people')
+
+    expect(
+      await screen.findByRole('heading', { name: 'People directory' }),
+    ).toBeVisible()
+    expect(await screen.findByText('Mia Chen')).toBeVisible()
+    expect(screen.getByText('Noah Park')).toBeVisible()
+    expect(screen.getByText('Ava Singh')).toBeVisible()
+
+    await user.type(screen.getByLabelText('Search people by name'), 'mimi')
+    expect(screen.getByText('Mia Chen')).toBeVisible()
+    expect(screen.queryByText('Noah Park')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    await user.selectOptions(screen.getByLabelText('Status'), 'member')
+    expect(screen.getByText('Noah Park')).toBeVisible()
+    expect(screen.queryByText('Mia Chen')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    await user.selectOptions(
+      screen.getByLabelText('Group'),
+      screen.getByRole('option', { name: 'Friday Community' }),
+    )
+    expect(screen.getByText('Mia Chen')).toBeVisible()
+    expect(screen.getByText('Ava Singh')).toBeVisible()
+    expect(screen.queryByText('Noah Park')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    await user.selectOptions(screen.getByLabelText('University'), 'UTS')
+    expect(screen.getByText('Noah Park')).toBeVisible()
+    expect(screen.queryByText('Ava Singh')).not.toBeInTheDocument()
+  })
+
+  it('shows a recoverable empty result state', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(session))
+        .mockResolvedValueOnce(jsonResponse(people)),
+    )
+    const user = userEvent.setup()
+
+    renderApp('/people')
+    await user.type(
+      await screen.findByLabelText('Search people by name'),
+      'nobody here',
+    )
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'No people match these filters',
+      }),
+    ).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(await screen.findByText('Mia Chen')).toBeVisible()
+  })
+})
