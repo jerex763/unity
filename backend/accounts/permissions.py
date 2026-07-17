@@ -9,6 +9,7 @@ class Capability(StrEnum):
     MANAGE_CHURCH = "manage_church"
     MANAGE_DESTRUCTIVE = "manage_destructive"
     MANAGE_PERSON_CONSENT = "manage_person_consent"
+    EXPORT_PERSON_DATA = "export_person_data"
     VIEW_SENSITIVE_PERSON = "view_sensitive_person"
     VIEW_CONFIDENTIAL_CARE = "view_confidential_care"
     LEAD_MINISTRY = "lead_ministry"

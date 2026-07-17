@@ -49,3 +49,6 @@ DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py", "*_test.py"]
 testpaths = ["tests"]
 addopts = "--strict-markers --disable-warnings"
+markers = [
+    "permission_matrix: executable role, tenant, assignment, privacy, and export contract",
+]
