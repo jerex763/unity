@@ -1,5 +1,6 @@
 import pytest
 from django.contrib import admin
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
@@ -113,3 +114,48 @@ def test_project_admin_models_are_superuser_only() -> None:
         assert not model_admin.has_add_permission(request)
         assert not model_admin.has_change_permission(request)
         assert not model_admin.has_delete_permission(request)
+
+
+def test_superuser_can_dry_run_csv_import_in_admin() -> None:
+    church = Church.objects.create(name="Fictional Admin Import")
+    user = User.objects.create_superuser(
+        username="fictional.import.admin",
+        password="test-password-only",
+    )
+    client = Client()
+    client.force_login(user)
+    url = reverse("admin:people_person_import_csv")
+
+    get_response = client.get(url)
+    post_response = client.post(
+        url,
+        {
+            "church": church.id,
+            "dry_run": "on",
+            "csv_file": SimpleUploadedFile(
+                "people.csv",
+                b"full_name,email\nAdmin Import,admin.import@example.test\n",
+                content_type="text/csv",
+            ),
+        },
+        format="multipart",
+    )
+
+    assert get_response.status_code == 200
+    assert post_response.status_code == 200
+    assert b"1 to create, 0 to update" in post_response.content
+    assert not Person.objects.filter(church=church).exists()
+
+
+def test_non_superuser_cannot_open_csv_import_admin() -> None:
+    staff = User.objects.create_user(
+        username="fictional.import.staff",
+        password="test-password-only",
+        is_staff=True,
+    )
+    client = Client()
+    client.force_login(staff)
+
+    response = client.get(reverse("admin:people_person_import_csv"))
+
+    assert response.status_code == 403

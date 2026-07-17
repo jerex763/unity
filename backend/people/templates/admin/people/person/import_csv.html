@@ -1,0 +1,22 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h1>Import people from CSV</h1>
+  <p>The import is atomic: if any row fails, no rows are saved.</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Run import">
+  </form>
+  {% if result %}
+    <h2>{% if result.dry_run %}Dry-run {% endif %}result</h2>
+    <p>{{ result.created }} to create, {{ result.updated }} to update.</p>
+    {% if result.errors %}
+      <ul class="errorlist">
+        {% for error in result.errors %}
+          <li>Row {{ error.row }}: {{ error.message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
+{% endblock %}
