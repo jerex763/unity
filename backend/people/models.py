@@ -1,8 +1,9 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
-from tenancy.models import ChurchScopedModel
+from tenancy.models import ChurchScopedModel, ChurchScopedQuerySet
 
 
 class Household(ChurchScopedModel):
@@ -108,6 +109,104 @@ class Person(ChurchScopedModel):
             errors["invited_by"] = "Inviter and person must belong to the same church."
         if errors:
             raise ValidationError(errors)
+
+
+class AppendOnlyConsentQuerySet(ChurchScopedQuerySet):
+    def update(self, **kwargs: object) -> int:
+        raise ValidationError(
+            "Consent records are append-only; record a correction instead."
+        )
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise ValidationError(
+            "Consent records cannot be deleted through application code."
+        )
+
+    def bulk_update(
+        self,
+        objs: list["ConsentRecord"],
+        fields: list[str],
+        batch_size: int | None = None,
+    ) -> int:
+        raise ValidationError(
+            "Consent records are append-only; record a correction instead."
+        )
+
+
+class ConsentRecord(ChurchScopedModel):
+    """One immutable consent decision; later records supersede earlier ones."""
+
+    class Status(models.TextChoices):
+        GRANTED = "granted", "Granted"
+        DECLINED = "declined", "Declined"
+
+    class Method(models.TextChoices):
+        SELF_SERVICE = "self_service", "Self-service"
+        PAPER_FORM = "paper_form", "Paper form"
+        STAFF_RECORDED = "staff_recorded", "Staff-recorded"
+
+    person = models.ForeignKey(
+        Person,
+        on_delete=models.CASCADE,
+        related_name="consent_records",
+    )
+    status = models.CharField(choices=Status.choices, max_length=20)
+    notice_version = models.CharField(max_length=50)
+    consented_at = models.DateTimeField()
+    method = models.CharField(choices=Method.choices, max_length=20)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="consent_records_recorded",
+    )
+    supersedes = models.ForeignKey(
+        "self",
+        blank=True,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="corrections",
+    )
+
+    objects = AppendOnlyConsentQuerySet.as_manager()
+
+    class Meta:
+        db_table = "person_consent_record"
+        ordering = ("-created_at", "-id")
+        indexes = [
+            models.Index(fields=("church", "person", "created_at")),
+            models.Index(fields=("church", "status", "created_at")),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.person} — {self.status} ({self.notice_version})"
+
+    def clean(self) -> None:
+        super().clean()
+        errors: dict[str, str] = {}
+        if self.person_id and self.person.church_id != self.church_id:
+            errors["person"] = "Person and consent record must share a church."
+        if self.supersedes_id and (
+            self.supersedes.person_id != self.person_id
+            or self.supersedes.church_id != self.church_id
+        ):
+            errors["supersedes"] = (
+                "A correction must supersede a consent record for the same person."
+            )
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        if self.pk is not None:
+            raise ValidationError(
+                "Consent records are append-only; record a correction instead."
+            )
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> tuple[int, dict[str, int]]:
+        raise ValidationError(
+            "Consent records cannot be deleted through application code."
+        )
 
 
 class Relationship(ChurchScopedModel):

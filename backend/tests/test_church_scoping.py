@@ -13,7 +13,7 @@ from accounts.permissions import Capability
 from care.models import CareCase, FollowUp, Interaction
 from events.models import Event, EventRegistration
 from groups.models import Group, GroupMembership
-from people.models import Household, Person, Relationship
+from people.models import ConsentRecord, Household, Person, Relationship
 from tenancy.api import ChurchScopedQuerysetMixin
 from tenancy.models import Church, ChurchScopedQuerySet
 from tenancy.permissions import HasActiveChurchMembership, HasChurchCapability
@@ -168,6 +168,7 @@ def test_every_church_owned_model_uses_scoped_queryset() -> None:
         Household,
         Person,
         Relationship,
+        ConsentRecord,
         Group,
         GroupMembership,
         Event,

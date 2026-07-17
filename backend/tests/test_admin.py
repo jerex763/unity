@@ -9,7 +9,7 @@ from care.models import CareCase, FollowUp, Interaction
 from events.models import Event, EventRegistration
 from groups.models import Group, GroupMembership
 from people.admin import PersonAdmin
-from people.models import Household, Person, Relationship
+from people.models import ConsentRecord, Household, Person, Relationship
 from tenancy.models import Church
 
 pytestmark = pytest.mark.django_db
@@ -29,6 +29,7 @@ PROJECT_MODELS = {
     CareCase,
     Interaction,
     AuditEvent,
+    ConsentRecord,
 }
 
 ADMIN_CHANGELISTS = (
@@ -46,6 +47,7 @@ ADMIN_CHANGELISTS = (
     "admin:care_carecase_changelist",
     "admin:care_interaction_changelist",
     "admin:audit_auditevent_changelist",
+    "admin:people_consentrecord_changelist",
 )
 
 
