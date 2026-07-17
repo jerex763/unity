@@ -152,6 +152,8 @@ Creating or importing a person never creates consent automatically.
   friend/family/spouse/guardian links
 - `DELETE /api/people/<id>/relationships/<relationship-id>/` — remove a
   visible relationship link
+- `GET/POST /api/events/` — list church events or create an event
+- `GET/PUT/PATCH/DELETE /api/events/<id>/` — read or manage an event
 
 Admins and pastors see the active church directory. Leaders see active members
 of groups they lead or co-lead. Members can read only their linked Person and
