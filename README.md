@@ -21,6 +21,7 @@ Full feature ledger with owners and completion dates: **[docs/features.md](docs/
 All open work: **[Issues](https://github.com/jerex763/unity/issues)** · grouped by **[Milestones](https://github.com/jerex763/unity/milestones)**
 
 Start with **[docs/delivery-plan.md](docs/delivery-plan.md)** for what to do now, next and later. The full 13-module vision and what's deferred/cut remains in **[docs/roadmap.md](docs/roadmap.md)**. Frontend visual language: **[docs/design.md](docs/design.md)**.
+The controlled release gate is documented in the **[pilot runbook](docs/pilot-runbook.md)**.
 
 ## Stack
 
