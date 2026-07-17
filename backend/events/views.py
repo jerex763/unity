@@ -1,7 +1,11 @@
 from django.db import transaction
 from django.db.models import Count, Q
 from rest_framework import generics
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from accounts.access import groups_visible_to
+from groups.models import Group
 from tenancy.permissions import HasActiveChurchMembership
 
 from .models import Event, EventRegistration
@@ -52,3 +56,14 @@ class EventDetailView(EventQuerysetMixin, generics.RetrieveUpdateDestroyAPIView)
     @transaction.atomic
     def perform_destroy(self, instance: Event) -> None:
         instance.delete()
+
+
+class EventGroupChoicesView(APIView):
+    permission_classes = (HasActiveChurchMembership, HasEventAccess)
+
+    def get(self, request):
+        groups = groups_visible_to(
+            Group.objects.filter(is_active=True).order_by("name", "id"),
+            request.church_membership,
+        )
+        return Response([{"id": group.id, "name": group.name} for group in groups])

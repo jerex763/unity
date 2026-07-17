@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useAuth } from './auth/useAuth'
 import { LoginPage } from './auth/LoginPage'
+import { EventsPage } from './events/EventsPage'
 import { AppShell } from './layout/AppShell'
 import { DashboardPage } from './pages/DashboardPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -25,7 +26,7 @@ export function App() {
         <Route index element={<DashboardPage />} />
         <Route path="people" element={<DirectoryPage />} />
         <Route path="people/:personId" element={<ProfilePage />} />
-        <Route path="events" element={<Navigate replace to="/" />} />
+        <Route path="events" element={<EventsPage />} />
         <Route path="follow-ups" element={<Navigate replace to="/" />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
