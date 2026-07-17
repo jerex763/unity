@@ -1,0 +1,17 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-unity-database-backups-after-30-days",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "unity/"
+      },
+      "Expiration": {
+        "Days": 30
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 1
+      }
+    }
+  ]
+}
