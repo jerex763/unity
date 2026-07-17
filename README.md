@@ -78,7 +78,8 @@ authentication or tenant-scoped features.
 See [backend/README.md](backend/README.md) for configuration, testing and production
 settings. Operational safeguards are documented in the
 [backup/restore runbook](docs/backup-restore-runbook.md) and
-[person data lifecycle](docs/person-data-lifecycle.md).
+[person data lifecycle](docs/person-data-lifecycle.md). Authorization rules are
+defined in the [permission and privacy matrix](docs/permission-matrix.md).
 
 ## How we work
 

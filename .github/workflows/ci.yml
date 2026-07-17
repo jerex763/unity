@@ -82,6 +82,9 @@ jobs:
       - name: Run tests
         run: pytest
 
+      - name: Run permission and privacy contract
+        run: pytest tests/test_permission_matrix.py
+
       - name: Run Django checks
         env:
           DJANGO_SETTINGS_MODULE: config.settings.test
