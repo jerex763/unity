@@ -4,12 +4,16 @@ from .views import (
     PersonAnonymizeView,
     PersonConsentView,
     PersonDeactivateView,
+    PersonDetailView,
     PersonHardDeleteView,
+    PersonListCreateView,
 )
 
 app_name = "people"
 
 urlpatterns = [
+    path("", PersonListCreateView.as_view(), name="person-list"),
+    path("<int:pk>/", PersonDetailView.as_view(), name="person-detail"),
     path(
         "<int:person_id>/consent/",
         PersonConsentView.as_view(),
