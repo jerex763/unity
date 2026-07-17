@@ -36,7 +36,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 
 | # | Feature | Issue | Status | Owner | Completed |
 |---|---|---|---|---|---|
-| 13 | Event API: CRUD | [#13](https://github.com/jerex763/unity/issues/13) | ⬜ | | |
+| 13 | Event API: CRUD | [#13](https://github.com/jerex763/unity/issues/13) | ✅ | jerex763 | 2026-07-17 |
 | 14 | Events UI: list + create/edit | [#14](https://github.com/jerex763/unity/issues/14) | ⬜ | | |
 | 15 | Registration: signup flow | [#15](https://github.com/jerex763/unity/issues/15) | ⬜ | | |
 | 16 | QR check-in (post-pilot backlog; manual first) | [#16](https://github.com/jerex763/unity/issues/16) | ⬜ | | |
