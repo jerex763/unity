@@ -1,8 +1,15 @@
+from io import StringIO
+
 from django.contrib import admin
+from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest
+from django.shortcuts import render
+from django.urls import path
 
 from config.admin import SuperuserOnlyAdminMixin
 
+from .forms import PersonCsvImportForm
+from .importer import import_people_csv
 from .lifecycle import deactivate_person
 from .models import ConsentRecord, Household, Person, Relationship
 
@@ -18,6 +25,7 @@ class HouseholdAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
 
 @admin.register(Person)
 class PersonAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
+    change_list_template = "admin/people/person/change_list.html"
     actions = ("deactivate_selected_people",)
     sensitive_fields = ("discipleship_stage", "faith_background")
     list_display = (
@@ -44,6 +52,42 @@ class PersonAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
         "deactivated_at",
         "anonymized_at",
     )
+
+    def get_urls(self):
+        return [
+            path(
+                "import-csv/",
+                self.admin_site.admin_view(self.import_csv_view),
+                name="people_person_import_csv",
+            )
+        ] + super().get_urls()
+
+    def import_csv_view(self, request: HttpRequest):
+        if not self.has_change_permission(request):
+            raise PermissionDenied
+        result = None
+        form = PersonCsvImportForm(request.POST or None, request.FILES or None)
+        if request.method == "POST" and form.is_valid():
+            upload = form.cleaned_data["csv_file"]
+            try:
+                result = import_people_csv(
+                    StringIO(upload.read().decode("utf-8-sig")),
+                    church=form.cleaned_data["church"],
+                    dry_run=form.cleaned_data["dry_run"],
+                )
+            except UnicodeDecodeError:
+                form.add_error("csv_file", "The CSV must be UTF-8 encoded.")
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Import people from CSV",
+            "form": form,
+            "result": result,
+        }
+        return render(
+            request,
+            "admin/people/person/import_csv.html",
+            context,
+        )
 
     @admin.action(description="Deactivate selected people (preserves history)")
     def deactivate_selected_people(

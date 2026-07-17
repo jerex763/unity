@@ -77,6 +77,22 @@ records remain separate from login identities. Read
 [ADR 0001](../docs/adr/0001-authentication-and-church-membership.md) before
 changing authentication or tenancy.
 
+## One-off people CSV import
+
+Use the **Import CSV** action on the People admin page, or run:
+
+```bash
+python manage.py import_people_csv ../docs/person-import-template.csv \
+  --church-id 1 --dry-run
+```
+
+Remove `--dry-run` only after the preview succeeds. Imports are atomic: any bad
+row rejects the entire file and reports its source row number. Re-running a file
+updates a unique email match, then a unique phone match, then a unique full-name
+match; columns omitted from a file are left unchanged. The supported headings
+are listed in [`docs/person-import-template.csv`](../docs/person-import-template.csv),
+and interests use semicolons within one CSV cell.
+
 ## Configuration
 
 Development uses `config.settings.dev`; production uses `config.settings.prod`.
