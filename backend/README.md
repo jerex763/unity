@@ -119,3 +119,11 @@ role/access changes and CSV exports create append-only audit events. Events stor
 identifiers and approved operational metadata only, never changed field values or
 secrets. See [the retention policy](../docs/audit-retention.md) before production
 use.
+
+## Consent records
+
+`GET /api/people/<id>/consent/` returns the latest consent decision, or an
+explicit `unknown` state when no decision has been recorded. Authorized admins
+and pastors can `POST` a granted or declined decision; a later POST creates an
+immutable correction linked to the previous record instead of overwriting it.
+Creating or importing a person never creates consent automatically.

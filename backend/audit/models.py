@@ -43,6 +43,7 @@ class AuditEvent(models.Model):
             "Membership access changed",
         )
         CSV_EXPORTED = "data.csv_exported", "CSV exported"
+        CONSENT_RECORDED = "consent.recorded", "Consent recorded"
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -173,6 +173,7 @@ def test_logout_requires_csrf_and_clears_session(church: Church, user: User) -> 
                 Capability.VIEW_SENSITIVE_PERSON,
                 Capability.VIEW_CONFIDENTIAL_CARE,
                 Capability.LEAD_MINISTRY,
+                Capability.MANAGE_PERSON_CONSENT,
                 Capability.SELF_SERVICE,
             },
         ),

@@ -17,7 +17,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 | 7 | CI: lint + test on PR | [#7](https://github.com/jerex763/unity/issues/7) | ✅ | jerex763 | 2026-07-16 |
 | 26 | Custom User + ChurchMembership decision | [#26](https://github.com/jerex763/unity/issues/26) | ✅ | jerex763 | 2026-07-16 |
 | 27 | Audit log for sensitive/destructive actions | [#27](https://github.com/jerex763/unity/issues/27) | ✅ | jerex763 | 2026-07-17 |
-| 28 | Consent + privacy notice version record | [#28](https://github.com/jerex763/unity/issues/28) | ⬜ | | |
+| 28 | Consent + privacy notice version record | [#28](https://github.com/jerex763/unity/issues/28) | 🔨 | jerex763 | |
 | 29 | Automated backup + tested restore | [#29](https://github.com/jerex763/unity/issues/29) | ⬜ | | |
 | 30 | Deactivate, anonymize and delete safely | [#30](https://github.com/jerex763/unity/issues/30) | ⬜ | | |
 | 31 | Permission and privacy test matrix | [#31](https://github.com/jerex763/unity/issues/31) | ⬜ | | |

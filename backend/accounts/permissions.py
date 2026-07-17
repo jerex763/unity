@@ -8,6 +8,7 @@ from .models import ChurchMembership, User
 class Capability(StrEnum):
     MANAGE_CHURCH = "manage_church"
     MANAGE_DESTRUCTIVE = "manage_destructive"
+    MANAGE_PERSON_CONSENT = "manage_person_consent"
     VIEW_SENSITIVE_PERSON = "view_sensitive_person"
     VIEW_CONFIDENTIAL_CARE = "view_confidential_care"
     LEAD_MINISTRY = "lead_ministry"
@@ -21,6 +22,7 @@ ROLE_CAPABILITIES: dict[str, frozenset[Capability]] = {
             Capability.VIEW_SENSITIVE_PERSON,
             Capability.VIEW_CONFIDENTIAL_CARE,
             Capability.LEAD_MINISTRY,
+            Capability.MANAGE_PERSON_CONSENT,
             Capability.SELF_SERVICE,
         }
     ),
