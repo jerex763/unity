@@ -28,7 +28,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 |---|---|---|---|---|---|
 | 8 | Person API: CRUD + validation | [#8](https://github.com/jerex763/unity/issues/8) | ✅ | jerex763 | 2026-07-17 |
 | 9 | Directory UI: list, search, filters | [#9](https://github.com/jerex763/unity/issues/9) | ✅ | jerex763 | 2026-07-17 |
-| 10 | Person profile page | [#10](https://github.com/jerex763/unity/issues/10) | 🔨 | jerex763 | |
+| 10 | Person profile page | [#10](https://github.com/jerex763/unity/issues/10) | ✅ | jerex763 | 2026-07-17 |
 | 11 | Relationships & invited_by | [#11](https://github.com/jerex763/unity/issues/11) | ⬜ | | |
 | 12 | CSV import for existing members | [#12](https://github.com/jerex763/unity/issues/12) | ⬜ | | |
 
