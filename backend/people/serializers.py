@@ -92,7 +92,12 @@ class PersonSerializer(serializers.ModelSerializer):
     def get_groups(self, instance: Person) -> list[dict[str, object]]:
         memberships = getattr(instance, "active_group_memberships", ())
         return [
-            {"id": membership.group_id, "name": membership.group.name}
+            {
+                "id": membership.group_id,
+                "name": membership.group.name,
+                "role": membership.role,
+                "joined_at": membership.joined_at.isoformat(),
+            }
             for membership in memberships
         ]
 
@@ -158,6 +163,59 @@ class PersonSerializer(serializers.ModelSerializer):
         if len(normalized) != len(value):
             raise serializers.ValidationError("Interests must be non-blank and unique.")
         return normalized
+
+
+class PersonDetailSerializer(PersonSerializer):
+    events_attended = serializers.SerializerMethodField()
+    follow_up_history = serializers.SerializerMethodField()
+
+    class Meta(PersonSerializer.Meta):
+        fields = PersonSerializer.Meta.fields + (
+            "events_attended",
+            "follow_up_history",
+        )
+
+    def get_events_attended(self, instance: Person) -> list[dict[str, object]]:
+        registrations = getattr(instance, "attended_event_registrations", ())
+        return [
+            {
+                "id": registration.event_id,
+                "title": registration.event.title,
+                "starts_at": registration.event.starts_at.isoformat(),
+                "location": registration.event.location,
+                "checked_in_at": registration.checked_in_at.isoformat(),
+            }
+            for registration in registrations
+        ]
+
+    def get_follow_up_history(self, instance: Person) -> list[dict[str, object]]:
+        follow_ups = getattr(instance, "visible_follow_up_history", ())
+        return [
+            {
+                "id": follow_up.id,
+                "source": follow_up.source,
+                "status": follow_up.status,
+                "assigned_to": (
+                    follow_up.assigned_to.username
+                    if follow_up.assigned_to is not None
+                    else None
+                ),
+                "due_at": follow_up.due_at.isoformat() if follow_up.due_at else None,
+                "closed_at": (
+                    follow_up.closed_at.isoformat() if follow_up.closed_at else None
+                ),
+                "outcome": follow_up.outcome,
+            }
+            for follow_up in follow_ups
+        ]
+
+    def to_representation(self, instance: Person) -> dict[str, object]:
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        membership = getattr(request, "church_membership", None)
+        if membership is None or membership.role == ChurchMembership.Role.MEMBER:
+            data.pop("follow_up_history", None)
+        return data
 
 
 class ConsentRecordSerializer(serializers.ModelSerializer):

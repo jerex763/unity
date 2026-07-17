@@ -183,3 +183,92 @@ describe('People directory', () => {
     expect(await screen.findByText('Mia Chen')).toBeVisible()
   })
 })
+
+describe('Person profile', () => {
+  const profile = {
+    id: 1,
+    full_name: 'Mia Chen',
+    preferred_name: 'Mimi',
+    membership_status: 'newcomer',
+    gender: 'unspecified',
+    date_of_birth: null,
+    email: 'mia@example.test',
+    phone: '+61000000001',
+    has_whatsapp: true,
+    photo_url: null,
+    home_country: 'AU',
+    suburb: 'Burwood',
+    occupation: 'Designer',
+    university: 'USYD',
+    course: null,
+    interests: ['Community'],
+    notes: 'Met at a fictional welcome lunch.',
+    groups: [
+      {
+        id: 11,
+        name: 'Friday Community',
+        role: 'member',
+        joined_at: '2026-06-01',
+      },
+    ],
+    events_attended: [
+      {
+        id: 21,
+        title: 'Community Lunch',
+        starts_at: '2026-07-12T02:00:00Z',
+        location: 'Main Hall',
+        checked_in_at: '2026-07-12T02:10:00Z',
+      },
+    ],
+    follow_up_history: [
+      {
+        id: 31,
+        source: 'event_visit',
+        status: 'closed',
+        assigned_to: 'alex',
+        due_at: null,
+        closed_at: '2026-07-14T02:00:00Z',
+        outcome: 'Connected with Friday Community.',
+      },
+    ],
+  }
+
+  it('shows role-gated sections and saves overview edits', async () => {
+    const updatedProfile = { ...profile, preferred_name: 'Mia' }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse(profile))
+      .mockResolvedValueOnce(jsonResponse(updatedProfile))
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+
+    renderApp('/people/1')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Mia Chen', level: 1 }),
+    ).toBeVisible()
+    expect(screen.getByText('Known as Mimi')).toBeVisible()
+
+    await user.click(screen.getByRole('tab', { name: 'Groups' }))
+    expect(screen.getByText('Friday Community')).toBeVisible()
+
+    await user.click(screen.getByRole('tab', { name: 'Events' }))
+    expect(screen.getByText('Community Lunch')).toBeVisible()
+
+    await user.click(screen.getByRole('tab', { name: 'Follow-ups' }))
+    expect(screen.getByText('Connected with Friday Community.')).toBeVisible()
+
+    await user.click(screen.getByRole('tab', { name: 'Overview' }))
+    await user.click(screen.getByRole('button', { name: 'Edit overview' }))
+    const preferredName = screen.getByLabelText('Preferred name')
+    await user.clear(preferredName)
+    await user.type(preferredName, 'Mia')
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(await screen.findByText('Known as Mia')).toBeVisible()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/people/1/')
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({ method: 'PATCH' })
+  })
+})

@@ -8,6 +8,8 @@ from rest_framework.test import APIClient
 from accounts.constants import ACTIVE_CHURCH_SESSION_KEY
 from accounts.models import ChurchMembership, User
 from audit.models import AuditEvent
+from care.models import FollowUp
+from events.models import Event, EventRegistration
 from groups.models import Group, GroupMembership
 from people.models import Household, Person
 from tenancy.models import Church
@@ -102,7 +104,12 @@ def test_leader_can_list_create_and_update_without_sensitive_fields() -> None:
     assert len(list_response.json()) == 2
     assert list_response.json()[0]["id"] == existing.id
     assert list_response.json()[0]["groups"] == [
-        {"id": group.id, "name": "Fictional Led Group"}
+        {
+            "id": group.id,
+            "name": "Fictional Led Group",
+            "role": GroupMembership.Role.MEMBER,
+            "joined_at": timezone.localdate().isoformat(),
+        }
     ]
     assert "faith_background" not in list_response.json()[0]
     assert "discipleship_stage" not in list_response.json()[0]
@@ -338,3 +345,174 @@ def test_routine_delete_is_not_an_api_method() -> None:
 
     assert response.status_code == 405
     assert Person.objects.filter(pk=person.pk).exists()
+
+
+def add_profile_history(
+    *,
+    church: Church,
+    person: Person,
+    worker: User,
+    assigned_worker: User,
+) -> tuple[Event, Event, FollowUp, FollowUp]:
+    now = timezone.now()
+    attended_event = Event.objects.create(
+        church=church,
+        title="Fictional Attended Gathering",
+        starts_at=now - timedelta(days=7),
+        ends_at=now - timedelta(days=7) + timedelta(hours=2),
+        location="Fictional Hall",
+        created_by=worker,
+    )
+    registered_event = Event.objects.create(
+        church=church,
+        title="Fictional Future Gathering",
+        starts_at=now + timedelta(days=7),
+        ends_at=now + timedelta(days=7, hours=2),
+        created_by=worker,
+    )
+    EventRegistration.objects.create(
+        church=church,
+        event=attended_event,
+        person=person,
+        checked_in_at=now - timedelta(days=7),
+        checkin_method=EventRegistration.CheckinMethod.MANUAL,
+    )
+    EventRegistration.objects.create(
+        church=church,
+        event=registered_event,
+        person=person,
+    )
+    assigned = FollowUp.objects.create(
+        church=church,
+        person=person,
+        source=FollowUp.Source.EVENT_VISIT,
+        status=FollowUp.Status.CLOSED,
+        assigned_to=assigned_worker,
+        closed_at=now,
+        outcome="Fictional connected outcome",
+    )
+    historical = FollowUp.objects.create(
+        church=church,
+        person=person,
+        source=FollowUp.Source.FRIEND_INVITE,
+        status=FollowUp.Status.CLOSED,
+        assigned_to=worker,
+        closed_at=now - timedelta(days=30),
+        outcome="Fictional historical outcome",
+    )
+    return attended_event, registered_event, assigned, historical
+
+
+def test_pastor_profile_includes_attendance_and_full_follow_up_history() -> None:
+    church = Church.objects.create(name="Fictional Pastor Profile")
+    pastor = make_membership(
+        church,
+        role=ChurchMembership.Role.PASTOR,
+        suffix="profile.pastor",
+    )
+    other_worker = make_membership(
+        church,
+        role=ChurchMembership.Role.LEADER,
+        suffix="profile.other",
+    )
+    person = Person.objects.create(church=church, full_name="Profile Person")
+    attended, registered, assigned, historical = add_profile_history(
+        church=church,
+        person=person,
+        worker=pastor.user,
+        assigned_worker=other_worker.user,
+    )
+    client = authenticated_client(pastor)
+
+    response = client.get(reverse("people:person-detail", args=(person.id,)))
+
+    assert response.status_code == 200
+    assert [event["id"] for event in response.json()["events_attended"]] == [
+        attended.id
+    ]
+    assert registered.id not in {
+        event["id"] for event in response.json()["events_attended"]
+    }
+    assert {item["id"] for item in response.json()["follow_up_history"]} == {
+        assigned.id,
+        historical.id,
+    }
+
+
+def test_leader_profile_only_includes_follow_ups_assigned_to_self() -> None:
+    church = Church.objects.create(name="Fictional Leader Profile")
+    person = Person.objects.create(church=church, full_name="Profile Person")
+    leader_person = Person.objects.create(church=church, full_name="Leader Person")
+    leader = make_membership(
+        church,
+        role=ChurchMembership.Role.LEADER,
+        suffix="profile.leader",
+        person=leader_person,
+    )
+    other_worker = make_membership(
+        church,
+        role=ChurchMembership.Role.PASTOR,
+        suffix="profile.pastor.other",
+    )
+    group = Group.objects.create(
+        church=church,
+        name="Fictional Profile Group",
+        kind=Group.Kind.SMALL_GROUP,
+    )
+    for group_person, role in (
+        (leader_person, GroupMembership.Role.LEADER),
+        (person, GroupMembership.Role.MEMBER),
+    ):
+        GroupMembership.objects.create(
+            church=church,
+            group=group,
+            person=group_person,
+            role=role,
+            joined_at=timezone.localdate(),
+        )
+    _, _, assigned, historical = add_profile_history(
+        church=church,
+        person=person,
+        worker=other_worker.user,
+        assigned_worker=leader.user,
+    )
+    client = authenticated_client(leader)
+
+    response = client.get(reverse("people:person-detail", args=(person.id,)))
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()["follow_up_history"]] == [
+        assigned.id
+    ]
+    assert historical.id not in {
+        item["id"] for item in response.json()["follow_up_history"]
+    }
+
+
+def test_member_profile_omits_follow_up_history_and_staff_fields() -> None:
+    church = Church.objects.create(name="Fictional Member Profile")
+    person = Person.objects.create(
+        church=church,
+        full_name="Own Profile Person",
+        notes="Internal staff note",
+    )
+    member = make_membership(
+        church,
+        role=ChurchMembership.Role.MEMBER,
+        suffix="profile.member",
+        person=person,
+    )
+    add_profile_history(
+        church=church,
+        person=person,
+        worker=member.user,
+        assigned_worker=member.user,
+    )
+    client = authenticated_client(member)
+
+    response = client.get(reverse("people:person-detail", args=(person.id,)))
+
+    assert response.status_code == 200
+    assert len(response.json()["events_attended"]) == 1
+    assert "follow_up_history" not in response.json()
+    assert "notes" not in response.json()

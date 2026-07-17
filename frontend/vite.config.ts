@@ -32,7 +32,10 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       proxy: {
-        '/api': env.VITE_DEV_API_PROXY ?? 'http://127.0.0.1:8000',
+        '/api': {
+          target: env.VITE_DEV_API_PROXY ?? 'http://127.0.0.1:8000',
+          changeOrigin: false,
+        },
       },
     },
     test: {

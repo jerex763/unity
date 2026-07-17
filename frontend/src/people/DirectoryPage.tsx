@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import { apiRequest } from '../api/client'
 import type { DirectoryPerson } from './types'
@@ -258,7 +259,17 @@ export function DirectoryPage() {
               </div>
               <div className="person-summary">
                 <div className="person-name-line">
-                  <h2>{person.full_name}</h2>
+                  <h2>
+                    <Link
+                      aria-label={t('directory.viewProfile', {
+                        name: person.full_name,
+                      })}
+                      className="person-profile-link"
+                      to={`/people/${person.id}`}
+                    >
+                      {person.full_name}
+                    </Link>
+                  </h2>
                   <span
                     className={`status-chip status-${person.membership_status}`}
                   >

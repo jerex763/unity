@@ -7,6 +7,7 @@ import { AppShell } from './layout/AppShell'
 import { DashboardPage } from './pages/DashboardPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { DirectoryPage } from './people/DirectoryPage'
+import { ProfilePage } from './people/ProfilePage'
 
 function ProtectedShell() {
   const { t } = useTranslation()
@@ -23,6 +24,7 @@ export function App() {
       <Route element={<ProtectedShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="people" element={<DirectoryPage />} />
+        <Route path="people/:personId" element={<ProfilePage />} />
         <Route path="events" element={<Navigate replace to="/" />} />
         <Route path="follow-ups" element={<Navigate replace to="/" />} />
         <Route path="*" element={<NotFoundPage />} />

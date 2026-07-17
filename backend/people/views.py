@@ -6,10 +6,12 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.access import people_visible_to
+from accounts.access import follow_ups_visible_to, people_visible_to
 from accounts.permissions import Capability
 from audit.models import AuditEvent
 from audit.services import record_audit_event
+from care.models import FollowUp
+from events.models import EventRegistration
 from groups.models import GroupMembership
 from tenancy.permissions import HasActiveChurchMembership, HasChurchCapability
 
@@ -19,6 +21,7 @@ from .permissions import HasPersonDirectoryAccess
 from .serializers import (
     ConsentRecordSerializer,
     HardDeletePersonSerializer,
+    PersonDetailSerializer,
     PersonSerializer,
 )
 
@@ -53,6 +56,33 @@ class PersonListCreateView(PersonQuerysetMixin, generics.ListCreateAPIView):
 
 class PersonDetailView(PersonQuerysetMixin, generics.RetrieveUpdateAPIView):
     http_method_names = ("get", "put", "patch", "head", "options")
+    serializer_class = PersonDetailSerializer
+
+    def get_queryset(self):
+        follow_ups = follow_ups_visible_to(
+            FollowUp.objects.select_related("assigned_to"),
+            self.request.church_membership,
+        ).order_by("-created_at", "-id")
+        return (
+            super()
+            .get_queryset()
+            .prefetch_related(
+                Prefetch(
+                    "event_registrations",
+                    queryset=EventRegistration.objects.filter(
+                        checked_in_at__isnull=False,
+                    )
+                    .select_related("event")
+                    .order_by("-event__starts_at", "-event_id"),
+                    to_attr="attended_event_registrations",
+                ),
+                Prefetch(
+                    "follow_ups",
+                    queryset=follow_ups,
+                    to_attr="visible_follow_up_history",
+                ),
+            )
+        )
 
 
 class PersonConsentView(APIView):
