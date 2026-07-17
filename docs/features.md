@@ -40,7 +40,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 | 14 | Events UI: list + create/edit | [#14](https://github.com/jerex763/unity/issues/14) | ✅ | jerex763 | 2026-07-17 |
 | 15 | Registration: signup flow | [#15](https://github.com/jerex763/unity/issues/15) | ✅ | jerex763 | 2026-07-17 |
 | 16 | QR check-in (post-pilot backlog; manual first) | [#16](https://github.com/jerex763/unity/issues/16) | ⬜ | | |
-| 17 | Walk-in quick-add | [#17](https://github.com/jerex763/unity/issues/17) | ⬜ | | |
+| 17 | Walk-in quick-add | [#17](https://github.com/jerex763/unity/issues/17) | ✅ | jerex763 | 2026-07-17 |
 | 33 | Manual event check-in | [#33](https://github.com/jerex763/unity/issues/33) | ⬜ | | |
 
 ## M3 Follow-up Queue
