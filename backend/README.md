@@ -111,3 +111,11 @@ python manage.py check
 
 Tests use an in-memory SQLite database so scaffold checks do not require a local
 Postgres process. Runtime development and production settings use Postgres.
+
+## Security audit trail
+
+Important authentication, confidential-care access, person changes, membership
+role/access changes and CSV exports create append-only audit events. Events store
+identifiers and approved operational metadata only, never changed field values or
+secrets. See [the retention policy](../docs/audit-retention.md) before production
+use.

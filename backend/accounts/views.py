@@ -14,6 +14,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from audit.models import AuditEvent
+from audit.services import record_audit_event
+
 from .constants import ACTIVE_CHURCH_SESSION_KEY
 from .models import ChurchMembership, User
 from .serializers import LoginSerializer
@@ -74,22 +77,38 @@ class LoginView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request: Request) -> Response:
-        serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = authenticate(
-            request=request,
-            username=serializer.validated_data["username"],
-            password=serializer.validated_data["password"],
-        )
-        if user is None:
-            raise InvalidCredentials
+        try:
+            serializer = LoginSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = authenticate(
+                request=request,
+                username=serializer.validated_data["username"],
+                password=serializer.validated_data["password"],
+            )
+            if user is None:
+                raise InvalidCredentials
 
-        membership = select_membership(
-            user,
-            serializer.validated_data.get("church_id"),
-        )
+            membership = select_membership(
+                user,
+                serializer.validated_data.get("church_id"),
+            )
+        except APIException as error:
+            record_audit_event(
+                action=AuditEvent.Action.LOGIN_FAILED,
+                request=request,
+                metadata={"reason": type(error).__name__},
+            )
+            raise
+
         django_login(request, user)
         request.session[ACTIVE_CHURCH_SESSION_KEY] = membership.church_id
+        record_audit_event(
+            action=AuditEvent.Action.LOGIN_SUCCEEDED,
+            actor=user,
+            church=membership.church,
+            target=user,
+            request=request,
+        )
         return Response(session_payload(user, membership))
 
 
