@@ -130,6 +130,18 @@ const resources = {
         saveError:
           'We could not save this event. Check the dates and fields, then retry.',
         saving: 'Saving…',
+        dateSelectionHelp:
+          'Choose a date and time. Your selection applies immediately.',
+        validation: {
+          endBeforeStart: 'End time must be after the start time.',
+          endRequired: 'Choose when the event ends.',
+          reviewFields: 'Review the highlighted fields before saving.',
+          signupAfterStart:
+            'Signup must close at or before the event start time.',
+          startInPast: 'Start time cannot be in the past.',
+          startRequired: 'Choose when the event starts.',
+          titleRequired: 'Enter an event title.',
+        },
         title: 'Upcoming events',
         unlimited: 'Unlimited',
         waitlistOpen: 'Waitlist open',
@@ -168,6 +180,7 @@ const resources = {
         noContext: 'Contact details available in their profile',
         noMatchesBody: 'Try a broader name or remove one of the filters.',
         noMatchesTitle: 'No people match these filters',
+        preferredName: 'Preferred name: {{name}}',
         peopleCount_one: ' person',
         peopleCount_other: ' people',
         results: 'People directory results',
@@ -297,6 +310,7 @@ const resources = {
         groupsTitle: 'Groups',
         joined: 'Joined {{date}}',
         knownAs: 'Known as {{name}}',
+        preferredName: 'Preferred name: {{name}}',
         loading: 'Loading profile…',
         noEvents: 'No attended events are recorded yet.',
         noFollowUps: 'No follow-up history is visible for this person.',

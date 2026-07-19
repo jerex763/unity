@@ -157,6 +157,12 @@ class EventSerializer(serializers.ModelSerializer):
             getattr(self.instance, "signup_closes_at", None),
         )
         errors: dict[str, str] = {}
+        if (
+            self.instance is None
+            and starts_at is not None
+            and starts_at < timezone.now()
+        ):
+            errors["starts_at"] = "Start time cannot be in the past."
         if starts_at is not None and ends_at is not None and ends_at <= starts_at:
             errors["ends_at"] = "The event must end after it starts."
         if closes_at is not None and starts_at is not None and closes_at > starts_at:

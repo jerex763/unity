@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { apiRequest } from '../api/client'
+import { ApiError, apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import type { DirectoryPerson } from '../people/types'
 import type { ChurchEvent, EventGroupChoice, EventRegistration } from './types'
@@ -18,6 +18,8 @@ type EventForm = {
   signup_closes_at: string
   group: string
 }
+
+type EventFormErrors = Partial<Record<keyof EventForm, string>>
 
 const emptyForm: EventForm = {
   id: null,
@@ -69,6 +71,27 @@ function RequiredMarker() {
   return <strong className="required-marker">{t('forms.required')}</strong>
 }
 
+function apiFieldErrors(error: ApiError): EventFormErrors {
+  const errors: EventFormErrors = {}
+  const fields: Array<keyof EventForm> = [
+    'title',
+    'starts_at',
+    'ends_at',
+    'location',
+    'capacity',
+    'signup_closes_at',
+    'group',
+  ]
+  for (const field of fields) {
+    const value = error.payload[field]
+    if (typeof value === 'string') errors[field] = value
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+      errors[field] = value[0]
+    }
+  }
+  return errors
+}
+
 export function EventsPage() {
   const { t } = useTranslation()
   const { session } = useAuth()
@@ -78,6 +101,7 @@ export function EventsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [form, setForm] = useState<EventForm | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<EventFormErrors>({})
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [activeRoster, setActiveRoster] = useState<number | null>(null)
@@ -127,12 +151,60 @@ export function EventsPage() {
     value: EventForm[Key],
   ) {
     setForm((current) => (current ? { ...current, [key]: value } : current))
+    setFieldErrors((current) => {
+      if (!current[key]) return current
+      const next = { ...current }
+      delete next[key]
+      return next
+    })
+  }
+
+  function openForm(nextForm: EventForm) {
+    setSaveError('')
+    setFieldErrors({})
+    setForm(nextForm)
+  }
+
+  function closeForm() {
+    setSaveError('')
+    setFieldErrors({})
+    setForm(null)
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!form) return
     setSaveError('')
+    const errors: EventFormErrors = {}
+    const startsAt = form.starts_at ? new Date(form.starts_at) : null
+    const endsAt = form.ends_at ? new Date(form.ends_at) : null
+    const signupClosesAt = form.signup_closes_at
+      ? new Date(form.signup_closes_at)
+      : null
+    if (!form.title.trim()) errors.title = t('events.validation.titleRequired')
+    if (!startsAt || Number.isNaN(startsAt.getTime())) {
+      errors.starts_at = t('events.validation.startRequired')
+    } else if (!form.id && startsAt.getTime() < Date.now()) {
+      errors.starts_at = t('events.validation.startInPast')
+    }
+    if (!endsAt || Number.isNaN(endsAt.getTime())) {
+      errors.ends_at = t('events.validation.endRequired')
+    } else if (startsAt && endsAt.getTime() <= startsAt.getTime()) {
+      errors.ends_at = t('events.validation.endBeforeStart')
+    }
+    if (
+      signupClosesAt &&
+      startsAt &&
+      signupClosesAt.getTime() > startsAt.getTime()
+    ) {
+      errors.signup_closes_at = t('events.validation.signupAfterStart')
+    }
+    if (Object.keys(errors).length) {
+      setFieldErrors(errors)
+      setSaveError(t('events.validation.reviewFields'))
+      return
+    }
+    setFieldErrors({})
     setIsSaving(true)
     try {
       const saved = await apiRequest<ChurchEvent>(
@@ -161,9 +233,19 @@ export function EventsPage() {
             new Date(second.starts_at).getTime(),
         ),
       )
-      setForm(null)
-    } catch {
-      setSaveError(t('events.saveError'))
+      closeForm()
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const serverErrors = apiFieldErrors(error)
+        if (Object.keys(serverErrors).length) {
+          setFieldErrors(serverErrors)
+          setSaveError(t('events.validation.reviewFields'))
+        } else {
+          setSaveError(error.payload.detail ?? t('events.saveError'))
+        }
+      } else {
+        setSaveError(t('events.saveError'))
+      }
     } finally {
       setIsSaving(false)
     }
@@ -367,7 +449,7 @@ export function EventsPage() {
         {canEdit ? (
           <button
             className="primary-button inline"
-            onClick={() => setForm({ ...emptyForm })}
+            onClick={() => openForm({ ...emptyForm })}
             type="button"
           >
             {t('events.create')}
@@ -386,15 +468,11 @@ export function EventsPage() {
                 {form.id ? t('events.editTitle') : t('events.createTitle')}
               </h2>
             </div>
-            <button
-              className="text-button"
-              onClick={() => setForm(null)}
-              type="button"
-            >
+            <button className="text-button" onClick={closeForm} type="button">
               {t('events.cancel')}
             </button>
           </div>
-          <form className="event-form" onSubmit={save}>
+          <form className="event-form" noValidate onSubmit={save}>
             <p className="form-required-hint wide-field">
               {t('forms.requiredHint')}
             </p>
@@ -403,32 +481,73 @@ export function EventsPage() {
                 {t('events.fields.title')} <RequiredMarker />
               </span>
               <input
+                aria-describedby={
+                  fieldErrors.title ? 'event-title-error' : undefined
+                }
+                aria-invalid={Boolean(fieldErrors.title)}
                 onChange={(event) => update('title', event.target.value)}
                 required
                 value={form.title}
               />
+              {fieldErrors.title ? (
+                <small className="field-error" id="event-title-error">
+                  {fieldErrors.title}
+                </small>
+              ) : null}
             </label>
             <label>
               <span>
                 {t('events.fields.startsAt')} <RequiredMarker />
               </span>
               <input
+                aria-describedby={
+                  fieldErrors.starts_at
+                    ? 'event-start-help event-start-error'
+                    : 'event-start-help'
+                }
+                aria-invalid={Boolean(fieldErrors.starts_at)}
+                min={
+                  form.id ? undefined : localDateTime(new Date().toISOString())
+                }
                 onChange={(event) => update('starts_at', event.target.value)}
                 required
                 type="datetime-local"
                 value={form.starts_at}
               />
+              <small className="field-help" id="event-start-help">
+                {t('events.dateSelectionHelp')}
+              </small>
+              {fieldErrors.starts_at ? (
+                <small className="field-error" id="event-start-error">
+                  {fieldErrors.starts_at}
+                </small>
+              ) : null}
             </label>
             <label>
               <span>
                 {t('events.fields.endsAt')} <RequiredMarker />
               </span>
               <input
+                aria-describedby={
+                  fieldErrors.ends_at
+                    ? 'event-end-help event-end-error'
+                    : 'event-end-help'
+                }
+                aria-invalid={Boolean(fieldErrors.ends_at)}
+                min={form.starts_at || undefined}
                 onChange={(event) => update('ends_at', event.target.value)}
                 required
                 type="datetime-local"
                 value={form.ends_at}
               />
+              <small className="field-help" id="event-end-help">
+                {t('events.dateSelectionHelp')}
+              </small>
+              {fieldErrors.ends_at ? (
+                <small className="field-error" id="event-end-error">
+                  {fieldErrors.ends_at}
+                </small>
+              ) : null}
             </label>
             <label>
               <span>{t('events.fields.group')}</span>
@@ -454,22 +573,43 @@ export function EventsPage() {
             <label>
               <span>{t('events.fields.capacity')}</span>
               <input
+                aria-describedby={
+                  fieldErrors.capacity ? 'event-capacity-error' : undefined
+                }
+                aria-invalid={Boolean(fieldErrors.capacity)}
                 min="1"
                 onChange={(event) => update('capacity', event.target.value)}
                 placeholder={t('events.unlimited')}
                 type="number"
                 value={form.capacity}
               />
+              {fieldErrors.capacity ? (
+                <small className="field-error" id="event-capacity-error">
+                  {fieldErrors.capacity}
+                </small>
+              ) : null}
             </label>
             <label>
               <span>{t('events.fields.signupClosesAt')}</span>
               <input
+                aria-describedby={
+                  fieldErrors.signup_closes_at
+                    ? 'event-signup-closes-error'
+                    : undefined
+                }
+                aria-invalid={Boolean(fieldErrors.signup_closes_at)}
+                max={form.starts_at || undefined}
                 onChange={(event) =>
                   update('signup_closes_at', event.target.value)
                 }
                 type="datetime-local"
                 value={form.signup_closes_at}
               />
+              {fieldErrors.signup_closes_at ? (
+                <small className="field-error" id="event-signup-closes-error">
+                  {fieldErrors.signup_closes_at}
+                </small>
+              ) : null}
             </label>
             <label className="event-checkbox wide-field">
               <input
@@ -577,14 +717,14 @@ export function EventsPage() {
                 <div className="event-actions">
                   <button
                     className="secondary-button"
-                    onClick={() => setForm(formFromEvent(event))}
+                    onClick={() => openForm(formFromEvent(event))}
                     type="button"
                   >
                     {t('events.edit')}
                   </button>
                   <button
                     className="text-button"
-                    onClick={() => setForm(formFromEvent(event, true))}
+                    onClick={() => openForm(formFromEvent(event, true))}
                     type="button"
                   >
                     {t('events.duplicate')}
