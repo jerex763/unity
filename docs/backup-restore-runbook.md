@@ -2,9 +2,12 @@
 
 ## Policy
 
-Unity creates one encrypted PostgreSQL backup every day. Backups are retained for
-30 days in private object storage. This gives an initial recovery point objective
-of 24 hours; the team must set an explicit recovery time objective after the first
+Unity is designed to create one encrypted PostgreSQL backup every day. The daily
+schedule is paused under Issue #99 until the production database, private object
+storage, encryption recipient and failure alert are configured and a manual
+backup/restore drill succeeds. Once enabled, backups are retained for 30 days in
+private object storage. This gives an initial recovery point objective of 24
+hours; the team must set an explicit recovery time objective after the first
 production-sized restore.
 
 Backups must contain only fictional data until the M0 exit gate passes. The
@@ -47,14 +50,17 @@ complete.
    - `BACKUP_AWS_REGION`
    - `BACKUP_ALERT_WEBHOOK_URL`
 
-6. Run **Production database backup** manually. Confirm an `.dump.age` object
-   exists, is private, has server-side encryption metadata and is covered by the
-   lifecycle rule. Trigger a controlled failure and confirm the operations
-   channel receives the generic failure alert.
+6. Resolve Issue #99 and run **Production database backup** manually. Confirm an
+   `.dump.age` object exists, is private, has server-side encryption metadata and
+   is covered by the lifecycle rule. Trigger a controlled failure and confirm the
+   operations channel receives the generic failure alert.
+7. Restore the encrypted object into an isolated non-production database and
+   record the result. Only then re-enable the daily schedule in
+   `.github/workflows/backup.yml`.
 
-The schedule runs daily at 15:17 UTC. GitHub workflow access, object-store access,
-age private-key access and alert-channel membership must be reviewed quarterly
-and whenever a maintainer leaves.
+When enabled, the intended schedule runs daily at 15:17 UTC. GitHub workflow
+access, object-store access, age private-key access and alert-channel membership
+must be reviewed quarterly and whenever a maintainer leaves.
 
 ## Restore into non-production
 
