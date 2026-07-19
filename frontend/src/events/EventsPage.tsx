@@ -468,11 +468,7 @@ export function EventsPage() {
                 {form.id ? t('events.editTitle') : t('events.createTitle')}
               </h2>
             </div>
-            <button
-              className="text-button"
-              onClick={closeForm}
-              type="button"
-            >
+            <button className="text-button" onClick={closeForm} type="button">
               {t('events.cancel')}
             </button>
           </div>
