@@ -168,11 +168,25 @@ def test_event_api_validates_times_capacity_and_group_scope() -> None:
         ),
         format="json",
     )
+    past_start = timezone.now() - timedelta(days=1)
+    past_response = client.post(
+        reverse("events:event-list"),
+        event_payload(
+            starts_at=past_start.isoformat(),
+            ends_at=(past_start + timedelta(hours=1)).isoformat(),
+            signup_closes_at=None,
+        ),
+        format="json",
+    )
 
     assert field_response.status_code == 400
     assert set(field_response.json()) == {"capacity", "group"}
     assert time_response.status_code == 400
     assert set(time_response.json()) == {"ends_at", "signup_closes_at"}
+    assert past_response.status_code == 400
+    assert past_response.json() == {
+        "starts_at": ["Start time cannot be in the past."]
+    }
 
 
 def test_member_can_read_events_but_cannot_mutate() -> None:

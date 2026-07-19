@@ -663,6 +663,12 @@ a {
   white-space: nowrap;
 }
 
+.person-summary > .person-preferred-name {
+  color: var(--color-primary-strong);
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
 .status-chip,
 .group-chip {
   display: inline-block;
@@ -712,13 +718,17 @@ a {
 }
 
 .contact-link {
+  display: inline-flex;
   flex: 1;
+  align-items: center;
+  justify-content: center;
   padding: 0.55rem 0.7rem;
   border-radius: 0.7rem;
   color: white;
   background: var(--color-primary);
   font-size: 0.8rem;
   font-weight: 750;
+  line-height: 1;
   text-align: center;
   text-decoration: none;
 }
@@ -863,8 +873,17 @@ a {
   font-size: 0.85rem;
 }
 
+.profile-preferred-name {
+  margin: 0.55rem 0 0;
+  color: var(--color-primary-strong);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
 .profile-contact-actions {
   display: flex;
+  align-items: center;
+  align-self: center;
   grid-column: 1 / -1;
   gap: 0.55rem;
 }
@@ -1179,6 +1198,28 @@ a {
   color: var(--color-text-muted);
   font-size: 0.8rem;
   font-weight: 750;
+}
+
+.field-help,
+.field-error {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.field-help {
+  color: var(--color-text-muted);
+}
+
+.field-error {
+  color: #9f351b;
+  font-weight: 700;
+}
+
+.event-form [aria-invalid='true'] {
+  border-color: #b34527;
+  box-shadow: 0 0 0 2px rgb(179 69 39 / 12%);
 }
 
 .event-form input,

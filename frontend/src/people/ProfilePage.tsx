@@ -296,15 +296,15 @@ export function ProfilePage() {
         <div className="profile-identity">
           <p className="eyebrow">{t('profile.eyebrow')}</p>
           <h1>{person.full_name}</h1>
+          {person.preferred_name ? (
+            <p className="profile-preferred-name">
+              {t('profile.preferredName', { name: person.preferred_name })}
+            </p>
+          ) : null}
           <div className="profile-meta">
             <span className={`status-chip status-${person.membership_status}`}>
               {t(`directory.statuses.${person.membership_status}`)}
             </span>
-            {person.preferred_name ? (
-              <span>
-                {t('profile.knownAs', { name: person.preferred_name })}
-              </span>
-            ) : null}
           </div>
         </div>
         <div className="profile-contact-actions">

@@ -276,6 +276,13 @@ export function DirectoryPage() {
                     {t(`directory.statuses.${person.membership_status}`)}
                   </span>
                 </div>
+                {person.preferred_name ? (
+                  <p className="person-preferred-name">
+                    {t('directory.preferredName', {
+                      name: person.preferred_name,
+                    })}
+                  </p>
+                ) : null}
                 <p>
                   {[person.university, person.suburb]
                     .filter(Boolean)

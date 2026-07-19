@@ -193,6 +193,7 @@ describe('People directory', () => {
       await screen.findByRole('heading', { name: 'People directory' }),
     ).toBeVisible()
     expect(await screen.findByText('Mia Chen')).toBeVisible()
+    expect(screen.getByText('Preferred name: Mimi')).toBeVisible()
     expect(screen.getByText('Noah Park')).toBeVisible()
     expect(screen.getByText('Ava Singh')).toBeVisible()
 
@@ -342,7 +343,7 @@ describe('Person profile', () => {
     expect(
       await screen.findByRole('heading', { name: 'Mia Chen', level: 1 }),
     ).toBeVisible()
-    expect(screen.getByText('Known as Mimi')).toBeVisible()
+    expect(screen.getByText('Preferred name: Mimi')).toBeVisible()
 
     await user.click(screen.getByRole('tab', { name: 'Relationships' }))
     expect(screen.getByText('Ava Singh')).toBeVisible()
@@ -364,7 +365,7 @@ describe('Person profile', () => {
     await user.type(preferredName, 'Mia')
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
-    expect(await screen.findByText('Known as Mia')).toBeVisible()
+    expect(await screen.findByText('Preferred name: Mia')).toBeVisible()
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/people/1/')
     expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'PATCH' })
@@ -515,10 +516,25 @@ describe('Events', () => {
       target: { value: 'Welcome Dinner' },
     })
     fireEvent.change(screen.getByLabelText(/Starts/), {
-      target: { value: '2026-07-30T18:00' },
+      target: { value: '2000-01-01T18:00' },
     })
     fireEvent.change(screen.getByLabelText(/Ends/), {
-      target: { value: '2026-07-30T20:00' },
+      target: { value: '2000-01-01T17:00' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Save event' }))
+
+    expect(screen.getByText('Start time cannot be in the past.')).toBeVisible()
+    expect(
+      screen.getByText('End time must be after the start time.'),
+    ).toBeVisible()
+    expect(
+      screen.getByText('Review the highlighted fields before saving.'),
+    ).toBeVisible()
+    fireEvent.change(screen.getByLabelText(/Starts/), {
+      target: { value: '2099-07-30T18:00' },
+    })
+    fireEvent.change(screen.getByLabelText(/Ends/), {
+      target: { value: '2099-07-30T20:00' },
     })
     await user.click(screen.getByRole('button', { name: 'Save event' }))
 
