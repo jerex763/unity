@@ -1,8 +1,8 @@
 name: Production database backup
 
 on:
-  schedule:
-    - cron: "17 15 * * *"
+  # Daily scheduling stays paused until the production setup in Issue #99 is
+  # configured and a manual backup/restore drill has succeeded.
   workflow_dispatch:
 
 permissions:
