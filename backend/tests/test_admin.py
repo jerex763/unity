@@ -10,6 +10,7 @@ from care.models import CareCase, FollowUp, Interaction
 from events.models import Event, EventRegistration
 from groups.models import Group, GroupMembership
 from people.admin import PersonAdmin
+from people.forms import PersonAdminForm
 from people.models import ConsentRecord, Household, Person, Relationship
 from tenancy.models import Church
 
@@ -97,6 +98,33 @@ def test_superuser_person_form_keeps_sensitive_fields() -> None:
     model_admin = PersonAdmin(Person, admin.site)
 
     assert model_admin.get_exclude(request) is None
+
+
+def test_person_admin_form_uses_human_friendly_date_and_interests_fields() -> None:
+    church = Church.objects.create(name="Fictional Admin Form")
+    form = PersonAdminForm(
+        data={
+            "church": church.id,
+            "full_name": "Fictional Form Person",
+            "gender": Person.Gender.UNSPECIFIED,
+            "date_of_birth_year": "1990",
+            "date_of_birth_month": "2",
+            "date_of_birth_day": "3",
+            "email": "",
+            "phone": "",
+            "has_whatsapp": "on",
+            "interests": "Music, Hiking, Music",
+            "membership_status": Person.MembershipStatus.VISITOR,
+            "notes": "",
+        }
+    )
+
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data["date_of_birth"].isoformat() == "1990-02-03"
+    assert form.cleaned_data["interests"] == ["Music", "Hiking"]
+    assert "(required)" in form.fields["full_name"].label
+    assert "(required)" in form.fields["church"].label
+    assert "1990" in str(form["date_of_birth"])
 
 
 def test_project_admin_models_are_superuser_only() -> None:

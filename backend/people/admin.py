@@ -8,7 +8,7 @@ from django.urls import path
 
 from config.admin import SuperuserOnlyAdminMixin
 
-from .forms import PersonCsvImportForm
+from .forms import PersonAdminForm, PersonCsvImportForm
 from .importer import import_people_csv
 from .lifecycle import deactivate_person
 from .models import ConsentRecord, Household, Person, Relationship
@@ -25,6 +25,7 @@ class HouseholdAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
 
 @admin.register(Person)
 class PersonAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
+    form = PersonAdminForm
     change_list_template = "admin/people/person/change_list.html"
     actions = ("deactivate_selected_people",)
     sensitive_fields = ("discipleship_stage", "faith_background")

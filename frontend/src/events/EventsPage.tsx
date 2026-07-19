@@ -64,6 +64,11 @@ function dateLabel(value: string) {
   }).format(new Date(value))
 }
 
+function RequiredMarker() {
+  const { t } = useTranslation()
+  return <strong className="required-marker">{t('forms.required')}</strong>
+}
+
 export function EventsPage() {
   const { t } = useTranslation()
   const { session } = useAuth()
@@ -390,8 +395,13 @@ export function EventsPage() {
             </button>
           </div>
           <form className="event-form" onSubmit={save}>
+            <p className="form-required-hint wide-field">
+              {t('forms.requiredHint')}
+            </p>
             <label className="wide-field">
-              <span>{t('events.fields.title')}</span>
+              <span>
+                {t('events.fields.title')} <RequiredMarker />
+              </span>
               <input
                 onChange={(event) => update('title', event.target.value)}
                 required
@@ -399,7 +409,9 @@ export function EventsPage() {
               />
             </label>
             <label>
-              <span>{t('events.fields.startsAt')}</span>
+              <span>
+                {t('events.fields.startsAt')} <RequiredMarker />
+              </span>
               <input
                 onChange={(event) => update('starts_at', event.target.value)}
                 required
@@ -408,7 +420,9 @@ export function EventsPage() {
               />
             </label>
             <label>
-              <span>{t('events.fields.endsAt')}</span>
+              <span>
+                {t('events.fields.endsAt')} <RequiredMarker />
+              </span>
               <input
                 onChange={(event) => update('ends_at', event.target.value)}
                 required
@@ -689,25 +703,33 @@ export function EventsPage() {
                       }
                     >
                       {canEdit ? (
-                        <label>
-                          <span>{t('events.registrations.person')}</span>
-                          <select
-                            onChange={(changeEvent) =>
-                              setRegistrationPerson(changeEvent.target.value)
-                            }
-                            required
-                            value={registrationPerson}
-                          >
-                            <option value="">
-                              {t('events.registrations.choosePerson')}
-                            </option>
-                            {people.map((person) => (
-                              <option key={person.id} value={person.id}>
-                                {person.full_name}
+                        <>
+                          <p className="form-required-hint">
+                            {t('forms.requiredHint')}
+                          </p>
+                          <label>
+                            <span>
+                              {t('events.registrations.person')}{' '}
+                              <RequiredMarker />
+                            </span>
+                            <select
+                              onChange={(changeEvent) =>
+                                setRegistrationPerson(changeEvent.target.value)
+                              }
+                              required
+                              value={registrationPerson}
+                            >
+                              <option value="">
+                                {t('events.registrations.choosePerson')}
                               </option>
-                            ))}
-                          </select>
-                        </label>
+                              {people.map((person) => (
+                                <option key={person.id} value={person.id}>
+                                  {person.full_name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </>
                       ) : null}
                       <label className="event-checkbox">
                         <input
@@ -763,8 +785,13 @@ export function EventsPage() {
                           }
                         >
                           <h4>{t('events.walkIn.title')}</h4>
+                          <p className="form-required-hint">
+                            {t('forms.requiredHint')}
+                          </p>
                           <label>
-                            <span>{t('events.walkIn.fullName')}</span>
+                            <span>
+                              {t('events.walkIn.fullName')} <RequiredMarker />
+                            </span>
                             <input
                               onChange={(changeEvent) =>
                                 setWalkInName(changeEvent.target.value)
