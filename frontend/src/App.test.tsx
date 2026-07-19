@@ -486,12 +486,15 @@ describe('Events', () => {
     expect(
       screen.getByRole('heading', { name: 'Quick-add walk-in', level: 4 }),
     ).toBeVisible()
-    expect(screen.getByLabelText('Full name')).toBeVisible()
+    expect(
+      screen.getAllByText('Fields marked (required) must be completed.'),
+    ).not.toHaveLength(0)
+    expect(screen.getByLabelText(/Full name/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Add walk-in' }))
     await user.click(screen.getByRole('button', { name: 'Registration list' }))
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }))
-    expect(screen.getByLabelText('Event title')).toHaveValue(
+    expect(screen.getByLabelText(/Event title/)).toHaveValue(
       'Community Lunch copy',
     )
     expect(screen.getByLabelText('Hosted by')).toHaveValue('11')
@@ -501,17 +504,20 @@ describe('Events', () => {
     expect(
       screen.getByRole('heading', { name: 'Edit event', level: 2 }),
     ).toBeVisible()
-    expect(screen.getByLabelText('Event title')).toHaveValue('Community Lunch')
+    expect(screen.getByLabelText(/Event title/)).toHaveValue('Community Lunch')
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
     await user.click(screen.getByRole('button', { name: 'Create event' }))
-    fireEvent.change(screen.getByLabelText('Event title'), {
+    expect(
+      screen.getByText('Fields marked (required) must be completed.'),
+    ).toBeVisible()
+    fireEvent.change(screen.getByLabelText(/Event title/), {
       target: { value: 'Welcome Dinner' },
     })
-    fireEvent.change(screen.getByLabelText('Starts'), {
+    fireEvent.change(screen.getByLabelText(/Starts/), {
       target: { value: '2026-07-30T18:00' },
     })
-    fireEvent.change(screen.getByLabelText('Ends'), {
+    fireEvent.change(screen.getByLabelText(/Ends/), {
       target: { value: '2026-07-30T20:00' },
     })
     await user.click(screen.getByRole('button', { name: 'Save event' }))

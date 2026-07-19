@@ -16,6 +16,10 @@ const resources = {
         signingIn: 'Signing in…',
         username: 'Username',
       },
+      forms: {
+        required: '(required)',
+        requiredHint: 'Fields marked (required) must be completed.',
+      },
       nav: {
         home: 'Home',
         people: 'People',

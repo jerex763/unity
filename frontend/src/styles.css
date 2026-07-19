@@ -1197,6 +1197,17 @@ a {
   resize: vertical;
 }
 
+.form-required-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.required-marker {
+  color: var(--color-urgent);
+  font-size: 0.72rem;
+}
+
 .event-form .event-checkbox {
   display: flex;
   align-items: center;
