@@ -34,6 +34,7 @@ class PersonAdminForm(forms.ModelForm):
             "date_of_birth",
             "email",
             "phone",
+            "wechat_id",
             "has_whatsapp",
             "photo_url",
             "home_country",

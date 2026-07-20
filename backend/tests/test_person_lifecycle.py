@@ -152,6 +152,7 @@ def test_admin_anonymizes_identifiers_and_sensitive_related_text() -> None:
         date_of_birth=timezone.now().date() - timedelta(days=10_000),
         email="fictional.person@example.test",
         phone="+61000000000",
+        wechat_id="fictional_wechat",
         photo_url="https://example.test/fictional.jpg",
         home_country="AU",
         suburb="Fictional Suburb",
@@ -217,6 +218,7 @@ def test_admin_anonymizes_identifiers_and_sensitive_related_text() -> None:
     assert person.date_of_birth is None
     assert person.email is None
     assert person.phone is None
+    assert person.wechat_id is None
     assert person.photo_url is None
     assert person.home_country is None
     assert person.suburb is None

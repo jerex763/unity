@@ -42,6 +42,7 @@ def anonymize_person(person: Person) -> Person:
     person.date_of_birth = None
     person.email = None
     person.phone = None
+    person.wechat_id = None
     person.has_whatsapp = False
     person.photo_url = None
     person.home_country = None

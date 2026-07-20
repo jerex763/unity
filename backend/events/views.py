@@ -181,6 +181,8 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
             person = people.filter(email__iexact=values["email"]).first()
         if person is None and values.get("phone"):
             person = people.filter(phone=values["phone"]).first()
+        if person is None and values.get("wechat_id"):
+            person = people.filter(wechat_id=values["wechat_id"]).first()
         if person is None:
             person = Person(
                 church=request.church,
@@ -188,6 +190,7 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
                 preferred_name=values.get("preferred_name") or None,
                 email=values.get("email") or None,
                 phone=values.get("phone") or None,
+                wechat_id=values.get("wechat_id") or None,
                 membership_status=Person.MembershipStatus.VISITOR,
             )
             person.full_clean(exclude={"interests"})

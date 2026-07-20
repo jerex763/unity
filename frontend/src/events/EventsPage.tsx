@@ -125,6 +125,8 @@ export function EventsPage() {
   const [walkInPreferredName, setWalkInPreferredName] = useState('')
   const [walkInEmail, setWalkInEmail] = useState('')
   const [walkInPhone, setWalkInPhone] = useState('')
+  const [walkInWechatId, setWalkInWechatId] = useState('')
+  const [walkInContactError, setWalkInContactError] = useState('')
   const canEdit = session?.membership.role !== 'member'
 
   useEffect(() => {
@@ -381,6 +383,13 @@ export function EventsPage() {
   ) {
     formEvent.preventDefault()
     setRegistrationError('')
+    setWalkInContactError('')
+    if (
+      ![walkInEmail, walkInPhone, walkInWechatId].some((value) => value.trim())
+    ) {
+      setWalkInContactError(t('events.walkIn.contactRequired'))
+      return
+    }
     setIsSavingRegistration(true)
     try {
       const registration = await apiRequest<EventRegistration>(
@@ -392,6 +401,7 @@ export function EventsPage() {
             preferred_name: walkInPreferredName,
             email: walkInEmail,
             phone: walkInPhone,
+            wechat_id: walkInWechatId,
             needs_transport: needsTransport,
             note: registrationNote,
           }),
@@ -417,10 +427,23 @@ export function EventsPage() {
       setWalkInPreferredName('')
       setWalkInEmail('')
       setWalkInPhone('')
+      setWalkInWechatId('')
+      setWalkInContactError('')
       setNeedsTransport(false)
       setRegistrationNote('')
-    } catch {
-      setRegistrationError(t('events.walkIn.saveError'))
+    } catch (error) {
+      const contactError =
+        error instanceof ApiError ? error.payload.contact : undefined
+      if (typeof contactError === 'string') {
+        setWalkInContactError(contactError)
+      } else if (
+        Array.isArray(contactError) &&
+        typeof contactError[0] === 'string'
+      ) {
+        setWalkInContactError(contactError[0])
+      } else {
+        setRegistrationError(t('events.walkIn.saveError'))
+      }
     } finally {
       setIsSavingRegistration(false)
     }
@@ -916,6 +939,9 @@ export function EventsPage() {
                           <p className="form-required-hint">
                             {t('forms.requiredHint')}
                           </p>
+                          <p className="form-required-hint">
+                            {t('events.walkIn.contactHint')}
+                          </p>
                           <label>
                             <span>
                               {t('events.walkIn.fullName')} <RequiredMarker />
@@ -940,9 +966,10 @@ export function EventsPage() {
                           <label>
                             <span>{t('events.walkIn.email')}</span>
                             <input
-                              onChange={(changeEvent) =>
+                              onChange={(changeEvent) => {
                                 setWalkInEmail(changeEvent.target.value)
-                              }
+                                setWalkInContactError('')
+                              }}
                               type="email"
                               value={walkInEmail}
                             />
@@ -950,13 +977,29 @@ export function EventsPage() {
                           <label>
                             <span>{t('events.walkIn.phone')}</span>
                             <input
-                              onChange={(changeEvent) =>
+                              onChange={(changeEvent) => {
                                 setWalkInPhone(changeEvent.target.value)
-                              }
+                                setWalkInContactError('')
+                              }}
                               type="tel"
                               value={walkInPhone}
                             />
                           </label>
+                          <label>
+                            <span>{t('events.walkIn.wechatId')}</span>
+                            <input
+                              onChange={(changeEvent) => {
+                                setWalkInWechatId(changeEvent.target.value)
+                                setWalkInContactError('')
+                              }}
+                              value={walkInWechatId}
+                            />
+                          </label>
+                          {walkInContactError ? (
+                            <p className="form-error wide-field" role="alert">
+                              {walkInContactError}
+                            </p>
+                          ) : null}
                           <label className="event-checkbox">
                             <input
                               checked={needsTransport}

@@ -22,6 +22,7 @@ type EditFields = {
   preferred_name: string
   email: string
   phone: string
+  wechat_id: string
   suburb: string
   university: string
   membership_status: ProfilePerson['membership_status']
@@ -54,6 +55,7 @@ function editFields(person: ProfilePerson): EditFields {
     preferred_name: person.preferred_name ?? '',
     email: person.email ?? '',
     phone: person.phone ?? '',
+    wechat_id: person.wechat_id ?? '',
     suburb: person.suburb ?? '',
     university: person.university ?? '',
     membership_status: person.membership_status,
@@ -133,6 +135,7 @@ export function ProfilePage() {
           preferred_name: fields.preferred_name || null,
           email: fields.email || null,
           phone: fields.phone || null,
+          wechat_id: fields.wechat_id || null,
           suburb: fields.suburb || null,
           university: fields.university || null,
           membership_status: fields.membership_status,
@@ -260,6 +263,7 @@ export function ProfilePage() {
   const overviewDetails: Array<[string, string | null | undefined]> = [
     ['profile.fields.email', person.email],
     ['profile.fields.phone', person.phone],
+    ['profile.fields.wechatId', person.wechat_id],
     ['profile.fields.suburb', person.suburb],
     ['profile.fields.university', person.university],
     ['profile.fields.occupation', person.occupation],
@@ -394,6 +398,15 @@ export function ProfilePage() {
                   onChange={(event) => updateField('phone', event.target.value)}
                   type="tel"
                   value={fields.phone}
+                />
+              </label>
+              <label>
+                <span>{t('profile.fields.wechatId')}</span>
+                <input
+                  onChange={(event) =>
+                    updateField('wechat_id', event.target.value)
+                  }
+                  value={fields.wechat_id}
                 />
               </label>
               <label>

@@ -12,6 +12,7 @@ export type DirectoryPerson = {
   membership_status: 'visitor' | 'newcomer' | 'regular' | 'member' | 'inactive'
   email: string | null
   phone: string | null
+  wechat_id: string | null
   photo_url: string | null
   suburb: string | null
   university: string | null

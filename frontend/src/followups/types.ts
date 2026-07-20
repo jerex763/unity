@@ -9,6 +9,7 @@ export type FollowUp = {
     preferred_name: string | null
     phone: string | null
     email: string | null
+    wechat_id: string | null
   }
   source: 'event_visit' | 'friend_invite' | 'walk_in' | 'other'
   engagement: 'possible' | 'probable' | 'likely'

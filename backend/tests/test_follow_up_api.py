@@ -47,6 +47,7 @@ def follow_up(
         church=church,
         full_name=f"Follow-up Person {suffix}",
         phone="+61000000000",
+        wechat_id="fictional_followup",
     )
     return FollowUp.objects.create(
         church=church,
@@ -77,6 +78,7 @@ def test_pastor_can_view_pipeline_assign_and_close_follow_up() -> None:
 
     assert list_response.status_code == 200
     assert list_response.json()[0]["person"]["full_name"] == item.person.full_name
+    assert list_response.json()[0]["person"]["wechat_id"] == "fictional_followup"
     assert update.status_code == 200
     assert update.json()["assigned_to"] == leader.user_id
     assert update.json()["closed_at"] is not None

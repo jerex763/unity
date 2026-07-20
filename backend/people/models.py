@@ -60,6 +60,7 @@ class Person(ChurchScopedModel):
     date_of_birth = models.DateField(blank=True, null=True)
     email = models.EmailField(blank=True, null=True)  # noqa: DJ001
     phone = models.CharField(blank=True, max_length=30, null=True)
+    wechat_id = models.CharField(blank=True, max_length=100, null=True)
     has_whatsapp = models.BooleanField(default=True)
     photo_url = models.URLField(blank=True, max_length=500, null=True)
     home_country = models.CharField(blank=True, max_length=2, null=True)

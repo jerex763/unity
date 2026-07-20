@@ -159,7 +159,8 @@ Creating or importing a person never creates consent automatically.
 - `POST /api/events/<id>/registrations/<registration-id>/cancel/` — cancel a
   permitted registration while preserving its history
 - `POST /api/events/<id>/walk-ins/` — ministry-worker quick-add for a minimal
-  visitor plus manual walk-in attendance
+  visitor plus manual walk-in attendance; requires at least one of email,
+  phone, or WeChat ID
 - `POST /api/events/<id>/registrations/<registration-id>/check-in/` — set or
   undo manual attendance (`{"checked_in": true|false}`)
 
