@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import type { FollowUp } from '../followups/types'
+import { classifyFollowUpDueDate } from './followUpDueDate'
 
 const cards = [
   {
@@ -57,9 +58,10 @@ export function DashboardPage() {
   const today = new Date().toLocaleDateString('en-CA')
 
   function dueLabel(dueAt: string | null) {
-    if (!dueAt) return t('dashboard.noDueDate')
-    if (dueAt < today) return t('dashboard.overdue')
-    if (dueAt === today) return t('dashboard.dueToday')
+    const dueStatus = classifyFollowUpDueDate(dueAt, today)
+    if (dueStatus === 'none') return t('dashboard.noDueDate')
+    if (dueStatus === 'overdue') return t('dashboard.overdue')
+    if (dueStatus === 'today') return t('dashboard.dueToday')
     return t('dashboard.dueDate', {
       date: new Intl.DateTimeFormat(undefined, {
         day: 'numeric',
@@ -105,7 +107,8 @@ export function DashboardPage() {
           {followUps.length ? (
             <div className="my-follow-up-list">
               {followUps.map((item) => {
-                const isOverdue = Boolean(item.due_at && item.due_at < today)
+                const isOverdue =
+                  classifyFollowUpDueDate(item.due_at, today) === 'overdue'
                 return (
                   <article className="my-follow-up-row" key={item.id}>
                     <div>
