@@ -94,6 +94,7 @@ class PersonSerializer(serializers.ModelSerializer):
             "date_of_birth",
             "email",
             "phone",
+            "wechat_id",
             "has_whatsapp",
             "photo_url",
             "home_country",
@@ -212,6 +213,9 @@ class PersonSerializer(serializers.ModelSerializer):
         return value.strip().lower() if value else None
 
     def validate_phone(self, value: str | None) -> str | None:
+        return value.strip() if value else None
+
+    def validate_wechat_id(self, value: str | None) -> str | None:
         return value.strip() if value else None
 
     def validate_home_country(self, value: str | None) -> str | None:

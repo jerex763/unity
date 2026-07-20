@@ -93,6 +93,179 @@ def test_walk_in_reuses_same_church_contact_without_duplicate_person() -> None:
     assert Person.objects.for_church(church).count() == 1
 
 
+def test_walk_in_requires_a_contact_method_without_creating_records() -> None:
+    church = Church.objects.create(name="Fictional Contact Required")
+    client, worker = client_with_role(church, ChurchMembership.Role.LEADER)
+    now = timezone.now()
+    event = Event.objects.create(
+        church=church,
+        title="Fictional Contact Event",
+        starts_at=now,
+        ends_at=now + timedelta(hours=1),
+        created_by=worker,
+    )
+
+    response = client.post(
+        reverse("events:event-walk-in-create", args=(event.id,)),
+        {
+            "full_name": "Contactless Walk In",
+            "email": " ",
+            "phone": " ",
+            "wechat_id": " ",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["contact"] == [
+        "Provide at least one contact method: email, phone, or WeChat ID."
+    ]
+    assert not Person.objects.for_church(church).exists()
+    assert not EventRegistration.objects.filter(event=event).exists()
+
+
+@pytest.mark.parametrize(
+    ("contact_field", "contact_value", "model_value"),
+    (
+        ("phone", " +61000000123 ", "+61000000123"),
+        ("wechat_id", " fictional_wechat ", "fictional_wechat"),
+    ),
+)
+def test_walk_in_accepts_each_non_email_contact_method(
+    contact_field: str,
+    contact_value: str,
+    model_value: str,
+) -> None:
+    church = Church.objects.create(name=f"Fictional Contact {contact_field}")
+    client, worker = client_with_role(church, ChurchMembership.Role.LEADER)
+    now = timezone.now()
+    event = Event.objects.create(
+        church=church,
+        title=f"Fictional {contact_field} Event",
+        starts_at=now,
+        ends_at=now + timedelta(hours=1),
+        created_by=worker,
+    )
+
+    response = client.post(
+        reverse("events:event-walk-in-create", args=(event.id,)),
+        {
+            "full_name": f"Fictional {contact_field} Person",
+            contact_field: contact_value,
+        },
+        format="json",
+    )
+
+    assert response.status_code == 201
+    person = Person.objects.get(pk=response.json()["person"]["id"])
+    assert getattr(person, contact_field) == model_value
+    assert EventRegistration.objects.filter(
+        event=event,
+        person=person,
+        status=EventRegistration.Status.WALK_IN,
+    ).exists()
+
+
+def test_walk_in_reuses_wechat_id_only_within_active_church() -> None:
+    church = Church.objects.create(name="Fictional WeChat Church")
+    other_church = Church.objects.create(name="Fictional Other WeChat Church")
+    client, worker = client_with_role(church, ChurchMembership.Role.PASTOR)
+    current_person = Person.objects.create(
+        church=church,
+        full_name="Current WeChat Contact",
+        wechat_id="shared_wechat",
+    )
+    other_person = Person.objects.create(
+        church=other_church,
+        full_name="Other WeChat Contact",
+        wechat_id="shared_wechat",
+    )
+    now = timezone.now()
+    event = Event.objects.create(
+        church=church,
+        title="Fictional WeChat Event",
+        starts_at=now,
+        ends_at=now + timedelta(hours=1),
+        created_by=worker,
+    )
+
+    response = client.post(
+        reverse("events:event-walk-in-create", args=(event.id,)),
+        {
+            "full_name": "Submitted WeChat Name",
+            "wechat_id": " shared_wechat ",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 201
+    assert response.json()["person"]["id"] == current_person.id
+    assert Person.objects.for_church(church).count() == 1
+    assert Person.objects.for_church(other_church).get() == other_person
+    current_person.refresh_from_db()
+    assert current_person.full_name == "Current WeChat Contact"
+
+
+def test_walk_in_contact_matching_prefers_email_then_phone_then_wechat() -> None:
+    church = Church.objects.create(name="Fictional Contact Priority")
+    client, worker = client_with_role(church, ChurchMembership.Role.PASTOR)
+    email_person = Person.objects.create(
+        church=church,
+        full_name="Email Match",
+        email="priority@example.test",
+    )
+    phone_person = Person.objects.create(
+        church=church,
+        full_name="Phone Match",
+        phone="+61000000456",
+    )
+    Person.objects.create(
+        church=church,
+        full_name="WeChat Match",
+        wechat_id="priority_wechat",
+    )
+    now = timezone.now()
+    email_event = Event.objects.create(
+        church=church,
+        title="Fictional Email Priority",
+        starts_at=now,
+        ends_at=now + timedelta(hours=1),
+        created_by=worker,
+    )
+    phone_event = Event.objects.create(
+        church=church,
+        title="Fictional Phone Priority",
+        starts_at=now,
+        ends_at=now + timedelta(hours=1),
+        created_by=worker,
+    )
+
+    email_response = client.post(
+        reverse("events:event-walk-in-create", args=(email_event.id,)),
+        {
+            "full_name": "Submitted Priority",
+            "email": "PRIORITY@example.test",
+            "phone": "+61000000456",
+            "wechat_id": "priority_wechat",
+        },
+        format="json",
+    )
+    phone_response = client.post(
+        reverse("events:event-walk-in-create", args=(phone_event.id,)),
+        {
+            "full_name": "Submitted Priority",
+            "phone": "+61000000456",
+            "wechat_id": "priority_wechat",
+        },
+        format="json",
+    )
+
+    assert email_response.status_code == 201
+    assert email_response.json()["person"]["id"] == email_person.id
+    assert phone_response.status_code == 201
+    assert phone_response.json()["person"]["id"] == phone_person.id
+
+
 def test_member_cannot_quick_add_walk_in_and_cross_church_event_is_hidden() -> None:
     church = Church.objects.create(name="Fictional Walk-in Access")
     other_church = Church.objects.create(name="Fictional Walk-in Other")

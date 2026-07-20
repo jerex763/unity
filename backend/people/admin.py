@@ -36,6 +36,7 @@ class PersonAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
         "membership_status",
         "email",
         "phone",
+        "wechat_id",
         "updated_at",
     )
     list_filter = (
@@ -44,7 +45,7 @@ class PersonAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
         "gender",
         "has_whatsapp",
     )
-    search_fields = ("full_name", "preferred_name", "email", "phone")
+    search_fields = ("full_name", "preferred_name", "email", "phone", "wechat_id")
     autocomplete_fields = ("household", "invited_by")
     list_select_related = ("church", "household", "invited_by")
     readonly_fields = (

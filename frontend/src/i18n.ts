@@ -149,6 +149,9 @@ const resources = {
         walkIn: {
           add: 'Add walk-in',
           confirm: 'Add and check in',
+          contactHint: 'At least one contact method is required.',
+          contactRequired:
+            'Provide at least one contact method: email, phone, or WeChat ID.',
           email: 'Email',
           fullName: 'Full name',
           phone: 'Phone',
@@ -157,6 +160,7 @@ const resources = {
             'We could not add this walk-in. Check the details and retry.',
           saving: 'Adding…',
           title: 'Quick-add walk-in',
+          wechatId: 'WeChat ID',
         },
       },
       directory: {
@@ -263,6 +267,7 @@ const resources = {
         title: 'Follow-up queue',
         unassigned: 'Unassigned',
         update: 'Update',
+        wechatId: 'WeChat ID',
       },
       profile: {
         assignedTo: 'Assigned to {{name}}',
@@ -288,6 +293,7 @@ const resources = {
           occupation: 'Occupation',
           phone: 'Phone',
           preferredName: 'Preferred name',
+          wechatId: 'WeChat ID',
           status: 'Membership status',
           suburb: 'Suburb',
           university: 'University',

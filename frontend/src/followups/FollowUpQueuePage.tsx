@@ -183,6 +183,11 @@ export function FollowUpQueuePage() {
                       </span>
                     </div>
                     <p>{t(`followUps.sources.${item.source}`)}</p>
+                    {item.person.wechat_id ? (
+                      <p>
+                        {t('followUps.wechatId')}: {item.person.wechat_id}
+                      </p>
+                    ) : null}
                     <dl>
                       <div>
                         <dt>{t('followUps.assignee')}</dt>

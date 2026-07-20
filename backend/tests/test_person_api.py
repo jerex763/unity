@@ -88,6 +88,7 @@ def test_leader_can_list_create_and_update_without_sensitive_fields() -> None:
             "full_name": "  New   Fictional Person  ",
             "email": "NEW.PERSON@EXAMPLE.TEST",
             "phone": "  +61000000000 ",
+            "wechat_id": "  fictional_wechat  ",
             "home_country": "au",
             "interests": ["Community", "Music"],
         },
@@ -117,6 +118,7 @@ def test_leader_can_list_create_and_update_without_sensitive_fields() -> None:
     assert create_response.json()["full_name"] == "New Fictional Person"
     assert create_response.json()["email"] == "new.person@example.test"
     assert create_response.json()["phone"] == "+61000000000"
+    assert create_response.json()["wechat_id"] == "fictional_wechat"
     assert create_response.json()["home_country"] == "AU"
     assert update_response.status_code == 200
     assert update_response.json()["preferred_name"] == "New"

@@ -61,6 +61,7 @@ class FollowUpSerializer(serializers.ModelSerializer):
             "preferred_name": instance.person.preferred_name,
             "phone": instance.person.phone,
             "email": instance.person.email,
+            "wechat_id": instance.person.wechat_id,
         }
 
     def update(self, instance: FollowUp, validated_data: dict[str, object]):

@@ -70,6 +70,11 @@ class WalkInCreateSerializer(serializers.Serializer):
     )
     email = serializers.EmailField(allow_blank=True, required=False)
     phone = serializers.CharField(allow_blank=True, max_length=30, required=False)
+    wechat_id = serializers.CharField(
+        allow_blank=True,
+        max_length=100,
+        required=False,
+    )
     needs_transport = serializers.BooleanField(default=False)
     note = serializers.CharField(allow_blank=True, max_length=200, required=False)
 
@@ -84,6 +89,21 @@ class WalkInCreateSerializer(serializers.Serializer):
 
     def validate_phone(self, value: str) -> str:
         return value.strip()
+
+    def validate_wechat_id(self, value: str) -> str:
+        return value.strip()
+
+    def validate(self, attrs: dict[str, object]) -> dict[str, object]:
+        if not any(attrs.get(field) for field in ("email", "phone", "wechat_id")):
+            raise serializers.ValidationError(
+                {
+                    "contact": (
+                        "Provide at least one contact method: email, phone, "
+                        "or WeChat ID."
+                    )
+                }
+            )
+        return attrs
 
 
 class ManualCheckInSerializer(serializers.Serializer):

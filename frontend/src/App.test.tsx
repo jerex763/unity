@@ -85,6 +85,7 @@ describe('App authentication flow', () => {
           full_name: 'Noah Park',
           preferred_name: null,
           phone: null,
+          wechat_id: null,
           email: 'noah@example.test',
         },
         source: 'walk_in',
@@ -105,6 +106,7 @@ describe('App authentication flow', () => {
           full_name: 'Ava Singh',
           preferred_name: null,
           phone: '+61000000003',
+          wechat_id: null,
           email: null,
         },
         source: 'event_visit',
@@ -146,6 +148,7 @@ describe('People directory', () => {
       membership_status: 'newcomer',
       email: 'mia@example.test',
       phone: '+61000000001',
+      wechat_id: 'mia_wechat',
       photo_url: null,
       suburb: 'Burwood',
       university: 'USYD',
@@ -158,6 +161,7 @@ describe('People directory', () => {
       membership_status: 'member',
       email: null,
       phone: '+61000000002',
+      wechat_id: null,
       photo_url: null,
       suburb: 'Rhodes',
       university: 'UTS',
@@ -170,6 +174,7 @@ describe('People directory', () => {
       membership_status: 'regular',
       email: 'ava@example.test',
       phone: null,
+      wechat_id: null,
       photo_url: null,
       suburb: null,
       university: 'USYD',
@@ -257,6 +262,7 @@ describe('Person profile', () => {
     date_of_birth: null,
     email: 'mia@example.test',
     phone: '+61000000001',
+    wechat_id: 'mia_wechat',
     has_whatsapp: true,
     photo_url: null,
     home_country: 'AU',
@@ -419,6 +425,7 @@ describe('Events', () => {
             membership_status: 'newcomer',
             email: 'mia@example.test',
             phone: '+61000000001',
+            wechat_id: 'mia_wechat',
             photo_url: null,
             suburb: 'Burwood',
             university: 'USYD',
@@ -460,6 +467,24 @@ describe('Events', () => {
           checkin_method: 'manual',
         }),
       )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: 52,
+          person: {
+            id: 2,
+            full_name: 'Walk In Guest',
+            preferred_name: null,
+          },
+          status: 'walk_in',
+          needs_transport: false,
+          note: '',
+          registered_at: '2026-07-25T02:30:00Z',
+          checked_in_at: '2026-07-25T02:30:00Z',
+          checkin_method: 'manual',
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse([event]))
+      .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(jsonResponse(created))
     vi.stubGlobal('fetch', fetchMock)
     const user = userEvent.setup()
@@ -491,7 +516,30 @@ describe('Events', () => {
       screen.getAllByText('Fields marked (required) must be completed.'),
     ).not.toHaveLength(0)
     expect(screen.getByLabelText(/Full name/)).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'Add walk-in' }))
+    await user.type(screen.getByLabelText(/Full name/), 'Walk In Guest')
+    await user.click(screen.getByRole('button', { name: 'Add and check in' }))
+    expect(
+      screen.getByText(
+        'Provide at least one contact method: email, phone, or WeChat ID.',
+      ),
+    ).toBeVisible()
+    await user.type(screen.getByLabelText('WeChat ID'), ' walk_in_wechat ')
+    await user.click(screen.getByRole('button', { name: 'Add and check in' }))
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('heading', {
+          name: 'Quick-add walk-in',
+          level: 4,
+        }),
+      ).not.toBeInTheDocument()
+    })
+    expect(fetchMock.mock.calls[6]?.[0]).toBe('/api/events/21/walk-ins/')
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
+    ).toMatchObject({
+      full_name: 'Walk In Guest',
+      wechat_id: ' walk_in_wechat ',
+    })
     await user.click(screen.getByRole('button', { name: 'Registration list' }))
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }))
@@ -539,8 +587,8 @@ describe('Events', () => {
     await user.click(screen.getByRole('button', { name: 'Save event' }))
 
     expect(await screen.findByText('Welcome Dinner')).toBeVisible()
-    expect(fetchMock.mock.calls[6]?.[0]).toBe('/api/events/')
-    expect(fetchMock.mock.calls[6]?.[1]).toMatchObject({ method: 'POST' })
+    expect(fetchMock.mock.calls[9]?.[0]).toBe('/api/events/')
+    expect(fetchMock.mock.calls[9]?.[1]).toMatchObject({ method: 'POST' })
   })
 })
 
@@ -552,6 +600,7 @@ describe('Follow-up queue', () => {
       full_name: 'Mia Chen',
       preferred_name: 'Mimi',
       phone: '+61000000001',
+      wechat_id: 'mia_wechat',
       email: 'mia@example.test',
     },
     source: 'event_visit',
