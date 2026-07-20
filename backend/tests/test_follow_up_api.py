@@ -85,6 +85,35 @@ def test_pastor_can_view_pipeline_assign_and_close_follow_up() -> None:
     assert pastor.user_id != leader.user_id
 
 
+def test_reopening_closed_follow_up_clears_closed_at() -> None:
+    church = Church.objects.create(name="Fictional Follow-up Reopening")
+    client, _ = member(church, ChurchMembership.Role.PASTOR, "reopening")
+    item = follow_up(church, suffix="Reopening")
+    detail_url = reverse("care:follow-up-detail", args=(item.id,))
+
+    closed = client.patch(
+        detail_url,
+        {"status": FollowUp.Status.CLOSED},
+        format="json",
+    )
+    item.refresh_from_db()
+
+    assert closed.status_code == 200
+    assert closed.json()["closed_at"] is not None
+    assert item.closed_at is not None
+
+    reopened = client.patch(
+        detail_url,
+        {"status": FollowUp.Status.IN_PROGRESS},
+        format="json",
+    )
+    item.refresh_from_db()
+
+    assert reopened.status_code == 200
+    assert reopened.json()["closed_at"] is None
+    assert item.closed_at is None
+
+
 def test_leader_only_sees_and_updates_items_assigned_to_self() -> None:
     church = Church.objects.create(name="Fictional Leader Follow-ups")
     client, leader = member(church, ChurchMembership.Role.LEADER, "self")

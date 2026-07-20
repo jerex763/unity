@@ -4,6 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { ApiError, apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import type { DirectoryPerson } from '../people/types'
+import {
+  validateEventForm,
+  type EventFormValidationError,
+  type EventFormValidationField,
+} from './eventFormValidation'
 import type { ChurchEvent, EventGroupChoice, EventRegistration } from './types'
 
 type EventForm = {
@@ -176,28 +181,11 @@ export function EventsPage() {
     if (!form) return
     setSaveError('')
     const errors: EventFormErrors = {}
-    const startsAt = form.starts_at ? new Date(form.starts_at) : null
-    const endsAt = form.ends_at ? new Date(form.ends_at) : null
-    const signupClosesAt = form.signup_closes_at
-      ? new Date(form.signup_closes_at)
-      : null
-    if (!form.title.trim()) errors.title = t('events.validation.titleRequired')
-    if (!startsAt || Number.isNaN(startsAt.getTime())) {
-      errors.starts_at = t('events.validation.startRequired')
-    } else if (!form.id && startsAt.getTime() < Date.now()) {
-      errors.starts_at = t('events.validation.startInPast')
-    }
-    if (!endsAt || Number.isNaN(endsAt.getTime())) {
-      errors.ends_at = t('events.validation.endRequired')
-    } else if (startsAt && endsAt.getTime() <= startsAt.getTime()) {
-      errors.ends_at = t('events.validation.endBeforeStart')
-    }
-    if (
-      signupClosesAt &&
-      startsAt &&
-      signupClosesAt.getTime() > startsAt.getTime()
-    ) {
-      errors.signup_closes_at = t('events.validation.signupAfterStart')
+    const validationErrors = validateEventForm(form)
+    for (const [field, error] of Object.entries(validationErrors) as Array<
+      [EventFormValidationField, EventFormValidationError]
+    >) {
+      errors[field] = t(`events.validation.${error}`)
     }
     if (Object.keys(errors).length) {
       setFieldErrors(errors)
