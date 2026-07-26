@@ -3,6 +3,11 @@ import { loadEnv } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
 
+export const navigationFallbackDenylist = [
+  /^\/(?:api|admin|static|assets|media)(?:\/|\?|$)/,
+  /^\/(?:sw\.js|manifest\.webmanifest|unity-icon\.svg)(?:\?|$)/,
+]
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
@@ -11,6 +16,9 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['unity-icon.svg'],
+        workbox: {
+          navigateFallbackDenylist: navigationFallbackDenylist,
+        },
         manifest: {
           name: 'Unity Church Community',
           short_name: 'Unity',
