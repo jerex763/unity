@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, codex/mvp-next]
 
 permissions:
   contents: read
@@ -40,7 +40,7 @@ jobs:
           sudo apt-get install --yes age postgresql-client shellcheck
 
       - name: Check shell scripts
-        run: shellcheck ops/backup/*.sh
+        run: shellcheck ops/backup/*.sh ops/deploy/*.sh
 
       - name: Create restore target
         env:
@@ -121,3 +121,74 @@ jobs:
 
       - name: Build PWA
         run: npm run build
+
+  deployment-image:
+    name: Deployment image
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: unity
+          POSTGRES_USER: unity
+          POSTGRES_PASSWORD: unity
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U unity -d unity"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build deployment image
+        run: docker build --tag unity-deployment-smoke .
+
+      - name: Start deployment image
+        run: |
+          docker run --detach --rm \
+            --name unity-deployment-smoke \
+            --network host \
+            --env PORT=8000 \
+            --env DJANGO_SECRET_KEY=ci-deployment-smoke-secret \
+            --env DATABASE_URL=postgresql://unity:unity@127.0.0.1:5432/unity \
+            --env MIGRATION_DATABASE_URL=postgresql://unity:unity@127.0.0.1:5432/unity \
+            --env DJANGO_DATABASE_SSLMODE=disable \
+            --env RENDER_EXTERNAL_HOSTNAME=localhost \
+            --env RENDER_EXTERNAL_URL=https://localhost \
+            unity-deployment-smoke
+
+      - name: Verify same-origin routes and static assets
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent \
+              --header 'X-Forwarded-Proto: https' \
+              http://localhost:8000/api/health/; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs unity-deployment-smoke
+              exit 1
+            fi
+            sleep 2
+          done
+
+          curl --fail --silent --header 'X-Forwarded-Proto: https' \
+            http://localhost:8000/ | grep --quiet "<title>Unity</title>"
+          curl --fail --silent --header 'X-Forwarded-Proto: https' \
+            http://localhost:8000/people/123 | grep --quiet "<title>Unity</title>"
+          curl --fail --silent --header 'X-Forwarded-Proto: https' \
+            http://localhost:8000/static/admin/css/base.css > /dev/null
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --header 'X-Forwarded-Proto: https' \
+            http://localhost:8000/api/not-a-real-endpoint/)" = "404"
+
+      - name: Show logs after failure
+        if: failure()
+        run: docker logs unity-deployment-smoke || true
+
+      - name: Stop deployment image
+        if: always()
+        run: docker stop unity-deployment-smoke || true
