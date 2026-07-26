@@ -379,18 +379,22 @@ describe('Person profile', () => {
 })
 
 describe('Events', () => {
+  const eventStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  const eventEnd = new Date(eventStart.getTime() + 2 * 60 * 60 * 1000)
+  const signupClose = new Date(eventStart.getTime() - 60 * 60 * 1000)
+
   const event = {
     id: 21,
     group: 11,
     group_name: 'Friday Community',
     title: 'Community Lunch',
     description: 'A fictional community lunch.',
-    starts_at: '2026-07-25T02:00:00Z',
-    ends_at: '2026-07-25T04:00:00Z',
+    starts_at: eventStart.toISOString(),
+    ends_at: eventEnd.toISOString(),
     location: 'Main Hall',
     capacity: 40,
     signup_opens: true,
-    signup_closes_at: '2026-07-25T01:00:00Z',
+    signup_closes_at: signupClose.toISOString(),
     registration_open: true,
     places_available: true,
     my_registration: null,
