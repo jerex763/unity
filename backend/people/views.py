@@ -260,7 +260,14 @@ class PersonDeactivateView(PersonLifecycleView):
 
     @transaction.atomic
     def post(self, request: Request, person_id: int) -> Response:
-        person = self._locked_person(request, person_id)
+        visible_person_ids = people_visible_to(
+            Person.objects.all(),
+            request.church_membership,
+        ).values("pk")
+        person = get_object_or_404(
+            Person.objects.select_for_update().filter(pk__in=visible_person_ids),
+            pk=person_id,
+        )
         return self._response(deactivate_person(person))
 
 

@@ -6,7 +6,9 @@ exceptional admin operation with a controlled reason code.
 
 ## Deactivate
 
-Leaders, pastors and admins may deactivate a person. Deactivation sets
+Pastors and admins may deactivate any person in their active church. Leaders may
+deactivate only people visible through an active group they currently lead or
+co-lead, matching the Person detail and update scope. Deactivation sets
 `membership_status=inactive` and records `deactivated_at`; the Person and all
 event, group, follow-up, care, interaction and consent history remain unchanged.
 The Django Admin exposes deactivation as its lifecycle action and does not expose

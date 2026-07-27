@@ -115,15 +115,35 @@ def add_related_history(
     }
 
 
-def test_leader_deactivates_person_and_history_is_preserved() -> None:
+@pytest.mark.parametrize(
+    "group_role",
+    (GroupMembership.Role.LEADER, GroupMembership.Role.CO_LEADER),
+)
+def test_leader_deactivates_visible_person_and_history_is_preserved(
+    group_role: str,
+) -> None:
     church = Church.objects.create(name="Fictional Community Church")
     person = Person.objects.create(church=church, full_name="Fictional Person")
+    leader_person = Person.objects.create(
+        church=church,
+        full_name="Fictional Leader",
+    )
     leader = make_worker(
         church,
         role=ChurchMembership.Role.LEADER,
         username="fictional.lifecycle.leader",
+        person=leader_person,
     )
     related = add_related_history(church=church, person=person, worker=leader)
+    target_group_membership = related["group_membership"]
+    assert isinstance(target_group_membership, GroupMembership)
+    GroupMembership.objects.create(
+        church=church,
+        group=target_group_membership.group,
+        person=leader_person,
+        role=group_role,
+        joined_at=timezone.localdate(),
+    )
     client = authenticated_client(leader, church)
 
     response = client.post(lifecycle_url("deactivate", person), format="json")
@@ -138,6 +158,62 @@ def test_leader_deactivates_person_and_history_is_preserved() -> None:
     assert event.actor == leader
     assert event.church == church
     assert event.target_id == str(person.id)
+
+
+def test_leader_cannot_deactivate_unrelated_or_cross_church_person() -> None:
+    church = Church.objects.create(name="Fictional Community Church")
+    other_church = Church.objects.create(name="Other Fictional Church")
+    leader_person = Person.objects.create(
+        church=church,
+        full_name="Fictional Leader",
+    )
+    unrelated_person = Person.objects.create(
+        church=church,
+        full_name="Fictional Unrelated Person",
+    )
+    cross_church_person = Person.objects.create(
+        church=other_church,
+        full_name="Other Fictional Person",
+    )
+    led_group = Group.objects.create(
+        church=church,
+        name="Fictional Led Group",
+        kind=Group.Kind.SMALL_GROUP,
+    )
+    GroupMembership.objects.create(
+        church=church,
+        group=led_group,
+        person=leader_person,
+        role=GroupMembership.Role.LEADER,
+        joined_at=timezone.localdate(),
+    )
+    leader = make_worker(
+        church,
+        role=ChurchMembership.Role.LEADER,
+        username="fictional.scoped.lifecycle.leader",
+        person=leader_person,
+    )
+    client = authenticated_client(leader, church)
+
+    unrelated_response = client.post(
+        lifecycle_url("deactivate", unrelated_person),
+        format="json",
+    )
+    cross_church_response = client.post(
+        lifecycle_url("deactivate", cross_church_person),
+        format="json",
+    )
+
+    unrelated_person.refresh_from_db()
+    cross_church_person.refresh_from_db()
+    assert unrelated_response.status_code == 404
+    assert cross_church_response.status_code == 404
+    assert unrelated_person.membership_status != Person.MembershipStatus.INACTIVE
+    assert cross_church_person.membership_status != Person.MembershipStatus.INACTIVE
+    assert not AuditEvent.objects.filter(
+        action=AuditEvent.Action.PERSON_DEACTIVATED,
+        actor=leader,
+    ).exists()
 
 
 def test_admin_anonymizes_identifiers_and_sensitive_related_text() -> None:

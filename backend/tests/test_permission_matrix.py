@@ -78,11 +78,38 @@ def test_every_sensitive_person_endpoint_has_allow_and_deny_coverage(
 ) -> None:
     church = Church.objects.create(name=f"Fictional Matrix Church {role} {endpoint}")
     person = Person.objects.create(church=church, full_name="Fictional Subject")
+    membership_person = None
+    if role == ChurchMembership.Role.LEADER:
+        membership_person = Person.objects.create(
+            church=church,
+            full_name="Fictional Leader",
+        )
     membership = make_membership(
         church,
         role=role,
         suffix=f"{role}.{endpoint}",
+        person=membership_person,
     )
+    if membership_person is not None:
+        led_group = Group.objects.create(
+            church=church,
+            name="Fictional Led Group",
+            kind=Group.Kind.SMALL_GROUP,
+        )
+        GroupMembership.objects.create(
+            church=church,
+            group=led_group,
+            person=membership_person,
+            role=GroupMembership.Role.LEADER,
+            joined_at=timezone.localdate(),
+        )
+        GroupMembership.objects.create(
+            church=church,
+            group=led_group,
+            person=person,
+            role=GroupMembership.Role.MEMBER,
+            joined_at=timezone.localdate(),
+        )
     client = authenticated_client(membership)
     url = reverse(f"people:{endpoint}", args=(person.id,))
 
