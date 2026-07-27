@@ -90,11 +90,16 @@ class FollowUpSerializer(serializers.ModelSerializer):
                 errors["outcome"] = "Record an outcome before closing the follow-up."
         elif (
             assigned_to is not None
-            or status in (FollowUp.Status.ASSIGNED, FollowUp.Status.IN_PROGRESS)
-            or (status == FollowUp.Status.CONNECTED and not normalized_outcome)
+            or status
+            in (
+                FollowUp.Status.ASSIGNED,
+                FollowUp.Status.IN_PROGRESS,
+                FollowUp.Status.CONNECTED,
+            )
         ) and due_at is None:
             errors["due_at"] = (
-                "Set a due date for an assigned or open follow-up with a next action."
+                "Set a due date when a worker is assigned or the follow-up "
+                "is Assigned, In progress, or Connected."
             )
 
         if errors:

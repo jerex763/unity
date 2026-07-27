@@ -685,7 +685,7 @@ describe('Follow-up queue', () => {
         jsonResponse(
           {
             due_at: [
-              'Set a due date for an assigned or open follow-up with a next action.',
+              'Set a due date when a worker is assigned or the follow-up is Assigned, In progress, or Connected.',
             ],
           },
           400,
@@ -708,7 +708,7 @@ describe('Follow-up queue', () => {
 
     expect(
       await screen.findByText(
-        'Set a due date for an assigned or open follow-up with a next action.',
+        'Set a due date when a worker is assigned or the follow-up is Assigned, In progress, or Connected.',
       ),
     ).toBeVisible()
     expect(dueInput).toHaveAttribute('aria-invalid', 'true')

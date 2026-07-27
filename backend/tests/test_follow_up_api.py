@@ -129,7 +129,7 @@ def test_working_transitions_require_a_next_action_or_outcome(
     assert error_field in response.json()
 
 
-def test_connected_outcome_and_closed_outcome_can_be_saved_without_due_date() -> None:
+def test_connected_still_requires_due_and_closed_outcome_does_not() -> None:
     church = Church.objects.create(name="Fictional Follow-up Outcomes")
     client, _ = member(church, ChurchMembership.Role.PASTOR, "outcomes")
     connected_item = follow_up(church, suffix="Connected Outcome")
@@ -155,9 +155,8 @@ def test_connected_outcome_and_closed_outcome_can_be_saved_without_due_date() ->
         format="json",
     )
 
-    assert connected.status_code == 200
-    assert connected.json()["outcome"] == "Connected with a fictional community group."
-    assert connected.json()["closed_at"] is None
+    assert connected.status_code == 400
+    assert "due_at" in connected.json()
     assert closed.status_code == 200
     assert closed.json()["closed_at"] is not None
 
