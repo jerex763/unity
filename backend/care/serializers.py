@@ -64,6 +64,45 @@ class FollowUpSerializer(serializers.ModelSerializer):
             "wechat_id": instance.person.wechat_id,
         }
 
+    def validate(self, attrs: dict[str, object]) -> dict[str, object]:
+        instance = self.instance
+        status = attrs.get(
+            "status",
+            instance.status if instance is not None else FollowUp.Status.NEW,
+        )
+        assigned_to = attrs.get(
+            "assigned_to",
+            instance.assigned_to if instance is not None else None,
+        )
+        due_at = attrs.get(
+            "due_at",
+            instance.due_at if instance is not None else None,
+        )
+        outcome = attrs.get(
+            "outcome",
+            instance.outcome if instance is not None else None,
+        )
+        normalized_outcome = outcome.strip() if isinstance(outcome, str) else outcome
+
+        errors: dict[str, str] = {}
+        if status == FollowUp.Status.CLOSED:
+            if not normalized_outcome:
+                errors["outcome"] = "Record an outcome before closing the follow-up."
+        elif (
+            assigned_to is not None
+            or status in (FollowUp.Status.ASSIGNED, FollowUp.Status.IN_PROGRESS)
+            or (status == FollowUp.Status.CONNECTED and not normalized_outcome)
+        ) and due_at is None:
+            errors["due_at"] = (
+                "Set a due date for an assigned or open follow-up with a next action."
+            )
+
+        if errors:
+            raise serializers.ValidationError(errors)
+        if "outcome" in attrs:
+            attrs["outcome"] = normalized_outcome or None
+        return attrs
+
     def update(self, instance: FollowUp, validated_data: dict[str, object]):
         new_status = validated_data.get("status", instance.status)
         if new_status == FollowUp.Status.CLOSED and instance.closed_at is None:

@@ -87,6 +87,81 @@ def test_pastor_can_view_pipeline_assign_and_close_follow_up() -> None:
     assert pastor.user_id != leader.user_id
 
 
+@pytest.mark.parametrize(
+    ("payload", "error_field"),
+    [
+        ({"assigned_to": "worker"}, "due_at"),
+        ({"status": FollowUp.Status.ASSIGNED, "due_at": None}, "due_at"),
+        ({"status": FollowUp.Status.IN_PROGRESS, "due_at": None}, "due_at"),
+        ({"status": FollowUp.Status.CONNECTED, "due_at": None}, "due_at"),
+        (
+            {
+                "status": FollowUp.Status.CLOSED,
+                "due_at": None,
+                "outcome": "   ",
+            },
+            "outcome",
+        ),
+    ],
+)
+def test_working_transitions_require_a_next_action_or_outcome(
+    payload: dict[str, object],
+    error_field: str,
+) -> None:
+    church = Church.objects.create(name=f"Fictional Validation {error_field}")
+    client, _ = member(
+        church, ChurchMembership.Role.PASTOR, f"validation.{error_field}"
+    )
+    _, worker = member(church, ChurchMembership.Role.LEADER, f"worker.{error_field}")
+    item = follow_up(church, suffix=f"Validation {error_field}")
+    item.due_at = None
+    item.save(update_fields=("due_at", "updated_at"))
+    if payload.get("assigned_to") == "worker":
+        payload["assigned_to"] = worker.user_id
+
+    response = client.patch(
+        reverse("care:follow-up-detail", args=(item.id,)),
+        payload,
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert error_field in response.json()
+
+
+def test_connected_outcome_and_closed_outcome_can_be_saved_without_due_date() -> None:
+    church = Church.objects.create(name="Fictional Follow-up Outcomes")
+    client, _ = member(church, ChurchMembership.Role.PASTOR, "outcomes")
+    connected_item = follow_up(church, suffix="Connected Outcome")
+    closed_item = follow_up(church, suffix="Closed Outcome")
+    detail_name = "care:follow-up-detail"
+
+    connected = client.patch(
+        reverse(detail_name, args=(connected_item.id,)),
+        {
+            "status": FollowUp.Status.CONNECTED,
+            "due_at": None,
+            "outcome": "  Connected with a fictional community group.  ",
+        },
+        format="json",
+    )
+    closed = client.patch(
+        reverse(detail_name, args=(closed_item.id,)),
+        {
+            "status": FollowUp.Status.CLOSED,
+            "due_at": None,
+            "outcome": "Fictional follow-up completed.",
+        },
+        format="json",
+    )
+
+    assert connected.status_code == 200
+    assert connected.json()["outcome"] == "Connected with a fictional community group."
+    assert connected.json()["closed_at"] is None
+    assert closed.status_code == 200
+    assert closed.json()["closed_at"] is not None
+
+
 def test_reopening_closed_follow_up_clears_closed_at() -> None:
     church = Church.objects.create(name="Fictional Follow-up Reopening")
     client, _ = member(church, ChurchMembership.Role.PASTOR, "reopening")
@@ -95,7 +170,10 @@ def test_reopening_closed_follow_up_clears_closed_at() -> None:
 
     closed = client.patch(
         detail_url,
-        {"status": FollowUp.Status.CLOSED},
+        {
+            "status": FollowUp.Status.CLOSED,
+            "outcome": "Fictional follow-up completed.",
+        },
         format="json",
     )
     item.refresh_from_db()

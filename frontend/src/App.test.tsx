@@ -671,4 +671,46 @@ describe('Follow-up queue', () => {
     expect(fetchMock.mock.calls[4]?.[0]).toBe('/api/follow-ups/71/')
     expect(fetchMock.mock.calls[4]?.[1]).toMatchObject({ method: 'PATCH' })
   })
+
+  it('pairs assignment with due date and shows API field errors', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse([followUp]))
+      .mockResolvedValueOnce(
+        jsonResponse([{ id: 1, username: 'alex', name: 'Alex Chen' }]),
+      )
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            due_at: [
+              'Set a due date for an assigned or open follow-up with a next action.',
+            ],
+          },
+          400,
+        ),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+
+    renderApp('/follow-ups')
+    await screen.findByText('Mia Chen')
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+
+    expect(
+      screen.getByRole('group', { name: 'Assignment and due date' }),
+    ).toBeVisible()
+    await user.selectOptions(screen.getByLabelText('Assigned to'), '1')
+    const dueInput = screen.getByLabelText('Due')
+    await user.clear(dueInput)
+    await user.click(screen.getByRole('button', { name: 'Save update' }))
+
+    expect(
+      await screen.findByText(
+        'Set a due date for an assigned or open follow-up with a next action.',
+      ),
+    ).toBeVisible()
+    expect(dueInput).toHaveAttribute('aria-invalid', 'true')
+  })
 })

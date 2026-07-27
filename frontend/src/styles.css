@@ -1589,6 +1589,36 @@ a {
   font-weight: 750;
 }
 
+.follow-up-assignment {
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--color-beige);
+  border-radius: 0.8rem;
+}
+
+.follow-up-assignment legend {
+  padding: 0 0.35rem;
+  font-weight: 750;
+}
+
+.follow-up-assignment > p {
+  margin: 0 0 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.follow-up-assignment > div {
+  display: grid;
+  gap: 1rem;
+}
+
+.follow-up-form .field-error {
+  color: var(--color-urgent);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .follow-up-form input,
 .follow-up-form select,
 .follow-up-form textarea {
@@ -1599,6 +1629,16 @@ a {
   border-radius: 0.7rem;
   color: var(--color-text);
   background: var(--color-card);
+}
+
+.follow-up-form [aria-invalid='true'] {
+  border-color: var(--color-urgent);
+}
+
+@media (min-width: 48rem) {
+  .follow-up-assignment > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .interaction-log {

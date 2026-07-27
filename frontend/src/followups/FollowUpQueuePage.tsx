@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { apiRequest } from '../api/client'
+import { ApiError, apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import type {
   FollowUp,
@@ -26,6 +26,14 @@ type EditFields = {
   outcome: string
 }
 
+type EditFieldErrors = Partial<Record<keyof EditFields, string>>
+
+function firstError(value: unknown): string | undefined {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0]
+  return undefined
+}
+
 function editFields(item: FollowUp): EditFields {
   return {
     status: item.status,
@@ -45,6 +53,7 @@ export function FollowUpQueuePage() {
   const [loadError, setLoadError] = useState('')
   const [editing, setEditing] = useState<FollowUp | null>(null)
   const [fields, setFields] = useState<EditFields | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<EditFieldErrors>({})
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [interactions, setInteractions] = useState<Interaction[]>([])
@@ -80,6 +89,7 @@ export function FollowUpQueuePage() {
   function beginEdit(item: FollowUp) {
     setEditing(item)
     setFields(editFields(item))
+    setFieldErrors({})
     setSaveError('')
     setInteractionError('')
     void apiRequest<Interaction[]>(`/follow-ups/${item.id}/interactions/`)
@@ -115,12 +125,14 @@ export function FollowUpQueuePage() {
     value: EditFields[Key],
   ) {
     setFields((current) => (current ? { ...current, [key]: value } : current))
+    setFieldErrors((current) => ({ ...current, [key]: undefined }))
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editing || !fields) return
     setIsSaving(true)
+    setFieldErrors({})
     setSaveError('')
     try {
       const updated = await apiRequest<FollowUp>(`/follow-ups/${editing.id}/`, {
@@ -138,8 +150,25 @@ export function FollowUpQueuePage() {
       )
       setEditing(null)
       setFields(null)
-    } catch {
-      setSaveError(t('followUps.saveError'))
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const nextFieldErrors = Object.fromEntries(
+          (Object.keys(fields) as (keyof EditFields)[])
+            .map((key) => [key, firstError(error.payload[key])])
+            .filter((entry): entry is [keyof EditFields, string] =>
+              Boolean(entry[1]),
+            ),
+        )
+        setFieldErrors(nextFieldErrors)
+        const generalError =
+          firstError(error.payload.non_field_errors) ??
+          firstError(error.payload.detail)
+        if (generalError || !Object.keys(nextFieldErrors).length) {
+          setSaveError(generalError ?? t('followUps.saveError'))
+        }
+      } else {
+        setSaveError(t('followUps.saveError'))
+      }
     } finally {
       setIsSaving(false)
     }
@@ -283,35 +312,87 @@ export function FollowUpQueuePage() {
                 ))}
               </select>
             </label>
-            <label>
-              <span>{t('followUps.assignee')}</span>
-              <select
-                onChange={(event) => update('assigned_to', event.target.value)}
-                value={fields.assigned_to}
-              >
-                <option value="">{t('followUps.unassigned')}</option>
-                {workers.map((worker) => (
-                  <option key={worker.id} value={worker.id}>
-                    {worker.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>{t('followUps.due')}</span>
-              <input
-                onChange={(event) => update('due_at', event.target.value)}
-                type="date"
-                value={fields.due_at}
-              />
-            </label>
+            <fieldset className="follow-up-assignment wide-field">
+              <legend>{t('followUps.assignmentLegend')}</legend>
+              <p>{t('followUps.assignmentHelp')}</p>
+              <div>
+                <label>
+                  <span>{t('followUps.assignee')}</span>
+                  <select
+                    aria-label={t('followUps.assignee')}
+                    aria-describedby={
+                      fieldErrors.assigned_to
+                        ? 'follow-up-assignee-error'
+                        : undefined
+                    }
+                    aria-invalid={Boolean(fieldErrors.assigned_to)}
+                    onChange={(event) =>
+                      update('assigned_to', event.target.value)
+                    }
+                    value={fields.assigned_to}
+                  >
+                    <option value="">{t('followUps.unassigned')}</option>
+                    {workers.map((worker) => (
+                      <option key={worker.id} value={worker.id}>
+                        {worker.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.assigned_to ? (
+                    <span
+                      className="field-error"
+                      id="follow-up-assignee-error"
+                      role="alert"
+                    >
+                      {fieldErrors.assigned_to}
+                    </span>
+                  ) : null}
+                </label>
+                <label>
+                  <span>{t('followUps.due')}</span>
+                  <input
+                    aria-label={t('followUps.due')}
+                    aria-describedby={
+                      fieldErrors.due_at ? 'follow-up-due-error' : undefined
+                    }
+                    aria-invalid={Boolean(fieldErrors.due_at)}
+                    onChange={(event) => update('due_at', event.target.value)}
+                    type="date"
+                    value={fields.due_at}
+                  />
+                  {fieldErrors.due_at ? (
+                    <span
+                      className="field-error"
+                      id="follow-up-due-error"
+                      role="alert"
+                    >
+                      {fieldErrors.due_at}
+                    </span>
+                  ) : null}
+                </label>
+              </div>
+            </fieldset>
             <label className="wide-field">
               <span>{t('followUps.outcome')}</span>
               <textarea
+                aria-label={t('followUps.outcome')}
+                aria-describedby={
+                  fieldErrors.outcome ? 'follow-up-outcome-error' : undefined
+                }
+                aria-invalid={Boolean(fieldErrors.outcome)}
                 onChange={(event) => update('outcome', event.target.value)}
                 rows={3}
                 value={fields.outcome}
               />
+              {fieldErrors.outcome ? (
+                <span
+                  className="field-error"
+                  id="follow-up-outcome-error"
+                  role="alert"
+                >
+                  {fieldErrors.outcome}
+                </span>
+              ) : null}
             </label>
             {saveError ? (
               <p className="form-error wide-field" role="alert">

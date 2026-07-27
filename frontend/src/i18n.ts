@@ -204,6 +204,9 @@ const resources = {
         viewProfile: 'View {{name}} profile',
       },
       followUps: {
+        assignmentHelp:
+          'Choose the responsible worker and their due date together.',
+        assignmentLegend: 'Assignment and due date',
         assignee: 'Assigned to',
         board: 'Follow-up pipeline',
         call: 'Call',
