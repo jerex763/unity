@@ -164,9 +164,11 @@ Creating or importing a person never creates consent automatically.
 - `POST /api/events/<id>/registrations/<registration-id>/check-in/` — set or
   undo manual attendance (`{"checked_in": true|false}`)
 
-The first non-cancelled event registration for a Person still marked `visitor`
-creates one open `event_visit` follow-up. Re-registration, later events, and
-manual check-in of historical rows are idempotent against that first-visit rule.
+The first actual event check-in for a Person still marked `visitor` creates one
+`event_visit` follow-up. Advance registration alone does not create one.
+Walk-ins are checked in immediately, while repeated check-in, attendance
+corrections, cancellation, later events, and membership-status changes preserve
+and do not duplicate or delete the first-visit follow-up history.
 
 - `GET /api/follow-ups/` — role-filtered follow-up pipeline
 - `GET /api/follow-ups/mine/` — current worker's open assignments, due first

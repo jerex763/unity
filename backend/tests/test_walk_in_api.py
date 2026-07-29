@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 
 from accounts.constants import ACTIVE_CHURCH_SESSION_KEY
 from accounts.models import ChurchMembership, User
+from care.models import FollowUp
 from events.models import Event, EventRegistration
 from people.models import Person
 from tenancy.models import Church
@@ -60,6 +61,14 @@ def test_worker_quick_adds_checked_in_walk_in_atomically() -> None:
     assert registration.checked_in_at is not None
     assert registration.checkin_method == EventRegistration.CheckinMethod.MANUAL
     assert response.json()["needs_transport"] is True
+    assert (
+        FollowUp.objects.filter(
+            church=church,
+            person=person,
+            source=FollowUp.Source.EVENT_VISIT,
+        ).count()
+        == 1
+    )
 
 
 def test_walk_in_reuses_same_church_contact_without_duplicate_person() -> None:

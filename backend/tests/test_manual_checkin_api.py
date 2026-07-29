@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 
 from accounts.constants import ACTIVE_CHURCH_SESSION_KEY
 from accounts.models import ChurchMembership, User
+from care.models import FollowUp
 from events.models import Event, EventRegistration
 from people.models import Person
 from tenancy.models import Church
@@ -100,6 +101,7 @@ def test_member_cannot_check_in_and_cross_church_ids_are_hidden() -> None:
     )
     registration.refresh_from_db()
     assert registration.checked_in_at is None
+    assert not FollowUp.objects.filter(person=registration.person).exists()
 
 
 def test_cancelled_registration_cannot_be_checked_in() -> None:

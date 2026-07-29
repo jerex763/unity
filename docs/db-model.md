@@ -226,7 +226,7 @@ The FAITH Matrix, simplified. One open follow-up per person at a time.
 | closed_at | timestamptz, nullable | |
 | outcome | varchar(200), nullable | e.g. "joined Wed night group" |
 
-Constraint: `unique (person_id) where status != 'closed'` (partial) — Django: `UniqueConstraint(fields=['person'], condition=~Q(status='closed'), name='follow_up_one_open_per_person')`. Index: `(church_id, assigned_to_id, status)` — backs the core "my open follow-ups" view. Auto-creation rule (application logic): first `walk_in`/`visitor` registration → `follow_up(source=event_visit, status=new)`.
+Constraint: `unique (person_id) where status != 'closed'` (partial) — Django: `UniqueConstraint(fields=['person'], condition=~Q(status='closed'), name='follow_up_one_open_per_person')`. Index: `(church_id, assigned_to_id, status)` — backs the core "my open follow-ups" view. Auto-creation rule (application logic): a Person still marked `visitor` gets one `follow_up(source=event_visit, status=new)` on their first actual check-in. Advance registration alone does not create it; walk-in registration does because it records attendance immediately.
 
 ## 10. interaction
 

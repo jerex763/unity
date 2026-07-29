@@ -67,9 +67,6 @@ def register_for_event(
     registration.checkin_method = None
     registration.full_clean()
     registration.save()
-    from care.services import ensure_first_event_follow_up
-
-    ensure_first_event_follow_up(registration)
     return registration
 
 
