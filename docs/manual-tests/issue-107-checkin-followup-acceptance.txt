@@ -21,8 +21,10 @@ Unity #107 云端人工验收步骤
 必须同时满足以下规则才算通过：
 
 1. 普通网上报名不会创建 Follow-up。
-2. Visitor 第一次实际 Check in 时创建恰好一条 event_visit Follow-up。
-3. Walk-in 会自动签到，并立即创建恰好一条 event_visit Follow-up。
+2. Visitor 第一次实际 Check in 后必须恰好有一条开放的 Follow-up。
+   如果原来没有开放任务，创建 event_visit；如果已经有其他来源的开放任务，
+   复用原任务，不覆盖 Source、负责人或 Interaction 历史。
+3. Walk-in 会自动签到；没有开放任务时立即创建一条 event_visit Follow-up。
 4. 签到前取消报名不会创建 Follow-up。
 5. 重复签到、撤销后重新签到、参加后续活动，都不会创建重复 Follow-up。
 6. 已经创建的 Follow-up 不会因取消报名、撤销签到或 Person 身份改变而被删除。
@@ -109,6 +111,10 @@ C. 在 Django Admin → People → Persons 创建以下人物
    Membership status: Inactive
    Email: issue107.inactive@example.test
 
+9. Issue107 Fictional Existing Open Visitor
+   Membership status: Visitor
+   Email: issue107.existing-open@example.test
+
 全部选择 Fictional Test Church。
 
 D. 确认数据是干净的
@@ -133,18 +139,23 @@ D. 确认数据是干净的
 
 1. 使用 Pastor 或 Leader 登录普通 Unity 页面。
 2. 打开 Event A。
-3. 在 Registration list 中为 Issue107 Fictional Advance Visitor 创建普通报名。
-4. 确认报名状态为 Registered，Checked in 为空。
+3. 在 Registration list 中选择 Issue107 Fictional Advance Visitor，创建普通报名。
+4. 确认报名状态为 Registered，且操作按钮显示 Check in，而不是 Undo check-in。
 5. 刷新页面。
 6. 打开 Follow-up queue。
 7. 搜索或检查 Issue107 Fictional Advance Visitor。
-8. 再回到 Event A，更新这条报名的普通资料（例如 Note）。
-9. 再次刷新 Follow-up queue。
+8. 再回到 Event A 的新增报名表单，重新选择同一个
+   Issue107 Fictional Advance Visitor。
+9. 在 Note 输入 “Fictional updated registration”，再次提交。
+   这是用相同 Person 重新提交 upsert，不是寻找一个不存在的 Edit 按钮。
+10. 确认仍是同一条报名，然后再次刷新 Follow-up queue。
+11. 如需精确检查数据库字段，到 Django Admin → Events →
+    Event registrations 打开该记录，确认 Checked in at 和 Checkin method 都为空。
 
 预期：
 
 - 普通报名创建成功。
-- 更新报名成功。
+- 用相同 Person 重提后更新同一条报名，没有创建第二条 Registration。
 - 此人物没有出现在 Follow-up queue。
 - Django Admin → Care → Follow ups 中也没有此人物的 Follow-up。
 
@@ -162,9 +173,11 @@ D. 确认数据是干净的
 
 1. 为 Issue107 Fictional Cancel Visitor 创建普通报名。
 2. 在签到前取消这条报名。
-3. 确认报名状态为 Cancelled，Checked in 为空。
+3. 在普通页面确认报名状态为 Cancelled。
 4. 刷新 Follow-up queue。
 5. 在 Django Admin → Care → Follow ups 中搜索此人物。
+6. 在 Django Admin → Events → Event registrations 打开该报名，
+   确认 Checked in at 和 Checkin method 都为空。
 
 预期：
 
@@ -188,10 +201,13 @@ D. 确认数据是干净的
 2. 报名后立即检查 Follow-up queue，确认还没有此人物。
 3. 返回 Event A 的 Registration list。
 4. 对此人物执行 Check in。
-5. 确认 Checked in 显示时间，Check-in method 为 Manual（如果页面显示该字段）。
+5. 普通前端不显示精确签到时间或 Checkin method；确认操作按钮从
+   Check in 变为 Undo check-in，这就是前端的已签到标志。
 6. 刷新 Follow-up queue。
 7. 打开此人物的 Follow-up。
-8. 如有需要，在 Django Admin → Care → Follow ups 核对 Source。
+8. 在 Django Admin → Events → Event registrations 打开该报名，
+   确认 Checked in at 有时间，Checkin method = Manual。
+9. 在 Django Admin → Care → Follow ups 核对 Source。
 
 预期：
 
@@ -223,15 +239,18 @@ D. 确认数据是干净的
 
 3. 保存。
 4. 检查新 Person 的 Membership status。
-5. 检查新 Registration 的状态和签到时间。
+5. 普通页面确认 Registration status = Walk-in，并且操作按钮显示
+   Undo check-in；前端不显示精确签到时间或 Checkin method。
 6. 刷新 Follow-up queue。
 7. 在 Django Admin → Care → Follow ups 中搜索此人物并计数。
+8. 在 Django Admin → Events → Event registrations 打开该报名，
+   确认 Checked in at 有时间，Checkin method = Manual。
 
 预期：
 
 - 创建一条新 Person，Membership status = Visitor。
 - Registration status = Walk-in。
-- Checked in 有时间，不为空。
+- 普通页面显示 Undo check-in；Django Admin 中 Checked in at 有时间。
 - Follow-up queue 中出现此人物。
 - 只有一条 event_visit Follow-up，Status = New。
 
@@ -246,15 +265,16 @@ D. 确认数据是干净的
 
 A. 重复请求与撤销后重签
 
-1. 在 Event A 中确认此人物已经签到。
-2. 刷新 Event A，再次确认仍只有一条报名和一个签到时间。
-3. 如果 UI 提供 Undo check-in，执行一次 Undo check-in。
-4. 确认报名的 Checked in 变为空。
+1. 在 Event A 中确认此人物的操作按钮是 Undo check-in。
+2. 刷新 Event A，再次确认仍只有一条报名，按钮仍是 Undo check-in。
+3. 执行一次 Undo check-in。
+4. 确认操作按钮变回 Check in。
 5. 刷新 Follow-up queue。
 6. 确认原 Follow-up 仍存在，没有被删除。
 7. 再次执行 Check in。
-8. 刷新 Follow-up queue。
-9. 在 Django Admin → Care → Follow ups 中按 Person 搜索并计数。
+8. 确认操作按钮再次变为 Undo check-in。
+9. 刷新 Follow-up queue。
+10. 在 Django Admin → Care → Follow ups 中按 Person 搜索并计数。
 
 预期：
 
@@ -279,7 +299,7 @@ B. 后续活动
 实际观察：
 
 ======================================================================
-十、场景 6：取消报名和身份变化保留已有历史
+十-A、场景 6A：取消报名和身份变化保留已有历史
 ======================================================================
 
 测试人物：Issue107 Fictional History Visitor
@@ -321,6 +341,53 @@ Status: Closed
 实际观察：
 
 ======================================================================
+十-B、场景 6B：已有开放 Follow-up 时复用且不覆盖历史
+======================================================================
+
+测试人物：Issue107 Fictional Existing Open Visitor
+测试活动：Issue107 Fictional Check-in Event A
+
+准备：
+
+1. 在 Django Admin → Care → Follow ups → Add 创建：
+
+   Church: Fictional Test Church
+   Person: Issue107 Fictional Existing Open Visitor
+   Source: Friend invite
+   Status: New
+
+2. 保存后记下 Follow-up ID。
+3. 在 Django Admin → Care → Interactions → Add 创建：
+
+   Church: Fictional Test Church
+   Person: Issue107 Fictional Existing Open Visitor
+   Author: 选择虚构测试 Pastor
+   Kind: Message
+   Summary: Fictional existing open history
+   Visibility: Staff
+   Follow up: 选择刚创建的 Friend invite Follow-up
+
+步骤：
+
+1. 在普通 Unity 页面为此 Visitor 报名 Event A。
+2. 确认报名时没有新增 Follow-up。
+3. 执行 Check in，并确认按钮变为 Undo check-in。
+4. 打开 Follow-up queue。
+5. 在 Django Admin → Care → Follow ups 按 Person 搜索并计数。
+6. 重新打开原 Follow-up 和 Interaction。
+
+预期：
+
+- 此 Person 仍然只有一条开放 Follow-up。
+- Follow-up ID 不变。
+- Source 仍是 Friend invite，不会被覆盖成 Event visit。
+- 原 Interaction “Fictional existing open history” 仍存在。
+- 首次签到的职责是确保一条开放任务，不是强制再建 event_visit。
+
+结果：Passed / Failed
+实际观察：
+
+======================================================================
 十一、场景 7：非 Visitor 身份不产生新人 Follow-up
 ======================================================================
 
@@ -336,8 +403,9 @@ Status: Closed
 1. 为其创建 Event A 普通报名。
 2. 确认普通报名后没有 Follow-up。
 3. 对其执行 Check in。
-4. 刷新 Follow-up queue。
-5. 在 Django Admin → Care → Follow ups 中按 Person 搜索。
+4. 确认普通页面按钮变为 Undo check-in。
+5. 刷新 Follow-up queue。
+6. 在 Django Admin → Care → Follow ups 中按 Person 搜索。
 
 预期：
 
@@ -355,7 +423,7 @@ Inactive: Passed / Failed
 实际观察：
 
 ======================================================================
-十二、场景 8：Pastor 的全教会 Follow-up queue 可见性
+十二、场景 8：Pastor 全教会可见性与跨教会 404
 ======================================================================
 
 前提：
@@ -364,7 +432,7 @@ Inactive: Passed / Failed
 - Issue107 Fictional Walkin Visitor 已通过 Walk-in 产生 Follow-up。
 - 两人都属于 Fictional Test Church。
 
-步骤：
+A. 本教会 Pastor queue
 
 1. 使用 Fictional Test Church 的 Pastor 测试账号登录。
 2. 打开 Follow-up queue。
@@ -372,17 +440,70 @@ Inactive: Passed / Failed
 4. 搜索或查找 Issue107 Fictional Walkin Visitor。
 5. 分别打开两条 Follow-up。
 6. 确认能看到普通 Follow-up 内容。
-7. 如果另有 Fictional Other Church 测试数据，确认当前 Pastor 搜索不到其他教会的 Person 和 Follow-up。
-8. 不要为了本项测试创建或查看任何真实教会数据。
+
+B. 创建完整的第二教会虚构数据
+
+1. 使用 Django superuser 打开 Django Admin → Tenancy → Churches → Add。
+2. 创建：
+
+   Name: Issue107 Fictional Other Church
+
+3. 在 Django Admin → People → Persons → Add 创建：
+
+   Church: Issue107 Fictional Other Church
+   Full name: Issue107 Fictional Other Church Visitor
+   Membership status: Visitor
+   Email: issue107.other-church@example.test
+
+4. 在 Django Admin → Care → Follow ups → Add 创建：
+
+   Church: Issue107 Fictional Other Church
+   Person: Issue107 Fictional Other Church Visitor
+   Source: Event visit
+   Status: New
+
+5. 保存后，从浏览器地址栏记录该 Follow-up 的数字 ID。Django Admin 编辑页
+   地址通常包含 `/admin/care/followup/<数字ID>/change/`。
+6. 把该数字记为 OTHER_FOLLOW_UP_ID。
+
+C. 以当前教会 Pastor 验证列表隔离和精确 API 404
+
+1. 退出 Django Admin，或使用另一个无痕窗口。
+2. 使用 Fictional Test Church 的 Pastor 测试账号登录普通 Unity 页面。
+3. 打开 Follow-up queue，确认搜索不到
+   Issue107 Fictional Other Church Visitor。
+4. 打开浏览器 Developer Tools → Console。
+5. 把下面命令中的 OTHER_FOLLOW_UP_ID 替换为刚才记录的数字，然后执行：
+
+   fetch('/api/follow-ups/OTHER_FOLLOW_UP_ID/', {
+     credentials: 'same-origin'
+   }).then(async response => {
+     console.log('status=', response.status);
+     console.log('body=', await response.text());
+   });
+
+6. 查看 Console 输出的 status。
+
+精确预期：
+
+- `GET /api/follow-ups/<other-id>/` 返回 HTTP 404。
+- Response body 不得显示其他教会 Person、Follow-up、负责人或 Interaction 内容。
+- Follow-up queue 搜索不到其他教会人物。
+
+如果测试人员无法打开 Developer Tools、无法取得 OTHER_FOLLOW_UP_ID，或没有
+Django superuser 权限：
+
+- 本项必须记录为 “Not tested”，不能填写 Passed。
+- 在实际观察中写明无法执行的原因。
+- 其余可执行项目继续测试，不要猜测 404 结果。
 
 预期：
 
 - Pastor 能看到本教会两条已经存在的测试 Follow-up。
 - 是否属于 Pastor 自己的小组不影响 Pastor 的全教会可见性。
-- 其他教会 Follow-up 不出现在列表中。
-- 即使知道其他教会对象 ID，直接访问也应返回 404，而不是泄露资料。
+- 其他教会 Follow-up 不出现在列表中，精确 detail API 返回 404。
 
-结果：Passed / Failed
+结果：Passed / Failed / Not tested
 实际观察：
 
 ======================================================================
@@ -394,13 +515,14 @@ Inactive: Passed / Failed
 1. 普通报名后立即出现 Follow-up。
 2. 签到前取消报名仍新建 Follow-up。
 3. Visitor 第一次 Check in 后没有 Follow-up。
-4. 一个人产生两条或以上 event_visit Follow-up。
+4. 一个人产生两条或以上开放 Follow-up，或后续活动重复创建 event_visit。
 5. Walk-in 没有签到时间，或没有 Follow-up。
 6. Undo check-in、取消报名或身份变化删除了已有 Follow-up/Interaction。
 7. Newcomer、Regular、Member 或 Inactive 签到后产生新人 Follow-up。
 8. Pastor 看不到本教会已经存在的 Follow-up。
 9. 当前教会账号能看到其他教会的 Follow-up。
 10. 页面看似隐藏，但直接访问 API 或对象 URL 仍泄露数据。
+11. 已有开放 Follow-up 的 Source、负责人或 Interaction 历史被覆盖。
 
 记录失败时请提供：
 
@@ -439,9 +561,12 @@ Inactive: Passed / Failed
 5. Django Admin → People → Persons
    删除名称以 “Issue107 Fictional” 开头、且确认没有非测试用途的 Person。
 
-6. 不要删除 Pastor、Leader 测试账号，除非这些账号本身也是本次临时创建且已确认无人使用。
+6. Django Admin → Tenancy → Churches
+   删除 Issue107 Fictional Other Church。删除前确认其中只剩本次虚构测试数据。
 
-7. 再次搜索 “Issue107 Fictional”，确认没有遗留测试记录。
+7. 不要删除 Pastor、Leader 测试账号，除非这些账号本身也是本次临时创建且已确认无人使用。
+
+8. 再次搜索 “Issue107 Fictional”，确认没有遗留测试记录。
 
 ======================================================================
 十五、验收报告模板
@@ -457,17 +582,18 @@ All data fictional: Yes / No
 
 1. Ordinary registration creates no Follow-up: Passed / Failed
 2. Cancellation before check-in creates no Follow-up: Passed / Failed
-3. First Visitor check-in creates exactly one Follow-up: Passed / Failed
-4. Walk-in is checked in and creates exactly one Follow-up: Passed / Failed
+3. First Visitor check-in leaves exactly one open Follow-up: Passed / Failed
+4. New Walk-in is checked in and gets exactly one open Follow-up: Passed / Failed
 5. Repeat/undo/recheck/later event creates no duplicate: Passed / Failed
 6. Cancellation/status change preserves Follow-up and Interaction: Passed / Failed
-7. Newcomer excluded: Passed / Failed
-8. Regular excluded: Passed / Failed
-9. Member excluded: Passed / Failed
-10. Inactive excluded: Passed / Failed
-11. Pastor sees all same-church test Follow-ups: Passed / Failed
-12. Cross-church isolation: Passed / Failed
-13. Test data cleanup completed: Yes / No
+7. Existing open Follow-up reused without overwrite: Passed / Failed
+8. Newcomer excluded: Passed / Failed
+9. Regular excluded: Passed / Failed
+10. Member excluded: Passed / Failed
+11. Inactive excluded: Passed / Failed
+12. Pastor sees all same-church test Follow-ups: Passed / Failed
+13. Cross-church exact detail API returns 404: Passed / Failed / Not tested
+14. Test data cleanup completed: Yes / No
 
 Unexpected UI behaviour:
 

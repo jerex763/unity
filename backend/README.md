@@ -22,6 +22,13 @@ python manage.py runserver
 
 Open <http://localhost:8000/api/health/> to verify the application is running.
 
+Local tests use in-memory SQLite by default for speed. Set
+`TEST_DATABASE_URL` to run them against PostgreSQL. CI sets this variable and
+runs the full backend suite on PostgreSQL 16, including the concurrent
+first-check-in test. That concurrency test is explicitly skipped on SQLite
+because SQLite cannot exercise PostgreSQL's partial-unique-constraint and
+`IntegrityError` recovery behaviour.
+
 ## Session authentication
 
 The MVP API uses Django sessions. `POST /api/auth/login/` accepts `username`,
@@ -164,11 +171,14 @@ Creating or importing a person never creates consent automatically.
 - `POST /api/events/<id>/registrations/<registration-id>/check-in/` — set or
   undo manual attendance (`{"checked_in": true|false}`)
 
-The first actual event check-in for a Person still marked `visitor` creates one
-`event_visit` follow-up. Advance registration alone does not create one.
-Walk-ins are checked in immediately, while repeated check-in, attendance
-corrections, cancellation, later events, and membership-status changes preserve
-and do not duplicate or delete the first-visit follow-up history.
+The first actual event check-in for a Person still marked `visitor` ensures the
+Person has exactly one open follow-up. When none is open, Unity creates an
+`event_visit` follow-up; when another open follow-up already exists, Unity
+reuses it without overwriting its source, assignment or interaction history.
+Advance registration alone does not trigger this rule. Walk-ins are checked in
+immediately, while repeated check-in, attendance corrections, cancellation,
+later events and membership-status changes preserve and do not duplicate or
+delete first-visit follow-up history.
 
 - `GET /api/follow-ups/` — role-filtered follow-up pipeline
 - `GET /api/follow-ups/mine/` — current worker's open assignments, due first

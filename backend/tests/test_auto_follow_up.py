@@ -36,11 +36,15 @@ def test_registration_and_pre_check_in_cancel_create_no_follow_up() -> None:
     first_event = event(church, worker, "Registration")
 
     registration = register_for_event(event=first_event, person=person)
+    assert not FollowUp.objects.filter(person=person).exists()
+
     repeated = register_for_event(
         event=first_event,
         person=person,
         note="Fictional updated registration",
     )
+    assert not FollowUp.objects.filter(person=person).exists()
+
     cancelled = cancel_registration(registration)
 
     assert repeated.pk == registration.pk
@@ -139,6 +143,16 @@ def test_existing_open_same_church_follow_up_is_reused() -> None:
         church=church,
         person=visitor,
         source=FollowUp.Source.FRIEND_INVITE,
+        status=FollowUp.Status.IN_PROGRESS,
+        assigned_to=worker,
+    )
+    interaction = Interaction.objects.create(
+        church=church,
+        person=visitor,
+        author=worker,
+        follow_up=existing,
+        kind=Interaction.Kind.MESSAGE,
+        summary="Fictional existing follow-up history",
     )
     registration = EventRegistration.objects.create(
         church=church,
@@ -149,7 +163,13 @@ def test_existing_open_same_church_follow_up_is_reused() -> None:
     )
 
     assert ensure_first_event_follow_up(registration) == existing
+    existing.refresh_from_db()
+    interaction.refresh_from_db()
     assert FollowUp.objects.filter(person=visitor).count() == 1
+    assert existing.source == FollowUp.Source.FRIEND_INVITE
+    assert existing.status == FollowUp.Status.IN_PROGRESS
+    assert existing.assigned_to == worker
+    assert interaction.follow_up == existing
 
 
 @pytest.mark.parametrize(
