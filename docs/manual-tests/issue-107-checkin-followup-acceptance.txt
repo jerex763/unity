@@ -13,6 +13,8 @@ Unity #107 云端人工验收步骤
 3. 不要在真实教会或真实活动中执行本测试。
 4. 所有测试人物姓名都使用本文给出的 “Issue107 Fictional ...” 前缀，方便最后清理。
 5. 如果云端尚未部署包含 #107 的版本，请先停止测试；旧版本会在普通报名时错误创建 Follow-up。
+6. 本轮所有 Visitor 必须是带唯一 RUN_ID 的全新 Person。禁止复用之前
+   Pastor 测试、旧 demo 或上一次 #107 测试创建的人物。
 
 ======================================================================
 二、通过规则摘要
@@ -21,9 +23,9 @@ Unity #107 云端人工验收步骤
 必须同时满足以下规则才算通过：
 
 1. 普通网上报名不会创建 Follow-up。
-2. Visitor 第一次实际 Check in 后必须恰好有一条开放的 Follow-up。
-   如果原来没有开放任务，创建 event_visit；如果已经有其他来源的开放任务，
-   复用原任务，不覆盖 Source、负责人或 Interaction 历史。
+2. 全新、没有历史 event_visit 的 Visitor 第一次实际 Check in 后必须有一条
+   开放 Follow-up。如果原来没有开放任务，创建 event_visit；如果已经有其他
+   来源的开放任务，复用原任务，不覆盖 Source、负责人或 Interaction 历史。
 3. Walk-in 会自动签到；没有开放任务时立即创建一条 event_visit Follow-up。
 4. 签到前取消报名不会创建 Follow-up。
 5. 重复签到、撤销后重新签到、参加后续活动，都不会创建重复 Follow-up。
@@ -31,6 +33,8 @@ Unity #107 云端人工验收步骤
 7. Newcomer、Regular、Member、Inactive 不会收到新人 event_visit Follow-up。
 8. Pastor 能在 Follow-up queue 看到本教会所有已经产生的测试 Follow-up。
 9. 其他教会的数据不可见；禁止访问应返回 404 或不显示数据。
+10. 任何历史 event_visit（包括旧版在报名时创建并已 Closed 的记录）都会阻止
+    后续签到再自动创建任务。系统不得迁移、删除或重新打开该旧记录。
 
 ======================================================================
 三、测试前准备
@@ -56,11 +60,28 @@ Unity #107 云端人工验收步骤
 四、创建干净的虚构测试数据
 ======================================================================
 
-A. 创建主测试活动
+A. 先生成本轮唯一 RUN_ID
+
+使用当前 Australia/Sydney 日期和时间生成 RUN_ID，例如：
+
+RUN_ID: 20260730-0115
+
+强制规则：
+
+- 本文后面出现的每个 Person 名称，实际创建时都要在末尾加空格和 RUN_ID。
+- 每个 Email 的 @ 前也要加 “.RUN_ID”。
+- 例如实际名称是：
+  Issue107 Fictional Advance Visitor 20260730-0115
+- 例如实际 Email 是：
+  issue107.advance.20260730-0115@example.test
+- 每次重新执行本文都生成新的 RUN_ID。
+- 即使找到同名旧 demo Person，也不要复用；必须创建本轮全新 Person。
+
+B. 创建主测试活动
 
 使用 Pastor 或 Leader 在普通 Unity 页面创建：
 
-Title: Issue107 Fictional Check-in Event A
+Title: Issue107 Fictional Check-in Event A RUN_ID
 Starts at: 当前时间之后 1 天
 Ends at: Starts at 之后 2 小时
 Signup opens: Yes
@@ -68,16 +89,18 @@ Signup closes at: 留空，或设为 Starts at 之前 1 小时
 Capacity: 留空
 Location: Fictional Hall
 
-B. 创建后续活动
+C. 创建后续活动
 
-Title: Issue107 Fictional Check-in Event B
+Title: Issue107 Fictional Check-in Event B RUN_ID
 Starts at: Event A 之后 1 天
 Ends at: Starts at 之后 2 小时
 Signup opens: Yes
 Capacity: 留空
 Location: Fictional Hall
 
-C. 在 Django Admin → People → Persons 创建以下人物
+D. 在 Django Admin → People → Persons 创建以下人物
+
+下列名称和 Email 是基名；必须按上面的规则加本轮 RUN_ID。
 
 1. Issue107 Fictional Advance Visitor
    Membership status: Visitor
@@ -115,9 +138,13 @@ C. 在 Django Admin → People → Persons 创建以下人物
    Membership status: Visitor
    Email: issue107.existing-open@example.test
 
+10. Issue107 Fictional Legacy Visitor
+    Membership status: Visitor
+    Email: issue107.legacy@example.test
+
 全部选择 Fictional Test Church。
 
-D. 确认数据是干净的
+E. 确认数据是干净的
 
 在 Django Admin 检查：
 
@@ -125,8 +152,14 @@ D. 确认数据是干净的
 - Care → Follow ups：以上人物没有任何旧 Follow-up。
 - Care → Interactions：以上人物没有任何旧 Interaction。
 
-如果存在同名旧数据，先确认它们全是虚构测试数据，再删除旧数据或改用新的唯一名称。
-不要删除无法确认来源的数据。
+还要逐一确认除专门的 Legacy 场景外，每个本轮 Visitor 都没有任何 Closed
+event_visit。只检查“当前没有开放任务”不够；Closed 历史也会触发兼容性抑制规则。
+
+如果带本轮 RUN_ID 的 Person 已存在，说明 RUN_ID 不唯一。不要复用或删除该人物，
+立即生成新的 RUN_ID 并重新创建本轮全部 Person。不要删除无法确认来源的数据。
+
+以下场景为了易读会省略名称末尾的 RUN_ID；每次选择 Person、Event 或搜索 Email
+时，都必须使用本轮带 RUN_ID 的完整值，不能选择没有 RUN_ID 的旧 demo 记录。
 
 ======================================================================
 五、场景 1：普通报名不创建 Follow-up
@@ -388,6 +421,51 @@ Status: Closed
 实际观察：
 
 ======================================================================
+十-C、场景 6C：Closed legacy event_visit 抑制重复自动联系
+======================================================================
+
+测试人物：Issue107 Fictional Legacy Visitor RUN_ID
+测试活动：Issue107 Fictional Check-in Event A RUN_ID
+
+本场景模拟旧版本曾在“报名时”错误创建、后来已经关闭的 event_visit。
+
+准备：
+
+1. 确认这个带本轮 RUN_ID 的 Legacy Visitor 是全新 Person，尚无报名或 Follow-up。
+2. 在 Django Admin → Care → Follow ups → Add 创建：
+
+   Church: Fictional Test Church
+   Person: Issue107 Fictional Legacy Visitor RUN_ID
+   Source: Event visit
+   Status: Closed
+   Outcome: Fictional legacy registration-time record
+   Closed at: 当前测试时间
+
+3. 保存并记下这条 Closed Follow-up 的 ID。
+4. 确认该 Person 只有这一条 Follow-up，而且没有开放 Follow-up。
+
+步骤：
+
+1. 在普通 Unity 页面为 Legacy Visitor 报名 Event A。
+2. 确认报名后没有新任务，原 Closed Follow-up 未变化。
+3. 对 Legacy Visitor 执行 Check in，确认按钮变为 Undo check-in。
+4. 刷新 Follow-up queue。
+5. 在 Django Admin → Care → Follow ups 按 Person 搜索并计数。
+6. 打开原 ID，核对 Status、Outcome 和 Closed at。
+
+预期：
+
+- 签到成功，但不创建新的自动 Follow-up。
+- 此 Person 仍然只有原来一条 event_visit。
+- 原记录仍是 Closed，没有被重新打开。
+- 原 Outcome、Closed at 和 ID 不变。
+- 系统不迁移、不删除、不重新打开 legacy 记录。
+- 此兼容规则优先避免对旧联系人产生重复联系。
+
+结果：Passed / Failed
+实际观察：
+
+======================================================================
 十一、场景 7：非 Visitor 身份不产生新人 Follow-up
 ======================================================================
 
@@ -446,19 +524,19 @@ B. 创建完整的第二教会虚构数据
 1. 使用 Django superuser 打开 Django Admin → Tenancy → Churches → Add。
 2. 创建：
 
-   Name: Issue107 Fictional Other Church
+   Name: Issue107 Fictional Other Church RUN_ID
 
 3. 在 Django Admin → People → Persons → Add 创建：
 
-   Church: Issue107 Fictional Other Church
-   Full name: Issue107 Fictional Other Church Visitor
+   Church: Issue107 Fictional Other Church RUN_ID
+   Full name: Issue107 Fictional Other Church Visitor RUN_ID
    Membership status: Visitor
-   Email: issue107.other-church@example.test
+   Email: issue107.other-church.RUN_ID@example.test
 
 4. 在 Django Admin → Care → Follow ups → Add 创建：
 
-   Church: Issue107 Fictional Other Church
-   Person: Issue107 Fictional Other Church Visitor
+   Church: Issue107 Fictional Other Church RUN_ID
+   Person: Issue107 Fictional Other Church Visitor RUN_ID
    Source: Event visit
    Status: New
 
@@ -471,7 +549,7 @@ C. 以当前教会 Pastor 验证列表隔离和精确 API 404
 1. 退出 Django Admin，或使用另一个无痕窗口。
 2. 使用 Fictional Test Church 的 Pastor 测试账号登录普通 Unity 页面。
 3. 打开 Follow-up queue，确认搜索不到
-   Issue107 Fictional Other Church Visitor。
+   Issue107 Fictional Other Church Visitor RUN_ID。
 4. 打开浏览器 Developer Tools → Console。
 5. 把下面命令中的 OTHER_FOLLOW_UP_ID 替换为刚才记录的数字，然后执行：
 
@@ -523,6 +601,8 @@ Django superuser 权限：
 9. 当前教会账号能看到其他教会的 Follow-up。
 10. 页面看似隐藏，但直接访问 API 或对象 URL 仍泄露数据。
 11. 已有开放 Follow-up 的 Source、负责人或 Interaction 历史被覆盖。
+12. Closed legacy event_visit 在签到后被重新打开、被改写或导致新任务。
+13. 测试复用了没有本轮唯一 RUN_ID 的旧 Person 或 demo Person。
 
 记录失败时请提供：
 
@@ -555,14 +635,14 @@ Django superuser 权限：
 
 4. Django Admin → Events → Events
    删除：
-   - Issue107 Fictional Check-in Event A
-   - Issue107 Fictional Check-in Event B
+   - Issue107 Fictional Check-in Event A RUN_ID
+   - Issue107 Fictional Check-in Event B RUN_ID
 
 5. Django Admin → People → Persons
    删除名称以 “Issue107 Fictional” 开头、且确认没有非测试用途的 Person。
 
 6. Django Admin → Tenancy → Churches
-   删除 Issue107 Fictional Other Church。删除前确认其中只剩本次虚构测试数据。
+   删除 Issue107 Fictional Other Church RUN_ID。删除前确认其中只剩本次虚构测试数据。
 
 7. 不要删除 Pastor、Leader 测试账号，除非这些账号本身也是本次临时创建且已确认无人使用。
 
@@ -572,6 +652,15 @@ Django superuser 权限：
 十五、验收报告模板
 ======================================================================
 
+Overall 判定是强制规则：
+
+- 只有所有强制功能项都 Passed、所有数据都是虚构数据、且清理完成，Overall 才能填 Passed。
+- 任一功能项 Failed，Overall 必须填 Failed。
+- 任一强制功能项是 Not tested、未填写或无法执行，Overall 必须填 Incomplete，
+  不能填 Passed。
+- Cross-church 404 是强制功能项；如果按场景 8 记录 Not tested，
+  Overall 必须是 Incomplete。
+
 Issue: #107
 Environment:
 Deployed commit:
@@ -579,6 +668,8 @@ Tester:
 Test date/time:
 Timezone: Australia/Sydney
 All data fictional: Yes / No
+RUN_ID:
+All test Visitors were brand-new and unique: Passed / Failed
 
 1. Ordinary registration creates no Follow-up: Passed / Failed
 2. Cancellation before check-in creates no Follow-up: Passed / Failed
@@ -587,13 +678,14 @@ All data fictional: Yes / No
 5. Repeat/undo/recheck/later event creates no duplicate: Passed / Failed
 6. Cancellation/status change preserves Follow-up and Interaction: Passed / Failed
 7. Existing open Follow-up reused without overwrite: Passed / Failed
-8. Newcomer excluded: Passed / Failed
-9. Regular excluded: Passed / Failed
-10. Member excluded: Passed / Failed
-11. Inactive excluded: Passed / Failed
-12. Pastor sees all same-church test Follow-ups: Passed / Failed
-13. Cross-church exact detail API returns 404: Passed / Failed / Not tested
-14. Test data cleanup completed: Yes / No
+8. Closed legacy event_visit suppresses a new automatic task: Passed / Failed
+9. Newcomer excluded: Passed / Failed
+10. Regular excluded: Passed / Failed
+11. Member excluded: Passed / Failed
+12. Inactive excluded: Passed / Failed
+13. Pastor sees all same-church test Follow-ups: Passed / Failed
+14. Cross-church exact detail API returns 404: Passed / Failed / Not tested
+15. Test data cleanup completed: Yes / No
 
 Unexpected UI behaviour:
 
@@ -601,6 +693,6 @@ Security or data exposure found:
 
 Screenshots:
 
-Overall result: Passed / Failed
+Overall result: Passed / Failed / Incomplete
 
 Tester notes:

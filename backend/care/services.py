@@ -29,16 +29,6 @@ def ensure_first_event_follow_up(
     )
     if prior_visit:
         return None
-    existing = (
-        FollowUp.objects.filter(
-            church=registration.church,
-            person=registration.person,
-        )
-        .exclude(status=FollowUp.Status.CLOSED)
-        .first()
-    )
-    if existing is not None:
-        return existing
     historical_event_follow_up = (
         FollowUp.objects.filter(
             church=registration.church,
@@ -50,6 +40,16 @@ def ensure_first_event_follow_up(
     )
     if historical_event_follow_up is not None:
         return historical_event_follow_up
+    existing = (
+        FollowUp.objects.filter(
+            church=registration.church,
+            person=registration.person,
+        )
+        .exclude(status=FollowUp.Status.CLOSED)
+        .first()
+    )
+    if existing is not None:
+        return existing
     try:
         with transaction.atomic():
             return FollowUp.objects.create(

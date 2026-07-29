@@ -135,6 +135,34 @@ def test_later_event_does_not_recreate_follow_up_after_first_is_closed() -> None
     assert FollowUp.objects.filter(person=person).count() == 1
 
 
+def test_closed_legacy_event_follow_up_suppresses_first_actual_check_in() -> None:
+    church = Church.objects.create(name="Fictional Legacy Follow-up")
+    worker = User.objects.create_user(username="fictional.legacy.followup")
+    person = Person.objects.create(church=church, full_name="Legacy Visitor")
+    historical = FollowUp.objects.create(
+        church=church,
+        person=person,
+        source=FollowUp.Source.EVENT_VISIT,
+        status=FollowUp.Status.CLOSED,
+        closed_at=timezone.now(),
+        outcome="Fictional legacy registration follow-up",
+    )
+    registration = register_for_event(
+        event=event(church, worker, "First Actual Check-in"),
+        person=person,
+    )
+
+    set_manual_check_in(registration, checked_in=True)
+
+    assert FollowUp.objects.filter(person=person).count() == 1
+    assert FollowUp.objects.get(person=person) == historical
+    assert not (
+        FollowUp.objects.filter(person=person)
+        .exclude(status=FollowUp.Status.CLOSED)
+        .exists()
+    )
+
+
 def test_existing_open_same_church_follow_up_is_reused() -> None:
     church = Church.objects.create(name="Fictional Existing Follow-up")
     worker = User.objects.create_user(username="fictional.existing.followup")

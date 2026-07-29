@@ -4,8 +4,8 @@ Django 5 and Django REST Framework scaffold for Unity.
 
 ## Local setup
 
-Requirements: Python 3.12+ and Postgres 16 (the root `compose.yaml` provides a
-local database).
+Requirements for running the local web application: Python 3.12+ and Postgres
+16 (the root `compose.yaml` provides the application database).
 
 ```bash
 docker compose up -d db
@@ -22,12 +22,12 @@ python manage.py runserver
 
 Open <http://localhost:8000/api/health/> to verify the application is running.
 
-Local tests use in-memory SQLite by default for speed. Set
-`TEST_DATABASE_URL` to run them against PostgreSQL. CI sets this variable and
-runs the full backend suite on PostgreSQL 16, including the concurrent
-first-check-in test. That concurrency test is explicitly skipped on SQLite
-because SQLite cannot exercise PostgreSQL's partial-unique-constraint and
-`IntegrityError` recovery behaviour.
+Automated tests default to in-memory SQLite locally; they do not require the
+application's PostgreSQL database. Set `TEST_DATABASE_URL` only when running
+PostgreSQL-specific validation. CI sets it and runs the full backend suite on
+PostgreSQL 16, including the concurrent first-check-in test. That concurrency
+test is explicitly skipped on SQLite because SQLite cannot exercise
+PostgreSQL's partial-unique-constraint and `IntegrityError` recovery behaviour.
 
 ## Session authentication
 
@@ -132,8 +132,9 @@ pytest
 python manage.py check
 ```
 
-Tests use an in-memory SQLite database so scaffold checks do not require a local
-Postgres process. Runtime development and production settings use Postgres.
+A plain local `pytest` run uses in-memory SQLite. CI and explicit
+`TEST_DATABASE_URL` runs use PostgreSQL 16 for database-specific validation.
+Runtime development and production settings use PostgreSQL.
 
 ## Security audit trail
 
@@ -171,14 +172,17 @@ Creating or importing a person never creates consent automatically.
 - `POST /api/events/<id>/registrations/<registration-id>/check-in/` — set or
   undo manual attendance (`{"checked_in": true|false}`)
 
-The first actual event check-in for a Person still marked `visitor` ensures the
-Person has exactly one open follow-up. When none is open, Unity creates an
-`event_visit` follow-up; when another open follow-up already exists, Unity
-reuses it without overwriting its source, assignment or interaction history.
-Advance registration alone does not trigger this rule. Walk-ins are checked in
-immediately, while repeated check-in, attendance corrections, cancellation,
-later events and membership-status changes preserve and do not duplicate or
-delete first-visit follow-up history.
+For a clean Person still marked `visitor`, the first actual event check-in
+ensures one open follow-up. Unity creates an `event_visit` follow-up when there
+is no open task and no historical `event_visit`; when a non-event follow-up is
+already open, Unity reuses it without overwriting its source, assignment or
+interaction history. Any historical `event_visit`, including a closed record
+created by the legacy registration-time behaviour, suppresses another
+automatic follow-up. Unity does not migrate, delete or reopen that legacy
+record. Advance registration alone does not trigger this rule. Walk-ins are
+checked in immediately, while repeated check-in, attendance corrections,
+cancellation, later events and membership-status changes preserve and do not
+duplicate or delete first-visit follow-up history.
 
 - `GET /api/follow-ups/` — role-filtered follow-up pipeline
 - `GET /api/follow-ups/mine/` — current worker's open assignments, due first
