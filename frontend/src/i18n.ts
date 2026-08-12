@@ -75,6 +75,10 @@ const resources = {
         createEyebrow: 'New gathering',
         createTitle: 'Create an event',
         duplicate: 'Duplicate',
+        duplicateEyebrow: 'Copy event',
+        duplicateHelp:
+          'Review the copied details and dates before saving this new event.',
+        duplicateTitle: 'Duplicate event',
         edit: 'Edit',
         editEyebrow: 'Event details',
         editTitle: 'Edit event',
@@ -107,6 +111,8 @@ const resources = {
           confirm: 'Confirm registration',
           confirmWaitlist: 'Join waitlist',
           empty: 'No registrations yet.',
+          hide: 'Hide registration list',
+          hideDetails: 'Hide registration details',
           joinWaitlist: 'Join waitlist',
           loadError: 'We could not load the registration list.',
           manage: 'Registration list',
@@ -115,6 +121,7 @@ const resources = {
           person: 'Person',
           saveError: 'We could not save this registration. Retry.',
           saving: 'Saving…',
+          show: 'Show registration list',
           signUp: 'Sign up',
           statuses: {
             cancelled: 'Cancelled',

@@ -6,6 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 import { AuthProvider } from './auth/AuthContext'
 import './i18n'
+import styles from './styles.css?raw'
+
+const originalScrollIntoView = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  'scrollIntoView',
+)
 
 const session = {
   user: {
@@ -42,6 +48,15 @@ function renderApp(path = '/') {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+  if (originalScrollIntoView) {
+    Object.defineProperty(
+      HTMLElement.prototype,
+      'scrollIntoView',
+      originalScrollIntoView,
+    )
+  } else {
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
+  }
 })
 
 describe('App authentication flow', () => {
@@ -406,6 +421,12 @@ describe('Events', () => {
   }
 
   it('lists events and supports duplicate and create workflows', async () => {
+    const scrollIntoView = vi.fn()
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: false }))
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
     const created = {
       ...event,
       id: 22,
@@ -504,7 +525,36 @@ describe('Events', () => {
     expect(await screen.findByText('Community Lunch')).toBeVisible()
     expect(screen.getByText('12 / 40 registered')).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Registration list' }))
+    const editButton = screen.getByRole('button', { name: 'Edit' })
+    const duplicateButton = screen.getByRole('button', { name: 'Duplicate' })
+    const registrationButton = screen.getByRole('button', {
+      name: 'Show registration list',
+    })
+    expect(editButton).toHaveClass('primary-button')
+    expect(duplicateButton).toHaveClass('secondary-button')
+    expect(registrationButton).toHaveClass('secondary-button')
+    expect(registrationButton).toHaveAttribute('aria-expanded', 'false')
+    expect(registrationButton).toHaveAttribute(
+      'aria-controls',
+      'event-21-registrations',
+    )
+    expect(editButton.parentElement).toHaveClass('event-actions')
+    expect(styles).toMatch(
+      /\.event-actions\s*\{[^}]*flex-wrap:\s*wrap;[^}]*\}/s,
+    )
+    expect(styles).toMatch(
+      /\.event-actions\s*>\s*button\s*\{[^}]*min-height:\s*2\.75rem;[^}]*flex:\s*1 1 9rem;[^}]*\}/s,
+    )
+
+    await user.click(registrationButton)
+    const collapseRegistrationButton = screen.getByRole('button', {
+      name: 'Hide registration list',
+    })
+    expect(collapseRegistrationButton).toHaveAttribute('aria-expanded', 'true')
+    expect(await screen.findByLabelText('Registrations')).toHaveAttribute(
+      'id',
+      'event-21-registrations',
+    )
     expect(await screen.findByText('Pickup near station')).toBeVisible()
     expect(screen.getByText(/Transport needed/)).toBeVisible()
     await user.type(screen.getByLabelText('Find attendee'), 'nobody')
@@ -544,23 +594,52 @@ describe('Events', () => {
       full_name: 'Walk In Guest',
       wechat_id: ' walk_in_wechat ',
     })
-    await user.click(screen.getByRole('button', { name: 'Registration list' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Hide registration list' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Show registration list' }),
+    ).toHaveAttribute('aria-expanded', 'false')
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }))
+    expect(
+      screen.getByRole('heading', { name: 'Duplicate event', level: 2 }),
+    ).toBeVisible()
+    expect(screen.getByText('Copy event')).toBeVisible()
+    expect(
+      screen.getByText(
+        'Review the copied details and dates before saving this new event.',
+      ),
+    ).toBeVisible()
     expect(screen.getByLabelText(/Event title/)).toHaveValue(
       'Community Lunch copy',
     )
+    expect(screen.getByLabelText(/Event title/)).toHaveFocus()
     expect(screen.getByLabelText('Hosted by')).toHaveValue('11')
+    expect(scrollIntoView).toHaveBeenLastCalledWith({
+      behavior: 'smooth',
+      block: 'start',
+    })
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
     await user.click(screen.getByRole('button', { name: 'Edit' }))
     expect(
       screen.getByRole('heading', { name: 'Edit event', level: 2 }),
     ).toBeVisible()
     expect(screen.getByLabelText(/Event title/)).toHaveValue('Community Lunch')
+    expect(screen.getByLabelText(/Event title/)).toHaveFocus()
+    expect(scrollIntoView).toHaveBeenLastCalledWith({
+      behavior: 'auto',
+      block: 'start',
+    })
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
 
     await user.click(screen.getByRole('button', { name: 'Create event' }))
+    expect(
+      screen.getByRole('heading', { name: 'Create an event', level: 2 }),
+    ).toBeVisible()
+    expect(screen.getByText('New gathering')).toBeVisible()
     expect(
       screen.getByText('Fields marked (required) must be completed.'),
     ).toBeVisible()

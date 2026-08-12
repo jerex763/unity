@@ -135,6 +135,12 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser interaction tests
+        run: npm run test:e2e
+
       - name: Build PWA
         run: npm run build
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, apiRequest } from '../api/client'
@@ -25,6 +25,7 @@ type EventForm = {
 }
 
 type EventFormErrors = Partial<Record<keyof EventForm, string>>
+type EventFormMode = 'create' | 'edit' | 'duplicate'
 
 const emptyForm: EventForm = {
   id: null,
@@ -106,6 +107,8 @@ export function EventsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [form, setForm] = useState<EventForm | null>(null)
+  const [formMode, setFormMode] = useState<EventFormMode | null>(null)
+  const [formOpenRequest, setFormOpenRequest] = useState(0)
   const [fieldErrors, setFieldErrors] = useState<EventFormErrors>({})
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -127,6 +130,8 @@ export function EventsPage() {
   const [walkInPhone, setWalkInPhone] = useState('')
   const [walkInWechatId, setWalkInWechatId] = useState('')
   const [walkInContactError, setWalkInContactError] = useState('')
+  const editorRef = useRef<HTMLElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const canEdit = session?.membership.role !== 'member'
 
   useEffect(() => {
@@ -166,16 +171,31 @@ export function EventsPage() {
     })
   }
 
-  function openForm(nextForm: EventForm) {
+  useEffect(() => {
+    if (!formMode || formOpenRequest === 0) return
+    const prefersReducedMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    editorRef.current?.scrollIntoView?.({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    })
+    titleInputRef.current?.focus({ preventScroll: true })
+  }, [formOpenRequest, formMode])
+
+  function openForm(nextForm: EventForm, mode: EventFormMode) {
     setSaveError('')
     setFieldErrors({})
+    setFormMode(mode)
     setForm(nextForm)
+    setFormOpenRequest((current) => current + 1)
   }
 
   function closeForm() {
     setSaveError('')
     setFieldErrors({})
     setForm(null)
+    setFormMode(null)
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -460,7 +480,7 @@ export function EventsPage() {
         {canEdit ? (
           <button
             className="primary-button inline"
-            onClick={() => openForm({ ...emptyForm })}
+            onClick={() => openForm({ ...emptyForm }, 'create')}
             type="button"
           >
             {t('events.create')}
@@ -468,16 +488,21 @@ export function EventsPage() {
         ) : null}
       </section>
 
-      {form ? (
-        <section className="event-editor" aria-labelledby="event-editor-title">
+      {form && formMode ? (
+        <section
+          className="event-editor"
+          aria-labelledby="event-editor-title"
+          ref={editorRef}
+        >
           <div className="profile-panel-heading">
             <div>
-              <p className="eyebrow">
-                {form.id ? t('events.editEyebrow') : t('events.createEyebrow')}
-              </p>
-              <h2 id="event-editor-title">
-                {form.id ? t('events.editTitle') : t('events.createTitle')}
-              </h2>
+              <p className="eyebrow">{t(`events.${formMode}Eyebrow`)}</p>
+              <h2 id="event-editor-title">{t(`events.${formMode}Title`)}</h2>
+              {formMode === 'duplicate' ? (
+                <p className="event-form-mode-help">
+                  {t('events.duplicateHelp')}
+                </p>
+              ) : null}
             </div>
             <button className="text-button" onClick={closeForm} type="button">
               {t('events.cancel')}
@@ -497,6 +522,7 @@ export function EventsPage() {
                 }
                 aria-invalid={Boolean(fieldErrors.title)}
                 onChange={(event) => update('title', event.target.value)}
+                ref={titleInputRef}
                 required
                 value={form.title}
               />
@@ -727,41 +753,68 @@ export function EventsPage() {
               {canEdit ? (
                 <div className="event-actions">
                   <button
-                    className="secondary-button"
-                    onClick={() => openForm(formFromEvent(event))}
+                    className="primary-button event-action-primary"
+                    onClick={() => openForm(formFromEvent(event), 'edit')}
                     type="button"
                   >
                     {t('events.edit')}
                   </button>
                   <button
-                    className="text-button"
-                    onClick={() => openForm(formFromEvent(event, true))}
+                    className="secondary-button"
+                    onClick={() =>
+                      openForm(formFromEvent(event, true), 'duplicate')
+                    }
                     type="button"
                   >
                     {t('events.duplicate')}
                   </button>
                   <button
-                    className="text-button"
+                    aria-controls={`event-${event.id}-registrations`}
+                    aria-expanded={activeRoster === event.id}
+                    aria-label={
+                      activeRoster === event.id
+                        ? t('events.registrations.hide')
+                        : t('events.registrations.show')
+                    }
+                    className="secondary-button registration-toggle"
                     onClick={() => void openRegistrations(event)}
                     type="button"
                   >
-                    {t('events.registrations.manage')}
+                    <span>{t('events.registrations.manage')}</span>
+                    <span
+                      className="registration-toggle-icon"
+                      aria-hidden="true"
+                    >
+                      ▾
+                    </span>
                   </button>
                 </div>
               ) : (
                 <div className="event-actions">
                   <button
-                    className="secondary-button"
+                    aria-controls={`event-${event.id}-registrations`}
+                    aria-expanded={activeRoster === event.id}
+                    className="secondary-button registration-toggle"
                     disabled={!event.registration_open}
                     onClick={() => void openRegistrations(event)}
                     type="button"
                   >
-                    {event.my_registration &&
-                    event.my_registration.status !== 'cancelled'
-                      ? t('events.registrations.viewMine')
-                      : event.places_available
-                        ? t('events.registrations.signUp')
-                        : t('events.registrations.joinWaitlist')}
+                    <span>
+                      {activeRoster === event.id
+                        ? t('events.registrations.hideDetails')
+                        : event.my_registration &&
+                            event.my_registration.status !== 'cancelled'
+                          ? t('events.registrations.viewMine')
+                          : event.places_available
+                            ? t('events.registrations.signUp')
+                            : t('events.registrations.joinWaitlist')}
+                    </span>
+                    <span
+                      className="registration-toggle-icon"
+                      aria-hidden="true"
+                    >
+                      ▾
+                    </span>
                   </button>
                 </div>
               )}
@@ -769,6 +822,7 @@ export function EventsPage() {
               {activeRoster === event.id ? (
                 <section
                   className="registration-panel"
+                  id={`event-${event.id}-registrations`}
                   aria-label={t('events.registrations.title')}
                 >
                   <h3>{t('events.registrations.title')}</h3>

@@ -20,6 +20,8 @@ db.sqlite3
 node_modules/
 dist/
 .vite/
+playwright-report/
+test-results/
 
 # IDE / OS
 .idea/
