@@ -1,0 +1,54 @@
+Issue #98 — Follow-up attention and escalation manual acceptance
+
+Use fictional data only. Put a unique RUN_ID in every fictional person's name.
+Evaluate every date in the test church's configured timezone (default
+Australia/Sydney). Do not use real contact details or sensitive interaction text.
+
+Setup
+1. Sign in as Admin/Pastor and create fictional follow-ups covering: new and
+   unassigned for 23h/24h; assigned due yesterday/today/tomorrow; in_progress
+   with last interaction just under/at 3 days; and due three days overdue.
+2. Create two ordinary Leader accounts, one Member account, and an Other Church
+   with one follow-up. Record IDs for cleanup.
+
+Attention flags and ordering
+3. Open Follow-up queue. Confirm distinct labels for Overdue, Due today, Stale,
+   Unassigned 24h+, No action recorded, and Escalated, plus an obvious next action.
+4. Confirm the 24-hour and 3-day boundaries trigger exactly at their threshold.
+5. Confirm overdue rows sort ahead of due today, future, and no-date rows.
+6. Confirm a due date three church-local calendar days overdue is Escalated.
+
+Postponement
+7. Move a future due date later for the first time: no reason is required and an
+   auditable schedule-history row is created.
+8. Move it later again: saving is blocked until choosing a safe operational
+   reason or a qualifying linked interaction. Confirm no interaction summary is
+   copied into schedule history.
+9. Move an already-overdue date later: the same condition applies on its first
+   postponement. Confirm earlier moves do not require a reason.
+10. Attempt to reference an interaction from another follow-up and another
+    church: both are rejected. A new linked interaction created after the current
+    schedule was established is accepted.
+11. After two later-date schedule changes, confirm Escalated appears.
+
+Role and tenant boundaries
+12. Admin/Pastor dashboard shows same-church unassigned-too-long and escalated
+    work plus their own assigned open work.
+13. Leader sees only their own assigned authorized work. Member is denied and
+    the Other Church follow-up is absent/404.
+14. Repeat the queue/editor checks at desktop and narrow mobile width; labels,
+    next action, validation, reason selector, and Save remain readable/reachable.
+
+Cleanup
+15. Delete all mutable fictional rows for RUN_ID in dependency order, retain
+    append-only audit data according to policy, and verify RUN_ID searches return
+    no remaining mutable Person, Follow-up, Interaction, Membership, or User rows.
+
+Audit/lifecycle note
+- Follow-up due-date history cannot be added, changed, or deleted through the
+  API or Django Admin. Follow-up workflow fields are also read-only in Admin so
+  supported changes pass through the locked, audited API path.
+- Due-date history deliberately cascades only when its parent Follow-up is
+  removed. This preserves the authorized Person hard-delete contract, where the
+  operational shell/history is deleted and only the separate safe AuditEvent is
+  retained.

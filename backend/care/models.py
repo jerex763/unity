@@ -51,6 +51,8 @@ class FollowUp(ChurchScopedModel):
         related_name="follow_ups_assigned",
     )
     due_at = models.DateField(blank=True, null=True)
+    due_schedule_changed_at = models.DateTimeField(default=timezone.now)
+    status_changed_at = models.DateTimeField(default=timezone.now)
     closed_at = models.DateTimeField(blank=True, null=True)
     outcome = models.CharField(blank=True, max_length=200, null=True)
 
@@ -73,6 +75,66 @@ class FollowUp(ChurchScopedModel):
         if self.person.church_id != self.church_id:
             raise ValidationError(
                 "Person and follow-up must belong to the same church."
+            )
+
+
+class FollowUpDueDateChange(models.Model):
+    """Append-only operational history for a follow-up's due-date schedule."""
+
+    class Reason(models.TextChoices):
+        AWAITING_RESPONSE = "awaiting_response", "Awaiting response"
+        PERSON_REQUESTED = "person_requested", "Person requested"
+        WORKER_AVAILABILITY = "worker_availability", "Worker availability"
+        OTHER_OPERATIONAL = "other_operational", "Other operational"
+
+    follow_up = models.ForeignKey(
+        FollowUp,
+        on_delete=models.CASCADE,
+        related_name="due_date_changes",
+    )
+    church = models.ForeignKey("tenancy.Church", on_delete=models.CASCADE)
+    previous_due_at = models.DateField(blank=True, null=True)
+    new_due_at = models.DateField(blank=True, null=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="follow_up_due_date_changes",
+    )
+    reason = models.CharField(
+        blank=True,
+        choices=Reason.choices,
+        max_length=30,
+        null=True,
+    )
+    interaction = models.ForeignKey(
+        "Interaction",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="due_date_changes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "follow_up_due_date_change"
+        indexes = [models.Index(fields=("follow_up", "created_at"))]
+        ordering = ("created_at", "id")
+
+    def __str__(self) -> str:
+        return f"{self.follow_up_id}: {self.previous_due_at} → {self.new_due_at}"
+
+    def clean(self) -> None:
+        super().clean()
+        if self.follow_up.church_id != self.church_id:
+            raise ValidationError("Due-date change and follow-up must share a church.")
+        if self.interaction is not None and (
+            self.interaction.follow_up_id != self.follow_up_id
+            or self.interaction.church_id != self.church_id
+        ):
+            raise ValidationError(
+                "Due-date change interaction must belong to the same follow-up."
             )
 
 

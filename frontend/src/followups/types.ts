@@ -21,6 +21,16 @@ export type FollowUp = {
   outcome: string | null
   created_at: string
   updated_at: string
+  attention?: {
+    overdue: boolean
+    due_today: boolean
+    unassigned_too_long: boolean
+    no_action: boolean
+    stale: boolean
+    escalated: boolean
+    postponement_count: number
+    next_action: string
+  }
 }
 
 export type WorkerChoice = {

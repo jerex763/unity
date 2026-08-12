@@ -6,7 +6,8 @@ from django.urls import reverse
 
 from accounts.models import ChurchMembership, User
 from audit.models import AuditEvent
-from care.models import CareCase, FollowUp, Interaction
+from care.admin import FollowUpAdmin, FollowUpDueDateChangeAdmin
+from care.models import CareCase, FollowUp, FollowUpDueDateChange, Interaction
 from events.models import Event, EventRegistration
 from groups.models import Group, GroupMembership
 from people.admin import PersonAdmin
@@ -28,6 +29,7 @@ PROJECT_MODELS = {
     Event,
     EventRegistration,
     FollowUp,
+    FollowUpDueDateChange,
     CareCase,
     Interaction,
     AuditEvent,
@@ -46,6 +48,7 @@ ADMIN_CHANGELISTS = (
     "admin:events_event_changelist",
     "admin:events_eventregistration_changelist",
     "admin:care_followup_changelist",
+    "admin:care_followupduedatechange_changelist",
     "admin:care_carecase_changelist",
     "admin:care_interaction_changelist",
     "admin:audit_auditevent_changelist",
@@ -86,6 +89,27 @@ def test_non_superuser_person_form_excludes_sensitive_fields() -> None:
     assert excluded is not None
     assert "faith_background" in excluded
     assert "discipleship_stage" in excluded
+
+
+def test_follow_up_workflow_and_schedule_history_are_read_only_in_admin() -> None:
+    request = RequestFactory().get("/admin/care/followup/")
+    request.user = User.objects.create_superuser(
+        username="fictional.workflow.admin",
+        password="test-password-only",
+    )
+    follow_up_admin = FollowUpAdmin(FollowUp, admin.site)
+    history_admin = FollowUpDueDateChangeAdmin(FollowUpDueDateChange, admin.site)
+
+    assert follow_up_admin.has_add_permission(request) is False
+    assert follow_up_admin.has_change_permission(request) is False
+    assert follow_up_admin.has_delete_permission(request) is False
+    assert "delete_selected" not in follow_up_admin.get_actions(request)
+    assert "due_at" in follow_up_admin.get_readonly_fields(request)
+    assert "status" in follow_up_admin.get_readonly_fields(request)
+    assert history_admin.has_add_permission(request) is False
+    assert history_admin.has_change_permission(request) is False
+    assert history_admin.has_delete_permission(request) is False
+    assert "delete_selected" not in history_admin.get_actions(request)
 
 
 def test_superuser_person_form_keeps_sensitive_fields() -> None:

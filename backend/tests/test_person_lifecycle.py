@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 from accounts.constants import ACTIVE_CHURCH_SESSION_KEY
 from accounts.models import ChurchMembership, User
 from audit.models import AuditEvent
-from care.models import CareCase, FollowUp, Interaction
+from care.models import CareCase, FollowUp, FollowUpDueDateChange, Interaction
 from events.models import Event, EventRegistration
 from groups.models import Group, GroupMembership
 from people.admin import PersonAdmin
@@ -371,6 +371,13 @@ def test_admin_hard_delete_cascades_history_but_keeps_safe_audit() -> None:
     )
     person = Person.objects.create(church=church, full_name="Fictional Delete Person")
     related = add_related_history(church=church, person=person, worker=admin_user)
+    schedule_history = FollowUpDueDateChange.objects.create(
+        church=church,
+        follow_up=related["follow_up"],
+        previous_due_at=None,
+        new_due_at=timezone.localdate() + timedelta(days=1),
+        actor=admin_user,
+    )
     first_consent = ConsentRecord.objects.create(
         church=church,
         person=person,
@@ -403,6 +410,7 @@ def test_admin_hard_delete_cascades_history_but_keeps_safe_audit() -> None:
     assert not Person.objects.filter(pk=person_id).exists()
     for record in related.values():
         assert not type(record).objects.filter(pk=record.pk).exists()
+    assert not FollowUpDueDateChange.objects.filter(pk=schedule_history.pk).exists()
     assert not ConsentRecord.objects.filter(person_id=person_id).exists()
     event = AuditEvent.objects.get(action=AuditEvent.Action.PERSON_HARD_DELETED)
     assert event.actor == admin_user

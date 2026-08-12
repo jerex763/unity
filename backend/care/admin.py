@@ -5,7 +5,7 @@ from audit.models import AuditEvent
 from audit.services import record_audit_event
 from config.admin import SuperuserOnlyAdminMixin
 
-from .models import CareCase, FollowUp, Interaction
+from .models import CareCase, FollowUp, FollowUpDueDateChange, Interaction
 
 
 @admin.register(FollowUp)
@@ -22,7 +22,80 @@ class FollowUpAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
     search_fields = ("person__full_name", "outcome", "assigned_to__username")
     autocomplete_fields = ("person", "assigned_to")
     list_select_related = ("church", "person", "assigned_to")
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = (
+        "church",
+        "person",
+        "source",
+        "engagement",
+        "status",
+        "assigned_to",
+        "due_at",
+        "due_schedule_changed_at",
+        "status_changed_at",
+        "closed_at",
+        "outcome",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self,
+        request: HttpRequest,
+        obj: FollowUp | None = None,
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self,
+        request: HttpRequest,
+        obj: FollowUp | None = None,
+    ) -> bool:
+        return False
+
+
+@admin.register(FollowUpDueDateChange)
+class FollowUpDueDateChangeAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "follow_up",
+        "previous_due_at",
+        "new_due_at",
+        "reason",
+        "actor",
+        "created_at",
+        "church",
+    )
+    list_filter = ("church", "reason", "created_at")
+    list_select_related = ("church", "follow_up", "actor", "interaction")
+    readonly_fields = (
+        "follow_up",
+        "church",
+        "previous_due_at",
+        "new_due_at",
+        "actor",
+        "reason",
+        "interaction",
+        "created_at",
+    )
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self,
+        request: HttpRequest,
+        obj: FollowUpDueDateChange | None = None,
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self,
+        request: HttpRequest,
+        obj: FollowUpDueDateChange | None = None,
+    ) -> bool:
+        return False
 
 
 @admin.register(CareCase)

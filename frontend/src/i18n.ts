@@ -211,6 +211,17 @@ const resources = {
         viewProfile: 'View {{name}} profile',
       },
       followUps: {
+        attention: {
+          due_today: 'Due today',
+          defaultAction: 'Continue the agreed follow-up',
+          escalated: 'Escalated',
+          label: 'Attention needed',
+          nextAction: 'Next action',
+          no_action: 'No action recorded',
+          overdue: 'Overdue',
+          stale: 'Stale',
+          unassigned_too_long: 'Unassigned 24h+',
+        },
         assignmentHelp:
           'Choose the responsible worker and their due date together.',
         assignmentLegend: 'Assignment and due date',
@@ -257,6 +268,20 @@ const resources = {
         loading: 'Loading follow-ups…',
         notSet: 'Not set',
         outcome: 'Outcome',
+        postpone: {
+          chooseInteraction: 'Or choose a recent interaction',
+          chooseReason: 'Choose a reason',
+          help: 'An overdue or repeatedly postponed action needs a safe operational reason or a recent linked interaction.',
+          interaction: 'Supporting interaction',
+          legend: 'Why is this moving later?',
+          reason: 'Operational reason',
+          reasons: {
+            awaiting_response: 'Awaiting response',
+            other_operational: 'Other operational reason',
+            person_requested: 'Person requested',
+            worker_availability: 'Worker availability',
+          },
+        },
         save: 'Save update',
         saveError: 'We could not save this follow-up. Retry.',
         saving: 'Saving…',

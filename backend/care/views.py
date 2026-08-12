@@ -1,4 +1,9 @@
-from django.db.models import F
+from datetime import timedelta
+
+from django.db import transaction
+from django.db.models import Case, Count, F, IntegerField, Q, When
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,6 +12,7 @@ from accounts.access import care_cases_visible_to, follow_ups_visible_to
 from accounts.models import ChurchMembership, User
 from tenancy.permissions import HasActiveChurchMembership
 
+from .attention import church_today
 from .models import CareCase, FollowUp, Interaction
 from .permissions import HasFollowUpAccess
 from .serializers import FollowUpSerializer, InteractionSerializer
@@ -17,10 +23,38 @@ class FollowUpQuerysetMixin:
     serializer_class = FollowUpSerializer
 
     def get_queryset(self):
-        return follow_ups_visible_to(
-            FollowUp.objects.select_related("person", "assigned_to"),
-            self.request.church_membership,
-        ).order_by("status", "due_at", "created_at", "id")
+        today = church_today(self.request.church_membership.church)
+        return (
+            follow_ups_visible_to(
+                FollowUp.objects.select_related(
+                    "person", "assigned_to", "church"
+                ).prefetch_related("interactions", "due_date_changes"),
+                self.request.church_membership,
+            )
+            .annotate(
+                due_priority=Case(
+                    When(
+                        ~Q(status=FollowUp.Status.CLOSED),
+                        due_at__lt=today,
+                        then=0,
+                    ),
+                    When(
+                        ~Q(status=FollowUp.Status.CLOSED),
+                        due_at=today,
+                        then=1,
+                    ),
+                    When(
+                        ~Q(status=FollowUp.Status.CLOSED),
+                        due_at__isnull=False,
+                        then=2,
+                    ),
+                    When(~Q(status=FollowUp.Status.CLOSED), then=3),
+                    default=4,
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by("due_priority", "due_at", "created_at", "id")
+        )
 
 
 class FollowUpListView(FollowUpQuerysetMixin, generics.ListAPIView):
@@ -29,15 +63,41 @@ class FollowUpListView(FollowUpQuerysetMixin, generics.ListAPIView):
 
 class MyFollowUpListView(FollowUpQuerysetMixin, generics.ListAPIView):
     def get_queryset(self):
-        return (
-            follow_ups_visible_to(
-                FollowUp.objects.select_related("person", "assigned_to"),
-                self.request.church_membership,
-            )
-            .filter(assigned_to=self.request.user)
-            .exclude(status=FollowUp.Status.CLOSED)
-            .order_by(F("due_at").asc(nulls_last=True), "created_at", "id")
+        membership = self.request.church_membership
+        queryset = follow_ups_visible_to(
+            FollowUp.objects.select_related("person", "assigned_to", "church")
+            .prefetch_related("interactions", "due_date_changes")
+            .exclude(status=FollowUp.Status.CLOSED),
+            membership,
         )
+        if membership.role in (
+            ChurchMembership.Role.ADMIN,
+            ChurchMembership.Role.PASTOR,
+        ):
+            today = church_today(membership.church)
+            unassigned_cutoff = timezone.now() - timedelta(hours=24)
+            queryset = queryset.annotate(
+                later_postponements=Count(
+                    "due_date_changes",
+                    filter=Q(
+                        due_date_changes__new_due_at__gt=F(
+                            "due_date_changes__previous_due_at"
+                        )
+                    ),
+                )
+            ).filter(
+                Q(assigned_to=self.request.user)
+                | Q(
+                    status=FollowUp.Status.NEW,
+                    assigned_to__isnull=True,
+                    created_at__lte=unassigned_cutoff,
+                )
+                | Q(later_postponements__gte=2)
+                | Q(due_at__lte=today - timedelta(days=3))
+            )
+        else:
+            queryset = queryset.filter(assigned_to=self.request.user)
+        return queryset.order_by(F("due_at").asc(nulls_last=True), "created_at", "id")
 
 
 class FollowUpDetailView(
@@ -45,6 +105,24 @@ class FollowUpDetailView(
     generics.RetrieveUpdateAPIView,
 ):
     http_method_names = ("get", "put", "patch", "head", "options")
+
+    def update(self, request, *args, **kwargs):
+        """Lock before validation so scheduling rules observe one true sequence."""
+        partial = kwargs.pop("partial", False)
+        with transaction.atomic():
+            queryset = self.filter_queryset(self.get_queryset()).select_for_update(
+                of=("self",)
+            )
+            instance = get_object_or_404(queryset, pk=kwargs["pk"])
+            self.check_object_permissions(request, instance)
+            serializer = self.get_serializer(
+                instance,
+                data=request.data,
+                partial=partial,
+            )
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
 
 
 class FollowUpWorkerChoicesView(APIView):

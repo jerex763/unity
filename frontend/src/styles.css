@@ -1548,6 +1548,34 @@ a {
   font-size: 0.78rem;
 }
 
+.follow-up-attention {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.7rem 0;
+}
+
+.attention-chip {
+  background: #fff1d6;
+  border: 1px solid #e7b44b;
+  border-radius: 999px;
+  color: #674500;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+}
+
+.attention-escalated,
+.attention-overdue {
+  background: #ffe7e3;
+  border-color: #db7467;
+  color: #77261d;
+}
+
+.follow-up-next-action {
+  color: var(--color-text, #26342f);
+}
+
 .engagement-chip {
   flex: 0 0 auto;
   padding: 0.25rem 0.45rem;

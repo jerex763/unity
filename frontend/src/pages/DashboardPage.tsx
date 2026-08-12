@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom'
 import { apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import type { FollowUp } from '../followups/types'
-import { classifyFollowUpDueDate } from './followUpDueDate'
 
 const cards = [
   {
@@ -55,18 +54,16 @@ export function DashboardPage() {
     }
   }, [canWorkFollowUps, t])
 
-  const today = new Date().toLocaleDateString('en-CA')
-
-  function dueLabel(dueAt: string | null) {
-    const dueStatus = classifyFollowUpDueDate(dueAt, today)
-    if (dueStatus === 'none') return t('dashboard.noDueDate')
-    if (dueStatus === 'overdue') return t('dashboard.overdue')
-    if (dueStatus === 'today') return t('dashboard.dueToday')
+  function dueLabel(item: FollowUp) {
+    if (!item.due_at) return t('dashboard.noDueDate')
+    if (item.attention?.overdue) return t('dashboard.overdue')
+    if (item.attention?.due_today) return t('dashboard.dueToday')
     return t('dashboard.dueDate', {
       date: new Intl.DateTimeFormat(undefined, {
         day: 'numeric',
         month: 'short',
-      }).format(new Date(`${dueAt}T12:00:00`)),
+        timeZone: 'UTC',
+      }).format(new Date(`${item.due_at}T00:00:00Z`)),
     })
   }
 
@@ -107,8 +104,7 @@ export function DashboardPage() {
           {followUps.length ? (
             <div className="my-follow-up-list">
               {followUps.map((item) => {
-                const isOverdue =
-                  classifyFollowUpDueDate(item.due_at, today) === 'overdue'
+                const isOverdue = Boolean(item.attention?.overdue)
                 return (
                   <article className="my-follow-up-row" key={item.id}>
                     <div>
@@ -117,11 +113,42 @@ export function DashboardPage() {
                         {t(`followUps.sources.${item.source}`)} ·{' '}
                         {t(`followUps.statuses.${item.status}`)}
                       </p>
+                      {item.attention ? (
+                        <>
+                          <div className="follow-up-attention">
+                            {(
+                              [
+                                'escalated',
+                                'overdue',
+                                'due_today',
+                                'stale',
+                                'unassigned_too_long',
+                                'no_action',
+                              ] as const
+                            ).map((flag) =>
+                              item.attention?.[flag] ? (
+                                <span
+                                  className={`attention-chip attention-${flag}`}
+                                  key={flag}
+                                >
+                                  {t(`followUps.attention.${flag}`)}
+                                </span>
+                              ) : null,
+                            )}
+                          </div>
+                          <p>
+                            <strong>
+                              {t('followUps.attention.nextAction')}:
+                            </strong>{' '}
+                            {item.attention.next_action}
+                          </p>
+                        </>
+                      ) : null}
                     </div>
                     <span
                       className={isOverdue ? 'due-chip overdue' : 'due-chip'}
                     >
-                      {dueLabel(item.due_at)}
+                      {dueLabel(item)}
                     </span>
                     <div className="my-follow-up-actions">
                       {item.person.phone ? (

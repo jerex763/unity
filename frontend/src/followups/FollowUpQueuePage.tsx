@@ -24,6 +24,8 @@ type EditFields = {
   assigned_to: string
   due_at: string
   outcome: string
+  postpone_reason: string
+  postpone_interaction: string
 }
 
 type EditFieldErrors = Partial<Record<keyof EditFields, string>>
@@ -41,6 +43,8 @@ function editFields(item: FollowUp): EditFields {
     assigned_to: item.assigned_to?.toString() ?? '',
     due_at: item.due_at ?? '',
     outcome: item.outcome ?? '',
+    postpone_reason: '',
+    postpone_interaction: '',
   }
 }
 
@@ -124,8 +128,27 @@ export function FollowUpQueuePage() {
     key: Key,
     value: EditFields[Key],
   ) {
-    setFields((current) => (current ? { ...current, [key]: value } : current))
-    setFieldErrors((current) => ({ ...current, [key]: undefined }))
+    setFields((current) => {
+      if (!current) return current
+      const next = { ...current, [key]: value }
+      if (
+        key === 'due_at' &&
+        editing?.due_at &&
+        (!value || String(value) <= editing.due_at)
+      ) {
+        next.postpone_reason = ''
+        next.postpone_interaction = ''
+      }
+      return next
+    })
+    setFieldErrors((current) => {
+      const next = { ...current, [key]: undefined }
+      if (key === 'due_at') {
+        next.postpone_reason = undefined
+        next.postpone_interaction = undefined
+      }
+      return next
+    })
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -135,6 +158,19 @@ export function FollowUpQueuePage() {
     setFieldErrors({})
     setSaveError('')
     try {
+      const isMovingLater = Boolean(
+        editing.due_at && fields.due_at && fields.due_at > editing.due_at,
+      )
+      const postponementEvidence = isMovingLater
+        ? {
+            ...(fields.postpone_reason
+              ? { postpone_reason: fields.postpone_reason }
+              : {}),
+            ...(fields.postpone_interaction
+              ? { postpone_interaction: Number(fields.postpone_interaction) }
+              : {}),
+          }
+        : {}
       const updated = await apiRequest<FollowUp>(`/follow-ups/${editing.id}/`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -143,6 +179,7 @@ export function FollowUpQueuePage() {
           assigned_to: fields.assigned_to ? Number(fields.assigned_to) : null,
           due_at: fields.due_at || null,
           outcome: fields.outcome || null,
+          ...postponementEvidence,
         }),
       })
       setItems((current) =>
@@ -212,6 +249,35 @@ export function FollowUpQueuePage() {
                       </span>
                     </div>
                     <p>{t(`followUps.sources.${item.source}`)}</p>
+                    <div
+                      className="follow-up-attention"
+                      aria-label={t('followUps.attention.label')}
+                    >
+                      {(
+                        [
+                          'escalated',
+                          'overdue',
+                          'due_today',
+                          'stale',
+                          'unassigned_too_long',
+                          'no_action',
+                        ] as const
+                      ).map((flag) =>
+                        item.attention?.[flag] ? (
+                          <span
+                            className={`attention-chip attention-${flag}`}
+                            key={flag}
+                          >
+                            {t(`followUps.attention.${flag}`)}
+                          </span>
+                        ) : null,
+                      )}
+                    </div>
+                    <p className="follow-up-next-action">
+                      <strong>{t('followUps.attention.nextAction')}:</strong>{' '}
+                      {item.attention?.next_action ??
+                        t('followUps.attention.defaultAction')}
+                    </p>
                     {item.person.wechat_id ? (
                       <p>
                         {t('followUps.wechatId')}: {item.person.wechat_id}
@@ -372,6 +438,79 @@ export function FollowUpQueuePage() {
                 </label>
               </div>
             </fieldset>
+            {fields.due_at &&
+            editing.due_at &&
+            fields.due_at > editing.due_at &&
+            (editing.attention?.overdue ||
+              (editing.attention?.postponement_count ?? 0) > 0) ? (
+              <fieldset className="follow-up-assignment wide-field">
+                <legend>{t('followUps.postpone.legend')}</legend>
+                <p>{t('followUps.postpone.help')}</p>
+                <div>
+                  <label>
+                    <span>{t('followUps.postpone.reason')}</span>
+                    <select
+                      aria-invalid={Boolean(fieldErrors.postpone_reason)}
+                      onChange={(event) =>
+                        update('postpone_reason', event.target.value)
+                      }
+                      value={fields.postpone_reason}
+                    >
+                      <option value="">
+                        {t('followUps.postpone.chooseReason')}
+                      </option>
+                      {(
+                        [
+                          'awaiting_response',
+                          'person_requested',
+                          'worker_availability',
+                          'other_operational',
+                        ] as const
+                      ).map((reason) => (
+                        <option key={reason} value={reason}>
+                          {t(`followUps.postpone.reasons.${reason}`)}
+                        </option>
+                      ))}
+                    </select>
+                    {fieldErrors.postpone_reason ? (
+                      <span className="field-error" role="alert">
+                        {fieldErrors.postpone_reason}
+                      </span>
+                    ) : null}
+                  </label>
+                  <label>
+                    <span>{t('followUps.postpone.interaction')}</span>
+                    <select
+                      aria-invalid={Boolean(fieldErrors.postpone_interaction)}
+                      onChange={(event) =>
+                        update('postpone_interaction', event.target.value)
+                      }
+                      value={fields.postpone_interaction}
+                    >
+                      <option value="">
+                        {t('followUps.postpone.chooseInteraction')}
+                      </option>
+                      {interactions.map((interaction) => (
+                        <option key={interaction.id} value={interaction.id}>
+                          {t(
+                            `followUps.interactions.kinds.${interaction.kind}`,
+                          )}{' '}
+                          ·{' '}
+                          {new Date(
+                            interaction.created_at,
+                          ).toLocaleDateString()}
+                        </option>
+                      ))}
+                    </select>
+                    {fieldErrors.postpone_interaction ? (
+                      <span className="field-error" role="alert">
+                        {fieldErrors.postpone_interaction}
+                      </span>
+                    ) : null}
+                  </label>
+                </div>
+              </fieldset>
+            ) : null}
             <label className="wide-field">
               <span>{t('followUps.outcome')}</span>
               <textarea

@@ -1,13 +1,18 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from threading import Barrier
+from threading import Event as ThreadEvent
 
 import pytest
 from django.db import close_old_connections, connection
+from django.urls import reverse
 from django.utils import timezone
+from rest_framework.test import APIClient
 
-from accounts.models import User
-from care.models import FollowUp
+from accounts.constants import ACTIVE_CHURCH_SESSION_KEY
+from accounts.models import ChurchMembership, User
+from care.models import FollowUp, FollowUpDueDateChange
+from care.serializers import FollowUpSerializer
 from events.models import Event, EventRegistration
 from events.services import set_manual_check_in
 from people.models import Person
@@ -89,3 +94,91 @@ def test_concurrent_first_check_ins_create_one_open_follow_up(
         ).count()
         == 1
     )
+
+
+def test_concurrent_first_postponements_are_serialized(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    church = Church.objects.create(name="Fictional Concurrent Scheduling")
+    worker = User.objects.create_user(username="fictional.concurrent.schedule")
+    ChurchMembership.objects.create(
+        church=church,
+        user=worker,
+        role=ChurchMembership.Role.PASTOR,
+    )
+    person = Person.objects.create(church=church, full_name="Concurrent Schedule")
+    original_due = timezone.localdate() + timedelta(days=2)
+    item = FollowUp.objects.create(
+        church=church,
+        person=person,
+        source=FollowUp.Source.OTHER,
+        assigned_to=worker,
+        due_at=original_due,
+    )
+    first_has_lock = ThreadEvent()
+    second_started = ThreadEvent()
+    original_validate = FollowUpSerializer.validate
+
+    def synchronized_validate(serializer, attrs):
+        requested_due = attrs.get("due_at")
+        if requested_due == original_due + timedelta(days=1):
+            first_has_lock.set()
+            assert second_started.wait(timeout=10)
+        return original_validate(serializer, attrs)
+
+    monkeypatch.setattr(FollowUpSerializer, "validate", synchronized_validate)
+
+    clients = []
+    for _ in range(2):
+        client = APIClient()
+        client.force_login(worker)
+        session = client.session
+        session[ACTIVE_CHURCH_SESSION_KEY] = church.id
+        session.save()
+        clients.append(client)
+
+    def postpone(client: APIClient, days: int) -> tuple[int, dict[str, object]]:
+        close_old_connections()
+        try:
+            if days == 2:
+                assert first_has_lock.wait(timeout=10)
+                second_started.set()
+            response = client.patch(
+                reverse("care:follow-up-detail", args=(item.id,)),
+                {"due_at": (original_due + timedelta(days=days)).isoformat()},
+                format="json",
+            )
+            return response.status_code, response.json()
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(postpone, clients[0], 1),
+            executor.submit(postpone, clients[1], 2),
+        ]
+        results = [future.result(timeout=20) for future in futures]
+    monkeypatch.setattr(FollowUpSerializer, "validate", original_validate)
+
+    assert sorted(status for status, _ in results) == [200, 400]
+    rejected_payload = next(payload for status, payload in results if status == 400)
+    assert "postpone_reason" in rejected_payload
+    first_change = FollowUpDueDateChange.objects.get(follow_up=item)
+    assert first_change.previous_due_at == original_due
+
+    item.refresh_from_db()
+    final_due = item.due_at + timedelta(days=1)
+    retry = clients[0].patch(
+        reverse("care:follow-up-detail", args=(item.id,)),
+        {
+            "due_at": final_due.isoformat(),
+            "postpone_reason": FollowUpDueDateChange.Reason.OTHER_OPERATIONAL,
+        },
+        format="json",
+    )
+
+    assert retry.status_code == 200
+    changes = list(item.due_date_changes.all())
+    assert len(changes) == 2
+    assert changes[1].previous_due_at == changes[0].new_due_at
+    assert changes[1].new_due_at == final_due

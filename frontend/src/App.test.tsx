@@ -91,7 +91,7 @@ describe('App authentication flow', () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/auth/login/')
   })
 
-  it('shows open assignments due first on the dashboard', async () => {
+  it('uses server attention dates even when the browser date disagrees', async () => {
     const myFollowUps = [
       {
         id: 72,
@@ -113,6 +113,16 @@ describe('App authentication flow', () => {
         outcome: null,
         created_at: '2026-07-17T01:00:00Z',
         updated_at: '2026-07-17T01:00:00Z',
+        attention: {
+          overdue: false,
+          due_today: true,
+          unassigned_too_long: false,
+          no_action: true,
+          stale: false,
+          escalated: false,
+          postponement_count: 0,
+          next_action: "Complete today's agreed action",
+        },
       },
       {
         id: 73,
@@ -150,6 +160,7 @@ describe('App authentication flow', () => {
     expect(await screen.findByText('Noah Park')).toBeVisible()
     expect(screen.getByText('Ava Singh')).toBeVisible()
     expect(screen.getByText('No due date')).toBeVisible()
+    expect(screen.getAllByText('Due today')).toHaveLength(2)
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/follow-ups/mine/')
   })
 })
@@ -696,6 +707,16 @@ describe('Follow-up queue', () => {
     outcome: null,
     created_at: '2026-07-17T01:00:00Z',
     updated_at: '2026-07-17T01:00:00Z',
+    attention: {
+      overdue: true,
+      due_today: false,
+      unassigned_too_long: true,
+      no_action: false,
+      stale: false,
+      escalated: false,
+      postponement_count: 0,
+      next_action: 'Complete or reschedule the overdue action',
+    },
   }
 
   it('shows the pipeline and moves a follow-up after an update', async () => {
@@ -739,6 +760,10 @@ describe('Follow-up queue', () => {
       }),
     ).toBeVisible()
     expect(await screen.findByText('Mia Chen')).toBeVisible()
+    expect(screen.getByText('Overdue')).toBeVisible()
+    expect(
+      screen.getByText('Complete or reschedule the overdue action'),
+    ).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Update' }))
     expect(await screen.findByText('Fictional welcome call')).toBeVisible()
     await user.selectOptions(screen.getByLabelText('Stage'), 'connected')
@@ -791,5 +816,89 @@ describe('Follow-up queue', () => {
       ),
     ).toBeVisible()
     expect(dueInput).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('asks for a safe reason when an overdue due date moves later', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse([followUp]))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse(followUp))
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+
+    renderApp('/follow-ups')
+    await screen.findByText('Mia Chen')
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    fireEvent.change(screen.getByLabelText('Due'), {
+      target: { value: '2026-07-21' },
+    })
+
+    expect(
+      screen.getByRole('group', { name: 'Why is this moving later?' }),
+    ).toBeVisible()
+    await user.selectOptions(
+      screen.getByLabelText('Operational reason'),
+      'awaiting_response',
+    )
+    await user.click(screen.getByRole('button', { name: 'Save update' }))
+
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[4]?.[1]?.body)),
+    ).toMatchObject({ postpone_reason: 'awaiting_response' })
+  })
+
+  it('clears and omits hidden postponement evidence after moving earlier', async () => {
+    const interaction = {
+      id: 81,
+      kind: 'call',
+      occurred_at: '2026-07-21T02:00:00Z',
+      summary: 'Fictional scheduling call',
+      visibility: 'staff',
+      author: 'alex',
+      created_at: '2026-07-21T02:00:00Z',
+    }
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse([followUp]))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([interaction]))
+      .mockResolvedValueOnce(
+        jsonResponse({ ...followUp, due_at: '2026-07-19' }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+
+    renderApp('/follow-ups')
+    await screen.findByText('Mia Chen')
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await screen.findByText('Fictional scheduling call')
+    fireEvent.change(screen.getByLabelText('Due'), {
+      target: { value: '2026-07-22' },
+    })
+    await user.selectOptions(
+      screen.getByLabelText('Operational reason'),
+      'person_requested',
+    )
+    await user.selectOptions(
+      screen.getByLabelText('Supporting interaction'),
+      '81',
+    )
+    fireEvent.change(screen.getByLabelText('Due'), {
+      target: { value: '2026-07-19' },
+    })
+
+    expect(
+      screen.queryByRole('group', { name: 'Why is this moving later?' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save update' }))
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[4]?.[1]?.body))
+    expect(payload).not.toHaveProperty('postpone_reason')
+    expect(payload).not.toHaveProperty('postpone_interaction')
+    expect(payload).toMatchObject({ due_at: '2026-07-19' })
   })
 })
