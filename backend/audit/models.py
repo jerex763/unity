@@ -46,6 +46,22 @@ class AuditEvent(models.Model):
         )
         CSV_EXPORTED = "data.csv_exported", "CSV exported"
         CONSENT_RECORDED = "consent.recorded", "Consent recorded"
+        PUBLIC_EVENT_LINK_CREATED = (
+            "event.public_link_created",
+            "Public event link created",
+        )
+        PUBLIC_EVENT_LINK_REVOKED = (
+            "event.public_link_revoked",
+            "Public event link revoked",
+        )
+        PUBLIC_EVENT_REGISTERED = (
+            "event.public_registered",
+            "Public event registration created",
+        )
+        PUBLIC_EVENT_CANCELLED = (
+            "event.public_cancelled",
+            "Public event registration cancelled",
+        )
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

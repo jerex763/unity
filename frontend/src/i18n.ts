@@ -104,6 +104,23 @@ const resources = {
         loading: 'Loading events…',
         open: 'Registration open',
         registrationCount: '{{count}} / {{capacity}} registered',
+        publicLink: {
+          active:
+            'A public registration link is active. Rotate it to reveal a new link.',
+          copied: 'Public registration link copied.',
+          copy: 'Copy link',
+          copyError: 'Copy failed. Select and copy the link manually.',
+          create: 'Create public link',
+          error: 'We could not update the public link. Retry.',
+          privateHint:
+            'Share this registration link with visitors. Rotating or revoking it disables the previous link.',
+          ready: 'A new public registration link is ready.',
+          revoke: 'Revoke link',
+          revoked: 'The public registration link was revoked.',
+          rotate: 'Rotate public link',
+          title: 'Public registration link',
+          url: 'Public registration URL',
+        },
         registrations: {
           cancel: 'Cancel',
           cancelError: 'We could not cancel this registration. Retry.',

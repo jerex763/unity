@@ -4,6 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from './auth/useAuth'
 import { LoginPage } from './auth/LoginPage'
 import { EventsPage } from './events/EventsPage'
+import {
+  PublicCancellationPage,
+  PublicRegistrationPage,
+} from './events/PublicRegistrationPage'
 import { FollowUpQueuePage } from './followups/FollowUpQueuePage'
 import { AppShell } from './layout/AppShell'
 import { DashboardPage } from './pages/DashboardPage'
@@ -23,6 +27,11 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register/:token" element={<PublicRegistrationPage />} />
+      <Route
+        path="/registration/cancel/:token"
+        element={<PublicCancellationPage />}
+      />
       <Route element={<ProtectedShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="people" element={<DirectoryPage />} />

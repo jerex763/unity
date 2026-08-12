@@ -110,6 +110,42 @@ class ManualCheckInSerializer(serializers.Serializer):
     checked_in = serializers.BooleanField()
 
 
+class PublicRegistrationSerializer(serializers.Serializer):
+    full_name = serializers.CharField(max_length=200)
+    email = serializers.EmailField(allow_blank=True, required=False)
+    phone = serializers.CharField(allow_blank=True, max_length=30, required=False)
+    needs_transport = serializers.BooleanField(default=False)
+    consent = serializers.BooleanField()
+    notice_version = serializers.CharField(max_length=50)
+    website = serializers.CharField(allow_blank=True, required=False, write_only=True)
+
+    def validate_full_name(self, value: str) -> str:
+        normalized = " ".join(value.split())
+        if not normalized:
+            raise serializers.ValidationError("This field is required.")
+        return normalized
+
+    def validate_email(self, value: str) -> str:
+        return value.strip().lower()
+
+    def validate_phone(self, value: str) -> str:
+        return value.strip()
+
+    def validate_consent(self, value: bool) -> bool:
+        if not value:
+            raise serializers.ValidationError("Consent is required.")
+        return value
+
+    def validate(self, attrs: dict[str, object]) -> dict[str, object]:
+        if attrs.get("website"):
+            raise serializers.ValidationError({"detail": "Unable to process request."})
+        if not attrs.get("email") and not attrs.get("phone"):
+            raise serializers.ValidationError(
+                {"contact": "Provide an email address or phone number."}
+            )
+        return attrs
+
+
 class EventSerializer(serializers.ModelSerializer):
     group = serializers.PrimaryKeyRelatedField(
         allow_null=True,
@@ -123,6 +159,7 @@ class EventSerializer(serializers.ModelSerializer):
     registration_open = serializers.SerializerMethodField()
     places_available = serializers.SerializerMethodField()
     my_registration = serializers.SerializerMethodField()
+    public_registration_enabled = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -141,6 +178,7 @@ class EventSerializer(serializers.ModelSerializer):
             "registration_open",
             "places_available",
             "my_registration",
+            "public_registration_enabled",
             "registered_count",
             "waitlisted_count",
             "created_by",
@@ -152,6 +190,7 @@ class EventSerializer(serializers.ModelSerializer):
             "registration_open",
             "places_available",
             "my_registration",
+            "public_registration_enabled",
             "registered_count",
             "waitlisted_count",
             "created_by",
@@ -214,3 +253,7 @@ class EventSerializer(serializers.ModelSerializer):
 
     def get_waitlisted_count(self, instance: Event) -> int:
         return getattr(instance, "waitlisted_count", 0)
+
+    def get_public_registration_enabled(self, instance: Event) -> bool:
+        link = getattr(instance, "public_registration_link", None)
+        return link is not None and link.revoked_at is None

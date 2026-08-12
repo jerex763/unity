@@ -1,29 +1,51 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
+from django.http import Http404
 from django.utils import timezone
 from rest_framework import generics, status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import Throttled, ValidationError
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.access import groups_visible_to
 from accounts.models import ChurchMembership
+from audit.models import AuditEvent
+from audit.services import record_audit_event
 from groups.models import Group
 from people.models import Person
+from people.normalization import normalize_email, normalize_phone
 from tenancy.permissions import HasActiveChurchMembership
 
-from .models import Event, EventRegistration
+from .models import Event, EventRegistration, PublicRegistrationLink
 from .permissions import HasEventAccess
 from .serializers import (
     EventRegistrationCreateSerializer,
     EventRegistrationSerializer,
     EventSerializer,
     ManualCheckInSerializer,
+    PublicRegistrationSerializer,
     WalkInCreateSerializer,
 )
-from .services import cancel_registration, register_for_event, set_manual_check_in
+from .services import (
+    PublicRegistrationError,
+    PublicRegistrationRateLimited,
+    cancel_public_registration,
+    cancel_registration,
+    enforce_public_client_rate_limit,
+    enforce_valid_public_token_rate_limit,
+    public_cancellation_token_is_valid,
+    public_event_for_token,
+    register_for_event,
+    register_public_visitor,
+    registration_is_open,
+    revoke_public_registration_link,
+    rotate_public_registration_link,
+    set_manual_check_in,
+)
 
 
 class EventQuerysetMixin:
@@ -37,7 +59,7 @@ class EventQuerysetMixin:
         )
         queryset = (
             Event.objects.for_church(self.request.church)
-            .select_related("group", "created_by")
+            .select_related("group", "created_by", "public_registration_link")
             .annotate(
                 registered_count=Count(
                     "registrations",
@@ -178,9 +200,13 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
         people = Person.objects.for_church(request.church)
         person = None
         if values.get("email"):
-            person = people.filter(email__iexact=values["email"]).first()
+            person = people.filter(
+                normalized_email=normalize_email(values["email"])
+            ).first()
         if person is None and values.get("phone"):
-            person = people.filter(phone=values["phone"]).first()
+            person = people.filter(
+                normalized_phone=normalize_phone(values["phone"])
+            ).first()
         if person is None and values.get("wechat_id"):
             person = people.filter(wechat_id=values["wechat_id"]).first()
         if person is None:
@@ -248,3 +274,172 @@ class EventRegistrationCheckInView(EventRegistrationListCreateView):
             raise ValidationError({"detail": error.messages[0]}) from error
         updated = EventRegistration.objects.select_related("person").get(pk=updated.pk)
         return Response(EventRegistrationSerializer(updated).data)
+
+
+class EventPublicLinkView(APIView):
+    permission_classes = (HasActiveChurchMembership, HasEventAccess)
+
+    def _event(self, request: Request, event_id: int) -> Event:
+        return generics.get_object_or_404(
+            Event.objects.for_church(request.church), pk=event_id
+        )
+
+    def post(self, request: Request, event_id: int) -> Response:
+        event = self._event(request, event_id)
+        try:
+            link, token = rotate_public_registration_link(
+                event=event, created_by=request.user
+            )
+        except DjangoValidationError as error:
+            raise ValidationError({"detail": error.messages[0]}) from error
+        record_audit_event(
+            action=AuditEvent.Action.PUBLIC_EVENT_LINK_CREATED,
+            actor=request.user,
+            church=request.church,
+            target=link,
+            request=request,
+        )
+        return Response(
+            {"url": request.build_absolute_uri(f"/register/{token}")},
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request: Request, event_id: int) -> Response:
+        event = self._event(request, event_id)
+        link = generics.get_object_or_404(
+            PublicRegistrationLink.objects.for_church(request.church), event=event
+        )
+        revoke_public_registration_link(link)
+        record_audit_event(
+            action=AuditEvent.Action.PUBLIC_EVENT_LINK_REVOKED,
+            actor=request.user,
+            church=request.church,
+            target=link,
+            request=request,
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PublicEventRegistrationView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+    @staticmethod
+    def _client_identifier(request: Request) -> str:
+        remote = (request.META.get("REMOTE_ADDR") or "unknown").strip()
+        trusted_hops = max(settings.PUBLIC_REGISTRATION_TRUSTED_PROXY_HOPS, 0)
+        if trusted_hops == 0:
+            return remote[:128]
+        forwarded = [
+            value.strip()
+            for value in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")
+            if value.strip()
+        ]
+        chain = [*forwarded, remote]
+        client_index = len(chain) - trusted_hops - 1
+        if client_index < 0:
+            return remote[:128]
+        return chain[client_index][:128]
+
+    def _event(self, request: Request, token: str) -> Event:
+        client_identifier = self._client_identifier(request)
+        try:
+            enforce_public_client_rate_limit(client_identifier=client_identifier)
+        except PublicRegistrationRateLimited as error:
+            raise Throttled(
+                detail="Unable to process request. Please try again later."
+            ) from error
+        event = public_event_for_token(token)
+        if event is None:
+            raise Http404
+        try:
+            enforce_valid_public_token_rate_limit(
+                token=token,
+                client_identifier=client_identifier,
+            )
+        except PublicRegistrationRateLimited as error:
+            raise Throttled(
+                detail="Unable to process request. Please try again later."
+            ) from error
+        return event
+
+    def get(self, request: Request, token: str) -> Response:
+        event = self._event(request, token)
+        return Response(
+            {
+                "title": event.title,
+                "description": event.description,
+                "starts_at": event.starts_at,
+                "ends_at": event.ends_at,
+                "location": event.location,
+                "registration_open": registration_is_open(event),
+                "privacy_notice": {
+                    "version": settings.PRIVACY_NOTICE_VERSION,
+                    "text": settings.PRIVACY_NOTICE_TEXT,
+                },
+            }
+        )
+
+    def post(self, request: Request, token: str) -> Response:
+        event = self._event(request, token)
+        serializer = PublicRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = serializer.validated_data
+        try:
+            outcome = register_public_visitor(
+                event=event,
+                full_name=values["full_name"],
+                email=values.get("email") or None,
+                phone=values.get("phone") or None,
+                needs_transport=values["needs_transport"],
+                notice_version=values["notice_version"],
+            )
+        except PublicRegistrationError as error:
+            raise ValidationError(
+                {"detail": "Unable to process registration."}
+            ) from error
+        if outcome.registration is not None:
+            record_audit_event(
+                action=AuditEvent.Action.PUBLIC_EVENT_REGISTERED,
+                church=event.church,
+                target=outcome.registration,
+                request=request,
+            )
+        return Response(
+            {
+                "accepted": True,
+                "event_title": event.title,
+                "cancellation_url": request.build_absolute_uri(
+                    f"/registration/cancel/{outcome.cancellation_token}"
+                ),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class PublicEventCancellationView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, token: str) -> Response:
+        client_identifier = PublicEventRegistrationView._client_identifier(request)
+        try:
+            enforce_public_client_rate_limit(client_identifier=client_identifier)
+            if public_cancellation_token_is_valid(token):
+                enforce_valid_public_token_rate_limit(
+                    token=token,
+                    client_identifier=client_identifier,
+                )
+            registration = cancel_public_registration(token)
+        except PublicRegistrationRateLimited as error:
+            raise Throttled(
+                detail="Unable to process request. Please try again later."
+            ) from error
+        if registration is not None:
+            record_audit_event(
+                action=AuditEvent.Action.PUBLIC_EVENT_CANCELLED,
+                church=registration.church,
+                target=registration,
+                request=request,
+            )
+        return Response({"status": "cancelled"})

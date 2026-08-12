@@ -185,7 +185,7 @@ test('event organizer interactions remain usable at the configured viewport', as
 
   const actions = page.locator('.event-actions').first()
   const actionButtons = actions.getByRole('button')
-  await expect(actionButtons).toHaveCount(3)
+  await expect(actionButtons).toHaveCount(4)
   await expect(actions).toHaveCSS('flex-wrap', 'wrap')
 
   const boxes = await actionButtons.evaluateAll((buttons) =>

@@ -8,6 +8,8 @@ from django.http import FileResponse, Http404, HttpRequest, JsonResponse
 from django.urls import include, path, re_path
 from django.views.decorators.http import require_GET
 
+from events.views import PublicEventCancellationView, PublicEventRegistrationView
+
 admin.site.site_header = "Unity administration"
 admin.site.site_title = "Unity admin"
 admin.site.index_title = "Church operations"
@@ -33,6 +35,16 @@ urlpatterns = [
     path("api/auth/", include("accounts.urls")),
     path("api/people/", include("people.urls")),
     path("api/events/", include("events.urls")),
+    path(
+        "api/public/events/<str:token>/",
+        PublicEventRegistrationView.as_view(),
+        name="public-event-registration",
+    ),
+    path(
+        "api/public/registrations/<str:token>/cancel/",
+        PublicEventCancellationView.as_view(),
+        name="public-event-cancellation",
+    ),
     path("api/follow-ups/", include("care.urls")),
     path("api/health/", health_check, name="health-check"),
     re_path(

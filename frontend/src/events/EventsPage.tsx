@@ -130,6 +130,12 @@ export function EventsPage() {
   const [walkInPhone, setWalkInPhone] = useState('')
   const [walkInWechatId, setWalkInWechatId] = useState('')
   const [walkInContactError, setWalkInContactError] = useState('')
+  const [publicLinks, setPublicLinks] = useState<Record<number, string>>({})
+  const [publicLinkNotice, setPublicLinkNotice] = useState('')
+  const [publicLinkError, setPublicLinkError] = useState('')
+  const [publicLinkFeedbackEvent, setPublicLinkFeedbackEvent] = useState<
+    number | null
+  >(null)
   const editorRef = useRef<HTMLElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const canEdit = session?.membership.role !== 'member'
@@ -359,6 +365,70 @@ export function EventsPage() {
       setEvents(await apiRequest<ChurchEvent[]>('/events/'))
     } catch {
       setRegistrationError(t('events.registrations.cancelError'))
+    }
+  }
+
+  async function generatePublicLink(churchEvent: ChurchEvent) {
+    setPublicLinkFeedbackEvent(churchEvent.id)
+    setPublicLinkError('')
+    setPublicLinkNotice('')
+    try {
+      const result = await apiRequest<{ url: string }>(
+        `/events/${churchEvent.id}/public-link/`,
+        { method: 'POST' },
+      )
+      setPublicLinks((current) => ({
+        ...current,
+        [churchEvent.id]: result.url,
+      }))
+      setEvents((current) =>
+        current.map((item) =>
+          item.id === churchEvent.id
+            ? { ...item, public_registration_enabled: true }
+            : item,
+        ),
+      )
+      setPublicLinkNotice(t('events.publicLink.ready'))
+    } catch {
+      setPublicLinkError(t('events.publicLink.error'))
+    }
+  }
+
+  async function copyPublicLink(churchEvent: ChurchEvent) {
+    setPublicLinkFeedbackEvent(churchEvent.id)
+    const value = publicLinks[churchEvent.id]
+    if (!value) return
+    try {
+      await navigator.clipboard.writeText(value)
+      setPublicLinkNotice(t('events.publicLink.copied'))
+      setPublicLinkError('')
+    } catch {
+      setPublicLinkError(t('events.publicLink.copyError'))
+    }
+  }
+
+  async function revokePublicLink(churchEvent: ChurchEvent) {
+    setPublicLinkFeedbackEvent(churchEvent.id)
+    setPublicLinkError('')
+    try {
+      await apiRequest(`/events/${churchEvent.id}/public-link/`, {
+        method: 'DELETE',
+      })
+      setPublicLinks((current) => {
+        const next = { ...current }
+        delete next[churchEvent.id]
+        return next
+      })
+      setEvents((current) =>
+        current.map((item) =>
+          item.id === churchEvent.id
+            ? { ...item, public_registration_enabled: false }
+            : item,
+        ),
+      )
+      setPublicLinkNotice(t('events.publicLink.revoked'))
+    } catch {
+      setPublicLinkError(t('events.publicLink.error'))
     }
   }
 
@@ -788,6 +858,16 @@ export function EventsPage() {
                       ▾
                     </span>
                   </button>
+                  <button
+                    className="secondary-button"
+                    disabled={!event.registration_open}
+                    onClick={() => void generatePublicLink(event)}
+                    type="button"
+                  >
+                    {event.public_registration_enabled
+                      ? t('events.publicLink.rotate')
+                      : t('events.publicLink.create')}
+                  </button>
                 </div>
               ) : (
                 <div className="event-actions">
@@ -818,6 +898,54 @@ export function EventsPage() {
                   </button>
                 </div>
               )}
+
+              {canEdit && publicLinks[event.id] ? (
+                <section
+                  className="public-link-panel"
+                  aria-label={t('events.publicLink.title')}
+                >
+                  <p>{t('events.publicLink.privateHint')}</p>
+                  <input
+                    aria-label={t('events.publicLink.url')}
+                    readOnly
+                    type="url"
+                    value={publicLinks[event.id]}
+                  />
+                  <div>
+                    <button
+                      className="secondary-button"
+                      onClick={() => void copyPublicLink(event)}
+                      type="button"
+                    >
+                      {t('events.publicLink.copy')}
+                    </button>
+                    <button
+                      className="text-button"
+                      onClick={() => void revokePublicLink(event)}
+                      type="button"
+                    >
+                      {t('events.publicLink.revoke')}
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+              {canEdit &&
+              event.public_registration_enabled &&
+              !publicLinks[event.id] ? (
+                <p className="public-link-active">
+                  {t('events.publicLink.active')}
+                </p>
+              ) : null}
+              {publicLinkFeedbackEvent === event.id && publicLinkError ? (
+                <p className="form-error" role="alert">
+                  {publicLinkError}
+                </p>
+              ) : null}
+              {publicLinkFeedbackEvent === event.id && publicLinkNotice ? (
+                <p className="form-success" role="status">
+                  {publicLinkNotice}
+                </p>
+              ) : null}
 
               {activeRoster === event.id ? (
                 <section

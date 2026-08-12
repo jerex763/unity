@@ -352,6 +352,13 @@ class ConsentRecordSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_method(self, value: str) -> str:
+        if value == ConsentRecord.Method.SELF_SERVICE:
+            raise serializers.ValidationError(
+                "Self-service consent can only be submitted by the person."
+            )
+        return value
+
 
 class HardDeletePersonSerializer(serializers.Serializer):
     reason = serializers.ChoiceField(choices=Person.HardDeleteReason.choices)

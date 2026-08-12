@@ -98,6 +98,13 @@ jobs:
       - name: Run tests
         run: pytest
 
+      - name: Rehearse migration preflight and migration path
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+        run: |
+          python manage.py preflight_person_contact_normalization
+          python manage.py migrate --noinput
+
       - name: Run permission and privacy contract
         run: pytest tests/test_permission_matrix.py
 

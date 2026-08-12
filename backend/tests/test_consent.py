@@ -219,3 +219,59 @@ def test_consent_history_is_append_only() -> None:
         )
     with pytest.raises(ValidationError, match="cannot be deleted"):
         ConsentRecord.objects.filter(pk=record.pk).delete()
+
+
+def test_consent_recorder_truthfully_matches_submission_method() -> None:
+    church = Church.objects.create(name="Fictional Consent Source Church")
+    recorder = make_worker(
+        church,
+        ChurchMembership.Role.PASTOR,
+        "fictional.consent.source",
+    )
+    person = Person.objects.create(church=church, full_name="Fictional Person")
+
+    with pytest.raises(ValidationError, match="must not name a staff recorder"):
+        ConsentRecord.objects.create(
+            church=church,
+            person=person,
+            status=ConsentRecord.Status.GRANTED,
+            notice_version=NOTICE_VERSION,
+            consented_at=timezone.now(),
+            method=ConsentRecord.Method.SELF_SERVICE,
+            recorded_by=recorder,
+        )
+    with pytest.raises(ValidationError, match="require a recorder"):
+        ConsentRecord.objects.create(
+            church=church,
+            person=person,
+            status=ConsentRecord.Status.GRANTED,
+            notice_version=NOTICE_VERSION,
+            consented_at=timezone.now(),
+            method=ConsentRecord.Method.STAFF_RECORDED,
+            recorded_by=None,
+        )
+
+
+def test_authenticated_staff_endpoint_rejects_self_service_method() -> None:
+    church = Church.objects.create(name="Fictional Staff Consent Church")
+    pastor = make_worker(
+        church,
+        ChurchMembership.Role.PASTOR,
+        "fictional.consent.staff.source",
+    )
+    person = Person.objects.create(church=church, full_name="Fictional Person")
+
+    response = authenticated_client(pastor, church).post(
+        consent_url(person),
+        {
+            "status": ConsentRecord.Status.GRANTED,
+            "notice_version": NOTICE_VERSION,
+            "consented_at": timezone.now().isoformat(),
+            "method": ConsentRecord.Method.SELF_SERVICE,
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "method" in response.json()
+    assert not ConsentRecord.objects.exists()

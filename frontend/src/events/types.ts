@@ -33,6 +33,7 @@ export type ChurchEvent = {
   registration_open: boolean
   places_available: boolean
   my_registration: EventRegistration | null
+  public_registration_enabled: boolean
   registered_count: number
   waitlisted_count: number
   created_by: string

@@ -5,6 +5,8 @@ from django.db.models import Q
 
 from tenancy.models import ChurchScopedModel, ChurchScopedQuerySet
 
+from .normalization import normalize_email, normalize_phone
+
 
 class Household(ChurchScopedModel):
     name = models.CharField(max_length=200)
@@ -60,6 +62,8 @@ class Person(ChurchScopedModel):
     date_of_birth = models.DateField(blank=True, null=True)
     email = models.EmailField(blank=True, null=True)  # noqa: DJ001
     phone = models.CharField(blank=True, max_length=30, null=True)
+    normalized_email = models.CharField(blank=True, max_length=254, null=True)
+    normalized_phone = models.CharField(blank=True, max_length=30, null=True)
     wechat_id = models.CharField(blank=True, max_length=100, null=True)
     has_whatsapp = models.BooleanField(default=True)
     photo_url = models.URLField(blank=True, max_length=500, null=True)
@@ -108,11 +112,17 @@ class Person(ChurchScopedModel):
                 condition=Q(email__isnull=False) & ~Q(email=""),
                 fields=("church", "email"),
                 name="uniq_person_email_per_church",
-            )
+            ),
+            models.UniqueConstraint(
+                condition=Q(normalized_email__isnull=False),
+                fields=("church", "normalized_email"),
+                name="uniq_person_normalized_email_per_church",
+            ),
         ]
         indexes = [
             models.Index(fields=("church", "full_name")),
             models.Index(fields=("church", "membership_status")),
+            models.Index(fields=("church", "normalized_phone")),
         ]
 
     def __str__(self) -> str:
@@ -127,6 +137,19 @@ class Person(ChurchScopedModel):
             errors["invited_by"] = "Inviter and person must belong to the same church."
         if errors:
             raise ValidationError(errors)
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.normalized_email = normalize_email(self.email)
+        self.normalized_phone = normalize_phone(self.phone)
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            fields = set(update_fields)
+            if "email" in fields:
+                fields.add("normalized_email")
+            if "phone" in fields:
+                fields.add("normalized_phone")
+            kwargs["update_fields"] = fields
+        super().save(*args, **kwargs)
 
     def delete(
         self,
@@ -185,6 +208,8 @@ class ConsentRecord(ChurchScopedModel):
     method = models.CharField(choices=Method.choices, max_length=20)
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
         on_delete=models.PROTECT,
         related_name="consent_records_recorded",
     )
@@ -205,6 +230,15 @@ class ConsentRecord(ChurchScopedModel):
             models.Index(fields=("church", "person", "created_at")),
             models.Index(fields=("church", "status", "created_at")),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(method="self_service", recorded_by__isnull=True)
+                    | (~Q(method="self_service") & Q(recorded_by__isnull=False))
+                ),
+                name="consent_recorder_matches_method",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.person} — {self.status} ({self.notice_version})"
@@ -221,6 +255,12 @@ class ConsentRecord(ChurchScopedModel):
             errors["supersedes"] = (
                 "A correction must supersede a consent record for the same person."
             )
+        if self.method == self.Method.SELF_SERVICE and self.recorded_by_id is not None:
+            errors["recorded_by"] = (
+                "Self-service consent must not name a staff recorder."
+            )
+        if self.method != self.Method.SELF_SERVICE and self.recorded_by_id is None:
+            errors["recorded_by"] = "Staff and paper consent require a recorder."
         if errors:
             raise ValidationError(errors)
 

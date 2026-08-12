@@ -4,6 +4,7 @@ from .views import (
     EventDetailView,
     EventGroupChoicesView,
     EventListCreateView,
+    EventPublicLinkView,
     EventRegistrationCancelView,
     EventRegistrationCheckInView,
     EventRegistrationListCreateView,
@@ -15,6 +16,11 @@ app_name = "events"
 urlpatterns = [
     path("", EventListCreateView.as_view(), name="event-list"),
     path("groups/", EventGroupChoicesView.as_view(), name="event-group-choices"),
+    path(
+        "<int:event_id>/public-link/",
+        EventPublicLinkView.as_view(),
+        name="event-public-link",
+    ),
     path(
         "<int:event_id>/registrations/",
         EventRegistrationListCreateView.as_view(),
