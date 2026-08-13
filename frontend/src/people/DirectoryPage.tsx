@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import { apiRequest } from '../api/client'
-import { EmailContactActions } from './EmailContactActions'
+import { ContactActions } from './ContactActions'
 import type { DirectoryPerson } from './types'
 
 type LoadState =
@@ -300,24 +300,14 @@ export function DirectoryPage() {
                 ) : null}
               </div>
               <div className="person-actions">
-                {person.phone ? (
-                  <a
-                    aria-label={t('directory.callPerson', {
-                      name: person.preferred_name?.trim() || person.full_name,
-                    })}
-                    className="contact-link"
-                    href={`tel:${person.phone}`}
-                  >
-                    {t('directory.call')}
-                  </a>
-                ) : null}
-                {person.email ? (
-                  <EmailContactActions
-                    email={person.email}
-                    fullName={person.full_name}
-                    preferredName={person.preferred_name}
-                  />
-                ) : null}
+                <ContactActions
+                  email={person.email}
+                  fullName={person.full_name}
+                  hasWhatsapp={person.has_whatsapp}
+                  phone={person.phone}
+                  preferredName={person.preferred_name}
+                  wechatId={person.wechat_id}
+                />
               </div>
             </article>
           ))}

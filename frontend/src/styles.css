@@ -755,7 +755,16 @@ button.contact-link.secondary {
   border: 1px solid var(--color-border);
 }
 
-.email-contact-actions {
+.contact-actions {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 0.5rem;
+}
+
+.contact-channel {
   display: grid;
   min-width: 0;
   flex: 1 1 17rem;
@@ -763,7 +772,7 @@ button.contact-link.secondary {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.email-address-copy {
+.contact-value-copy {
   width: 100%;
   min-width: 0;
   padding: 0.45rem 0.55rem;
@@ -774,9 +783,11 @@ button.contact-link.secondary {
   font: inherit;
   font-size: 0.75rem;
   grid-column: 1 / -1;
+  line-height: 1.35;
+  resize: none;
 }
 
-.email-copy-feedback {
+.contact-copy-feedback {
   margin: 0;
   color: var(--color-primary-strong);
   font-size: 0.75rem;
@@ -785,8 +796,18 @@ button.contact-link.secondary {
   line-height: 1.35;
 }
 
-.email-copy-feedback.unavailable {
+.contact-copy-feedback.unavailable {
   color: var(--color-urgent);
+}
+
+.contact-channel-note {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  grid-column: 1 / -1;
+  line-height: 1.35;
 }
 
 .directory-message {
@@ -2216,8 +2237,7 @@ button.contact-link.secondary {
   }
 
   .person-actions {
-    min-width: 8rem;
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 
   .profile-hero {
@@ -2248,8 +2268,7 @@ button.contact-link.secondary {
   }
 
   .profile-contact-actions {
-    min-width: 10rem;
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 
   .profile-panel {

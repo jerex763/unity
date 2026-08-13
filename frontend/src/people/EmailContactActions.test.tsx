@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import '../i18n'
-import { emailAppHref } from './emailAppHref'
+import { emailAppHref } from './contactLinks'
 import { EmailContactActions } from './EmailContactActions'
 
 const originalClipboard = Object.getOwnPropertyDescriptor(
@@ -68,9 +68,7 @@ describe('EmailContactActions', () => {
     )
 
     expect(writeText).toHaveBeenCalledWith(email)
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Email address copied.',
-    )
+    expect(screen.getByRole('status')).toHaveTextContent('Copied.')
   })
 
   it('uses the full name and selects the visible fallback without clipboard access', async () => {
@@ -96,7 +94,7 @@ describe('EmailContactActions', () => {
     expect(address).toHaveProperty('selectionStart', 0)
     expect(address).toHaveProperty('selectionEnd', 'ava@example.test'.length)
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Copy is unavailable. Select the email address to copy it manually.',
+      'Copy is unavailable. Select the value to copy it manually.',
     )
   })
 
@@ -123,7 +121,7 @@ describe('EmailContactActions', () => {
     expect(address).toHaveProperty('selectionStart', 0)
     expect(address).toHaveProperty('selectionEnd', 'mia@example.test'.length)
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Copy is unavailable. Select the email address to copy it manually.',
+      'Copy is unavailable. Select the value to copy it manually.',
     )
   })
 })

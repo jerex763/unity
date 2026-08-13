@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { ApiError, apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
+import { ContactActions } from '../people/ContactActions'
 import type {
   FollowUp,
   FollowUpStatus,
@@ -278,11 +279,14 @@ export function FollowUpQueuePage() {
                       {item.attention?.next_action ??
                         t('followUps.attention.defaultAction')}
                     </p>
-                    {item.person.wechat_id ? (
-                      <p>
-                        {t('followUps.wechatId')}: {item.person.wechat_id}
-                      </p>
-                    ) : null}
+                    <ContactActions
+                      email={item.person.email}
+                      fullName={item.person.full_name}
+                      hasWhatsapp={item.person.has_whatsapp}
+                      phone={item.person.phone}
+                      preferredName={item.person.preferred_name}
+                      wechatId={item.person.wechat_id}
+                    />
                     <dl>
                       <div>
                         <dt>{t('followUps.assignee')}</dt>
@@ -296,11 +300,6 @@ export function FollowUpQueuePage() {
                       </div>
                     </dl>
                     <div className="follow-up-actions">
-                      {item.person.phone ? (
-                        <a href={`tel:${item.person.phone}`}>
-                          {t('followUps.call')}
-                        </a>
-                      ) : null}
                       <button
                         className="text-button"
                         onClick={() => beginEdit(item)}

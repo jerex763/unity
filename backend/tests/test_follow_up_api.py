@@ -80,6 +80,7 @@ def test_pastor_can_view_pipeline_assign_and_close_follow_up() -> None:
     assert list_response.status_code == 200
     assert list_response.json()[0]["person"]["full_name"] == item.person.full_name
     assert list_response.json()[0]["person"]["wechat_id"] == "fictional_followup"
+    assert list_response.json()[0]["person"]["has_whatsapp"] is True
     assert update.status_code == 200
     assert update.json()["assigned_to"] == leader.user_id
     assert update.json()["closed_at"] is not None

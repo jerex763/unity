@@ -21,15 +21,25 @@ const resources = {
         requiredHint: 'Fields marked (required) must be completed.',
       },
       contact: {
-        copyEmail: 'Copy email',
+        actionsFor: 'Contact actions for {{name}}',
+        copy: 'Copy',
         copyEmailFor: 'Copy email address for {{name}}',
+        copyPhoneFor: 'Copy phone number for {{name}}',
+        copyUnavailable:
+          'Copy is unavailable. Select the value to copy it manually.',
+        copyWechatFor: 'Copy WeChat ID for {{name}}',
         emailActionsFor: 'Email actions for {{name}}',
         emailAddressFor: 'Email address for {{name}}',
-        emailCopied: 'Email address copied.',
-        emailCopyUnavailable:
-          'Copy is unavailable. Select the email address to copy it manually.',
+        manualWhatsapp:
+          'WhatsApp: copy the phone number and open WhatsApp manually. Add an international prefix outside Unity if needed.',
         openEmailApp: 'Open email app',
         openEmailAppFor: 'Open email app for {{name}}',
+        openWhatsapp: 'Open WhatsApp',
+        openWhatsappFor: 'Open WhatsApp for {{name}}',
+        phoneFor: 'Phone number for {{name}}',
+        valueCopied: 'Copied.',
+        wechat: 'WeChat ID',
+        wechatFor: 'WeChat ID for {{name}}',
       },
       nav: {
         home: 'Home',

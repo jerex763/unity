@@ -13,6 +13,7 @@ export type DirectoryPerson = {
   email: string | null
   phone: string | null
   wechat_id: string | null
+  has_whatsapp: boolean
   photo_url: string | null
   suburb: string | null
   university: string | null
@@ -54,7 +55,6 @@ export type PersonRelationship = {
 export type ProfilePerson = DirectoryPerson & {
   gender: 'male' | 'female' | 'unspecified'
   date_of_birth: string | null
-  has_whatsapp: boolean
   home_country: string | null
   occupation: string | null
   course: string | null

@@ -23,9 +23,9 @@ const person = {
   gender: 'unspecified',
   date_of_birth: null,
   email: 'fictional.mia@example.test',
-  phone: '+61000000001',
-  wechat_id: null,
-  has_whatsapp: false,
+  phone: '+61 400 000 001',
+  wechat_id: 'fictional_mimi_wechat',
+  has_whatsapp: true,
   photo_url: null,
   home_country: null,
   suburb: 'Fictional Suburb',
@@ -62,6 +62,31 @@ async function mockApi(page: Page) {
       await route.fulfill({ json: person })
       return
     }
+    if (path === '/api/follow-ups/') {
+      await route.fulfill({
+        json: [
+          {
+            id: 71,
+            person,
+            source: 'event_visit',
+            engagement: 'possible',
+            status: 'new',
+            assigned_to: null,
+            assigned_to_name: null,
+            due_at: null,
+            closed_at: null,
+            outcome: null,
+            created_at: '2026-08-13T00:00:00Z',
+            updated_at: '2026-08-13T00:00:00Z',
+          },
+        ],
+      })
+      return
+    }
+    if (path === '/api/follow-ups/workers/') {
+      await route.fulfill({ json: [] })
+      return
+    }
     await route.fulfill({ status: 404, json: { detail: 'Not mocked' } })
   })
 }
@@ -76,15 +101,44 @@ async function expectNoHorizontalOverflow(page: Page) {
     .toBe(true)
 }
 
+async function expectContactOrderAndTargets(page: Page) {
+  const actions = page.getByRole('group', {
+    name: 'Contact actions for Mimi',
+  })
+  await expect(actions).toBeVisible()
+  await expect
+    .poll(() =>
+      actions
+        .locator(':scope > [data-contact-channel]')
+        .evaluateAll((elements) =>
+          elements.map((element) =>
+            element.getAttribute('data-contact-channel'),
+          ),
+        ),
+    )
+    .toEqual(['whatsapp', 'wechat', 'call', 'email'])
+  await expect(
+    actions.getByRole('link', { name: 'Open WhatsApp for Mimi' }),
+  ).toHaveAttribute('href', 'https://wa.me/61400000001')
+  const controls = actions.locator('a, button')
+  const boxes = await controls.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect().toJSON()),
+  )
+  expect(boxes.length).toBeGreaterThan(0)
+  expect(boxes.every((box) => box.height >= 44)).toBe(true)
+  await expectNoHorizontalOverflow(page)
+}
+
 test.beforeEach(async ({ context, page }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await mockApi(page)
 })
 
-test('email handoff and copy fallback remain usable at the configured viewport', async ({
+test('contact handoffs remain ordered and usable across all surfaces at the configured viewport', async ({
   page,
 }) => {
   await page.goto('/people')
+  await expectContactOrderAndTargets(page)
 
   const openEmail = page.getByRole('link', {
     name: 'Open email app for Mimi',
@@ -103,7 +157,7 @@ test('email handoff and copy fallback remain usable at the configured viewport',
   expect((await openEmail.boundingBox())?.height).toBeGreaterThanOrEqual(44)
   expect((await copyEmail.boundingBox())?.height).toBeGreaterThanOrEqual(44)
   await copyEmail.click()
-  await expect(page.getByRole('status')).toHaveText('Email address copied.')
+  await expect(page.getByRole('status')).toHaveText('Copied.')
   await expectNoHorizontalOverflow(page)
 
   await page
@@ -112,6 +166,7 @@ test('email handoff and copy fallback remain usable at the configured viewport',
   await expect(
     page.getByRole('heading', { name: 'Fictional Mia Chen', level: 1 }),
   ).toBeVisible()
+  await expectContactOrderAndTargets(page)
   const profileOpenEmail = page.getByRole('link', {
     name: 'Open email app for Mimi',
   })
@@ -127,4 +182,10 @@ test('email handoff and copy fallback remain usable at the configured viewport',
     44,
   )
   await expectNoHorizontalOverflow(page)
+
+  await page.goto('/follow-ups')
+  await expect(
+    page.getByRole('heading', { name: 'Follow-up queue', level: 1 }),
+  ).toBeVisible()
+  await expectContactOrderAndTargets(page)
 })
