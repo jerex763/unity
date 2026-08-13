@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -227,6 +233,21 @@ describe('People directory', () => {
     expect(screen.getByText('Preferred name: Mimi')).toBeVisible()
     expect(screen.getByText('Noah Park')).toBeVisible()
     expect(screen.getByText('Ava Singh')).toBeVisible()
+    expect(
+      screen.getByRole('link', { name: 'Open email app for Mimi' }),
+    ).toHaveAttribute('href', 'mailto:mia@example.test')
+    expect(
+      screen.getByRole('link', { name: 'Open email app for Ava Singh' }),
+    ).toHaveAttribute('href', 'mailto:ava@example.test')
+    const noahRow = screen
+      .getByRole('link', { name: 'View Noah Park profile' })
+      .closest('article')
+    expect(noahRow).not.toBeNull()
+    expect(
+      within(noahRow as HTMLElement).queryByRole('group', {
+        name: /Email actions/,
+      }),
+    ).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Search people by name'), 'mimi')
     expect(screen.getByText('Mia Chen')).toBeVisible()
@@ -376,6 +397,9 @@ describe('Person profile', () => {
       await screen.findByRole('heading', { name: 'Mia Chen', level: 1 }),
     ).toBeVisible()
     expect(screen.getByText('Preferred name: Mimi')).toBeVisible()
+    expect(
+      screen.getByRole('link', { name: 'Open email app for Mimi' }),
+    ).toHaveAttribute('href', 'mailto:mia@example.test')
 
     await user.click(screen.getByRole('tab', { name: 'Relationships' }))
     expect(screen.getByText('Ava Singh')).toBeVisible()

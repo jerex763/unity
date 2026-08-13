@@ -20,6 +20,17 @@ const resources = {
         required: '(required)',
         requiredHint: 'Fields marked (required) must be completed.',
       },
+      contact: {
+        copyEmail: 'Copy email',
+        copyEmailFor: 'Copy email address for {{name}}',
+        emailActionsFor: 'Email actions for {{name}}',
+        emailAddressFor: 'Email address for {{name}}',
+        emailCopied: 'Email address copied.',
+        emailCopyUnavailable:
+          'Copy is unavailable. Select the email address to copy it manually.',
+        openEmailApp: 'Open email app',
+        openEmailAppFor: 'Open email app for {{name}}',
+      },
       nav: {
         home: 'Home',
         people: 'People',

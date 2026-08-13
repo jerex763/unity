@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
+import { EmailContactActions } from './EmailContactActions'
 import type {
   DirectoryPerson,
   PersonRelationship,
@@ -313,17 +314,22 @@ export function ProfilePage() {
         </div>
         <div className="profile-contact-actions">
           {person.phone ? (
-            <a className="contact-link" href={`tel:${person.phone}`}>
+            <a
+              aria-label={t('directory.callPerson', {
+                name: person.preferred_name?.trim() || person.full_name,
+              })}
+              className="contact-link"
+              href={`tel:${person.phone}`}
+            >
               {t('directory.call')}
             </a>
           ) : null}
           {person.email ? (
-            <a
-              className="contact-link secondary"
-              href={`mailto:${person.email}`}
-            >
-              {t('directory.email')}
-            </a>
+            <EmailContactActions
+              email={person.email}
+              fullName={person.full_name}
+              preferredName={person.preferred_name}
+            />
           ) : null}
         </div>
       </header>
