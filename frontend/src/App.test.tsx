@@ -402,6 +402,31 @@ describe('Person profile', () => {
     expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/people/1/')
     expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'PATCH' })
   })
+
+  it('shows multiline staff notes as wrapping text without interpreting HTML', async () => {
+    const longToken = 'fictional'.repeat(40)
+    const notes = `First line\nSecond line\n<img src=x onerror=alert("xss")>${longToken}`
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(session))
+        .mockResolvedValueOnce(jsonResponse({ ...profile, notes }))
+        .mockResolvedValueOnce(jsonResponse([])),
+    )
+
+    renderApp('/people/1')
+
+    const renderedNotes = await screen.findByText(
+      (_content, element) => element?.textContent === notes,
+    )
+    expect(renderedNotes).toHaveClass('staff-notes')
+    expect(renderedNotes.textContent).toBe(notes)
+    expect(renderedNotes.children).toHaveLength(0)
+    expect(styles).toMatch(
+      /\.staff-notes\s*\{[^}]*white-space:\s*pre-wrap;[^}]*overflow-wrap:\s*anywhere;[^}]*\}/s,
+    )
+  })
 })
 
 describe('Events', () => {

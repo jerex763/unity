@@ -556,7 +556,9 @@ export function ProfilePage() {
               {person.notes !== undefined ? (
                 <div className="wide-detail">
                   <dt>{t('profile.fields.notes')}</dt>
-                  <dd>{person.notes || t('profile.notRecorded')}</dd>
+                  <dd className="staff-notes">
+                    {person.notes || t('profile.notRecorded')}
+                  </dd>
                 </div>
               ) : null}
             </dl>

@@ -160,6 +160,49 @@ def test_pastor_can_read_and_set_sensitive_fields() -> None:
 
 @pytest.mark.parametrize(
     "role",
+    (
+        ChurchMembership.Role.ADMIN,
+        ChurchMembership.Role.PASTOR,
+        ChurchMembership.Role.LEADER,
+    ),
+)
+def test_staff_roles_can_read_staff_notes(role: str) -> None:
+    church = Church.objects.create(name=f"Fictional Staff Notes {role}")
+    person = Person.objects.create(
+        church=church,
+        full_name="Fictional Staff Notes Person",
+        notes="First line\nSecond line",
+    )
+    membership = make_membership(
+        church,
+        role=role,
+        suffix=f"staff.notes.{role}",
+        person=person,
+    )
+    if role == ChurchMembership.Role.LEADER:
+        group = Group.objects.create(
+            church=church,
+            name="Fictional Staff Notes Group",
+            kind=Group.Kind.SMALL_GROUP,
+        )
+        GroupMembership.objects.create(
+            church=church,
+            group=group,
+            person=person,
+            role=GroupMembership.Role.LEADER,
+            joined_at=timezone.localdate(),
+        )
+
+    response = authenticated_client(membership).get(
+        reverse("people:person-detail", args=(person.id,))
+    )
+
+    assert response.status_code == 200
+    assert response.json()["notes"] == "First line\nSecond line"
+
+
+@pytest.mark.parametrize(
+    "role",
     (ChurchMembership.Role.LEADER, ChurchMembership.Role.MEMBER),
 )
 def test_unauthorized_roles_cannot_write_sensitive_fields(role: str) -> None:

@@ -992,6 +992,11 @@ a {
   line-height: 1.5;
 }
 
+.staff-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .profile-form {
   display: grid;
   gap: 1rem;
