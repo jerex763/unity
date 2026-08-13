@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% load admin_urls %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; Fictional test cleanup
+  </div>
+{% endblock %}
+
+{% block content %}
+  <p>
+    This permanently deletes the selected fictional test people and their cascading
+    domain records. Append-only audit rows are retained.
+  </p>
+  <p>
+    The entire batch will be rejected unless every target is an unlinked visitor,
+    uses an <strong>@example.test</strong> email, and contains the same RUN_ID in
+    both its name and email.
+  </p>
+
+  <h2>Selected targets</h2>
+  <ul>
+    {% for person in selected_people %}
+      <li>{{ person.full_name }} — {{ person.email }} — {{ person.church }}</li>
+    {% endfor %}
+  </ul>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    {% for person in selected_people %}
+      <input type="hidden" name="{{ action_checkbox_name }}" value="{{ person.pk }}">
+    {% endfor %}
+    <input type="hidden" name="action" value="hard_delete_fictional_test_people">
+    <input type="hidden" name="select_across" value="0">
+    <input type="hidden" name="selection_manifest" value="{{ selection_manifest }}">
+    {% if selection_manifest and selected_people %}
+      <div class="submit-row">
+        <input type="submit" name="confirm_cleanup" value="Permanently delete selected test people">
+        <a href="{% url opts|admin_urlname:'changelist' %}" class="closelink">Cancel</a>
+      </div>
+    {% else %}
+      <p><a href="{% url opts|admin_urlname:'changelist' %}">Return to the person list and select the targets again.</a></p>
+    {% endif %}
+  </form>
+{% endblock %}

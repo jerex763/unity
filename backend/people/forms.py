@@ -83,3 +83,16 @@ class PersonCsvImportForm(forms.Form):
         if not upload.name.lower().endswith(".csv"):
             raise forms.ValidationError("Choose a .csv file.")
         return upload
+
+
+class FictionalTestPersonCleanupForm(forms.Form):
+    run_id = forms.RegexField(
+        label="RUN_ID",
+        regex=r"^\d{8}-\d{4}$",
+        help_text=(
+            "Re-enter the RUN_ID embedded in every selected person's name and email."
+        ),
+        error_messages={
+            "invalid": "Enter a RUN_ID in YYYYMMDD-HHMM format.",
+        },
+    )
