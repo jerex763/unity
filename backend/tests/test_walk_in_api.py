@@ -270,9 +270,10 @@ def test_walk_in_rejects_contacts_that_match_different_people() -> None:
 
     assert email_response.status_code == 400
     assert phone_response.status_code == 400
-    assert EventRegistration.objects.filter(
-        event__in=(email_event, phone_event)
-    ).count() == 0
+    assert (
+        EventRegistration.objects.filter(event__in=(email_event, phone_event)).count()
+        == 0
+    )
     assert Person.objects.filter(pk__in=(email_person.pk, phone_person.pk)).count() == 2
 
 

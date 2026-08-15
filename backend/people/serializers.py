@@ -204,9 +204,7 @@ class PersonSerializer(serializers.ModelSerializer):
                 )
         phone = attrs.get("phone", getattr(self.instance, "phone", None))
         email = attrs.get("email", getattr(self.instance, "email", None))
-        wechat_id = attrs.get(
-            "wechat_id", getattr(self.instance, "wechat_id", None)
-        )
+        wechat_id = attrs.get("wechat_id", getattr(self.instance, "wechat_id", None))
         has_whatsapp = attrs.get(
             "has_whatsapp", getattr(self.instance, "has_whatsapp", False)
         )

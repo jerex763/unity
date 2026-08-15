@@ -12,13 +12,11 @@ class Migration(migrations.Migration):
             database_operations=[
                 migrations.RunSQL(
                     sql=(
-                        'CREATE INDEX IF NOT EXISTS '
+                        "CREATE INDEX IF NOT EXISTS "
                         '"person_church__9b7c6c_idx" ON "person" '
                         '("church_id", "normalized_wechat_id")'
                     ),
-                    reverse_sql=(
-                        'DROP INDEX IF EXISTS "person_church__9b7c6c_idx"'
-                    ),
+                    reverse_sql=('DROP INDEX IF EXISTS "person_church__9b7c6c_idx"'),
                 )
             ],
             state_operations=[

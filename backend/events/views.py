@@ -215,9 +215,7 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
         anchor = next((ids[0] for ids in match_sets if len(ids) == 1), None)
         if anchor is None and any(len(ids) > 1 for ids in match_sets):
             raise ValidationError({"detail": "Unable to match this contact."})
-        if anchor is not None and any(
-            ids and anchor not in ids for ids in match_sets
-        ):
+        if anchor is not None and any(ids and anchor not in ids for ids in match_sets):
             raise ValidationError({"detail": "Unable to match this contact."})
         person = people.filter(pk=anchor).first() if anchor is not None else None
         if person is None:

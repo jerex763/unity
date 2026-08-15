@@ -20,7 +20,9 @@ def reset_implicit_whatsapp_opt_ins(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("people", "0005_person_normalized_email_person_normalized_phone_and_more")]
+    dependencies = [
+        ("people", "0005_person_normalized_email_person_normalized_phone_and_more")
+    ]
 
     operations = [
         migrations.AddField(

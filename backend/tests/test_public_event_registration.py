@@ -157,8 +157,7 @@ def test_public_payload_is_minimal_and_registration_records_explicit_consent() -
     assert EventRegistration.objects.filter(person=person).exists()
 
 
-def test_public_registration_supports_contact_preferences_without_name_match(
-) -> None:
+def test_public_registration_supports_contact_preferences_without_name_match() -> None:
     church = Church.objects.create(name="Fictional Contact Preference Church")
     user, client = organizer(church)
     event = future_event(church, user)
@@ -644,8 +643,9 @@ def test_email_and_phone_pointing_to_different_people_is_rejected() -> None:
     assert Person.objects.filter(pk__in=(email_person.pk, phone_person.pk)).count() == 2
 
 
-def test_unknown_existing_conflict_and_duplicate_responses_are_indistinguishable(
-) -> None:
+def test_unknown_existing_conflict_and_duplicate_responses_are_indistinguishable() -> (
+    None
+):
     church = Church.objects.create(name="Fictional Opaque Response Church")
     user, client = organizer(church)
     event = future_event(church, user)
@@ -699,13 +699,11 @@ def test_unknown_existing_conflict_and_duplicate_responses_are_indistinguishable
 
     responses = (unknown, existing_response, conflict, duplicate)
     assert {response.status_code for response in responses} == {201}
-    assert {
-        tuple(sorted(response.json().keys())) for response in responses
-    } == {("accepted", "cancellation_url", "event_title")}
-    assert {response.json()["accepted"] for response in responses} == {True}
-    assert {response.json()["event_title"] for response in responses} == {
-        event.title
+    assert {tuple(sorted(response.json().keys())) for response in responses} == {
+        ("accepted", "cancellation_url", "event_title")
     }
+    assert {response.json()["accepted"] for response in responses} == {True}
+    assert {response.json()["event_title"] for response in responses} == {event.title}
     assert EventRegistration.objects.filter(event=event).count() == 2
     assert Person.objects.filter(church=church).count() == 3
 
