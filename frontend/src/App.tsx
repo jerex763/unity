@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from './auth/useAuth'
 import { LoginPage } from './auth/LoginPage'
 import { EventsPage } from './events/EventsPage'
+import { EventCheckInPage } from './events/EventCheckInPage'
 import {
   PublicCancellationPage,
   PublicRegistrationPage,
@@ -37,6 +38,7 @@ export function App() {
         <Route path="people" element={<DirectoryPage />} />
         <Route path="people/:personId" element={<ProfilePage />} />
         <Route path="events" element={<EventsPage />} />
+        <Route path="events/:eventId/check-in" element={<EventCheckInPage />} />
         <Route path="follow-ups" element={<FollowUpQueuePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

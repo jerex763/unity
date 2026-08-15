@@ -11,7 +11,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from people.models import ConsentRecord, Person
-from people.normalization import normalize_email, normalize_phone
+from people.normalization import normalize_email, normalize_phone, normalize_wechat_id
 
 from .models import (
     Event,
@@ -27,6 +27,12 @@ class PublicRegistrationError(Exception):
 
 
 class PublicRegistrationRateLimited(PublicRegistrationError):
+    pass
+
+
+class PublicRegistrationIdentityConflict(PublicRegistrationError):
+    """Supplied public contacts do not resolve to one unambiguous person."""
+
     pass
 
 
@@ -100,36 +106,31 @@ def public_event_for_token(token: str) -> Event | None:
 
 
 def _matching_person(
-    *, church, normalized_email: str | None, normalized_phone: str | None
+    *,
+    church,
+    normalized_email: str | None,
+    normalized_phone: str | None,
+    normalized_wechat_id: str | None,
 ) -> Person | None:
     people = Person.objects.for_church(church)
-    email_person = (
-        people.filter(normalized_email=normalized_email).first()
-        if normalized_email
-        else None
-    )
-    if email_person:
-        phone_belongs_to_email_person = (
-            not normalized_phone
-            or people.filter(
-                normalized_phone=normalized_phone,
-                pk=email_person.pk,
-            ).exists()
-        )
-        if (
-            not phone_belongs_to_email_person
-            and people.filter(normalized_phone=normalized_phone).exists()
-        ):
-            raise PublicRegistrationError("Unable to process registration.")
-        return email_person
-    phone_people = (
-        list(people.filter(normalized_phone=normalized_phone).order_by("id")[:2])
-        if normalized_phone
-        else []
-    )
-    if len(phone_people) > 1:
-        raise PublicRegistrationError("Unable to process registration.")
-    return phone_people[0] if phone_people else None
+    matches: list[list[int]] = []
+    for field, value in (
+        ("normalized_email", normalized_email),
+        ("normalized_phone", normalized_phone),
+        ("normalized_wechat_id", normalized_wechat_id),
+    ):
+        if not value:
+            continue
+        ids = list(people.filter(**{field: value}).values_list("id", flat=True))
+        matches.append(ids)
+    anchor = next((ids[0] for ids in matches if len(ids) == 1), None)
+    if anchor is None:
+        if any(len(ids) > 1 for ids in matches):
+            raise PublicRegistrationIdentityConflict("Unable to process registration.")
+        return None
+    if any(ids and anchor not in ids for ids in matches):
+        raise PublicRegistrationIdentityConflict("Unable to process registration.")
+    return people.filter(pk=anchor).first()
 
 
 def _identity_lock_digest(kind: str, value: str) -> str:
@@ -141,7 +142,11 @@ def _identity_lock_digest(kind: str, value: str) -> str:
 
 
 def _acquire_identity_locks(
-    *, church, normalized_email: str | None, normalized_phone: str | None
+    *,
+    church,
+    normalized_email: str | None,
+    normalized_phone: str | None,
+    normalized_wechat_id: str | None,
 ) -> None:
     digests = sorted(
         digest
@@ -154,6 +159,11 @@ def _acquire_identity_locks(
             (
                 _identity_lock_digest("phone", normalized_phone)
                 if normalized_phone
+                else None
+            ),
+            (
+                _identity_lock_digest("wechat", normalized_wechat_id)
+                if normalized_wechat_id
                 else None
             ),
         )
@@ -173,19 +183,29 @@ def _acquire_identity_locks(
 
 
 def _find_or_create_public_person(
-    *, church, full_name: str, email: str | None, phone: str | None
+    *,
+    church,
+    full_name: str,
+    email: str | None,
+    phone: str | None,
+    wechat_id: str | None,
+    has_whatsapp: bool,
+    preferred_contact: str | None,
 ) -> tuple[Person, bool]:
     normalized_email = normalize_email(email)
     normalized_phone = normalize_phone(phone)
+    normalized_wechat_id = normalize_wechat_id(wechat_id)
     _acquire_identity_locks(
         church=church,
         normalized_email=normalized_email,
         normalized_phone=normalized_phone,
+        normalized_wechat_id=normalized_wechat_id,
     )
     person = _matching_person(
         church=church,
         normalized_email=normalized_email,
         normalized_phone=normalized_phone,
+        normalized_wechat_id=normalized_wechat_id,
     )
     if person:
         return person, False
@@ -195,6 +215,9 @@ def _find_or_create_public_person(
         full_name=full_name,
         email=email or None,
         phone=phone or None,
+        wechat_id=wechat_id or None,
+        has_whatsapp=has_whatsapp,
+        preferred_contact=preferred_contact or None,
         membership_status=Person.MembershipStatus.VISITOR,
     )
     try:
@@ -209,10 +232,18 @@ def _find_or_create_public_person(
             church=church,
             normalized_email=normalized_email,
             normalized_phone=normalized_phone,
+            normalized_wechat_id=normalized_wechat_id,
         )
         if person:
             return person, False
-        raise PublicRegistrationError("Unable to process registration.") from None
+        raise PublicRegistrationIdentityConflict(
+            "Unable to process registration."
+        ) from None
+
+
+def anonymous_public_registration_outcome() -> PublicRegistrationOutcome:
+    """Return the same opaque result used for duplicate and unverified requests."""
+    return PublicRegistrationOutcome(None, _new_token())
 
 
 @transaction.atomic
@@ -222,7 +253,9 @@ def register_public_visitor(
     full_name: str,
     email: str | None,
     phone: str | None,
-    needs_transport: bool,
+    wechat_id: str | None,
+    has_whatsapp: bool,
+    preferred_contact: str | None,
     notice_version: str,
 ) -> PublicRegistrationOutcome:
     locked_event = Event.objects.select_for_update().get(pk=event.pk)
@@ -236,6 +269,9 @@ def register_public_visitor(
         full_name=full_name,
         email=email,
         phone=phone,
+        wechat_id=wechat_id,
+        has_whatsapp=has_whatsapp,
+        preferred_contact=preferred_contact,
     )
     existing_registration = (
         EventRegistration.objects.select_for_update()
@@ -275,7 +311,6 @@ def register_public_visitor(
         registration = register_for_event(
             event=locked_event,
             person=person,
-            needs_transport=needs_transport,
         )
     except ValidationError as error:
         raise PublicRegistrationError("Unable to process registration.") from error
@@ -421,7 +456,6 @@ def register_for_event(
     *,
     event: Event,
     person: Person,
-    needs_transport: bool = False,
     note: str = "",
 ) -> EventRegistration:
     locked_event = Event.objects.select_for_update().get(pk=event.pk)
@@ -460,7 +494,6 @@ def register_for_event(
         person=person,
     )
     registration.status = status
-    registration.needs_transport = needs_transport
     registration.note = note.strip()
     registration.registered_at = now
     registration.checked_in_at = None

@@ -140,7 +140,7 @@ def test_cleanup_happy_path_is_case_insensitive_and_keeps_audit_rows(
         church=church,
         person=person,
         status=ConsentRecord.Status.GRANTED,
-        notice_version="2026-07-draft",
+        notice_version="2026-08-contact-methods-v1",
         consented_at=timezone.now(),
         method=ConsentRecord.Method.SELF_SERVICE,
         recorded_by=None,

@@ -10,6 +10,7 @@ type ContactActionsProps = {
   hasWhatsapp: boolean
   phone: string | null
   preferredName: string | null
+  preferredContact?: 'phone' | 'whatsapp' | 'wechat' | 'email' | null
   wechatId: string | null
 }
 
@@ -19,6 +20,7 @@ export function ContactActions({
   hasWhatsapp,
   phone,
   preferredName,
+  preferredContact,
   wechatId,
 }: ContactActionsProps) {
   const { t } = useTranslation()
@@ -34,7 +36,19 @@ export function ContactActions({
       role="group"
     >
       {hasWhatsapp && phone ? (
-        <div className="contact-channel" data-contact-channel="whatsapp">
+        <div
+          className={`contact-channel${preferredContact === 'whatsapp' ? ' preferred' : ''}`}
+          data-contact-channel="whatsapp"
+        >
+          <strong className="contact-channel-label">
+            WhatsApp{preferredContact === 'whatsapp' ? ' · Preferred' : ''}
+          </strong>
+          <CopyableContact
+            copyLabel={t('contact.copyPhoneFor', { name: contactName })}
+            inputLabel={t('contact.phoneFor', { name: contactName })}
+            primary={!whatsapp}
+            value={phone}
+          />
           {whatsapp ? (
             <a
               aria-label={t('contact.openWhatsappFor', { name: contactName })}
@@ -50,18 +64,18 @@ export function ContactActions({
               {t('contact.manualWhatsapp')}
             </p>
           )}
-          <CopyableContact
-            copyLabel={t('contact.copyPhoneFor', { name: contactName })}
-            inputLabel={t('contact.phoneFor', { name: contactName })}
-            primary={!whatsapp}
-            value={phone}
-          />
         </div>
       ) : null}
 
       {wechatId ? (
-        <div className="contact-channel" data-contact-channel="wechat">
-          <p className="contact-channel-note">{t('contact.wechat')}</p>
+        <div
+          className={`contact-channel${preferredContact === 'wechat' ? ' preferred' : ''}`}
+          data-contact-channel="wechat"
+        >
+          <strong className="contact-channel-label">
+            {t('contact.wechat')}
+            {preferredContact === 'wechat' ? ' · Preferred' : ''}
+          </strong>
           <CopyableContact
             copyLabel={t('contact.copyWechatFor', { name: contactName })}
             inputLabel={t('contact.wechatFor', { name: contactName })}
@@ -72,20 +86,37 @@ export function ContactActions({
       ) : null}
 
       {phone ? (
-        <a
-          aria-label={t('directory.callPerson', { name: contactName })}
-          className="contact-link"
+        <div
+          className={`contact-channel${preferredContact === 'phone' ? ' preferred' : ''}`}
           data-contact-channel="call"
-          href={`tel:${phone}`}
         >
-          {t('directory.call')}
-        </a>
+          <strong className="contact-channel-label">
+            Phone{preferredContact === 'phone' ? ' · Preferred' : ''}
+          </strong>
+          {hasWhatsapp ? (
+            <span className="contact-value-text">{phone}</span>
+          ) : (
+            <CopyableContact
+              copyLabel={t('contact.copyPhoneFor', { name: contactName })}
+              inputLabel={t('contact.phoneFor', { name: contactName })}
+              value={phone}
+            />
+          )}
+          <a
+            aria-label={t('directory.callPerson', { name: contactName })}
+            className="contact-link"
+            href={`tel:${phone}`}
+          >
+            {t('directory.call')}
+          </a>
+        </div>
       ) : null}
 
       {email ? (
         <EmailContactActions
           email={email}
           fullName={fullName}
+          preferred={preferredContact === 'email'}
           preferredName={preferredName}
         />
       ) : null}

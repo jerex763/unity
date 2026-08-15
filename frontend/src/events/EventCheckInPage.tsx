@@ -1,0 +1,421 @@
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Link, Navigate, useParams } from 'react-router-dom'
+
+import { ApiError, apiRequest } from '../api/client'
+import { useModalDialog } from '../accessibility/useModalDialog'
+import { useAuth } from '../auth/useAuth'
+import type { ChurchEvent, EventRegistration } from './types'
+
+type RosterFilter = 'registered' | 'checked_in' | 'walk_ins'
+
+export function EventCheckInPage() {
+  const { eventId = '' } = useParams()
+  const { session } = useAuth()
+  const [event, setEvent] = useState<ChurchEvent | null>(null)
+  const [registrations, setRegistrations] = useState<EventRegistration[]>([])
+  const [filter, setFilter] = useState<RosterFilter>('registered')
+  const [search, setSearch] = useState('')
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [walkInOpen, setWalkInOpen] = useState(false)
+  const [fullName, setFullName] = useState('')
+  const [preferredName, setPreferredName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [wechatId, setWechatId] = useState('')
+  const [hasWhatsapp, setHasWhatsapp] = useState(false)
+  const [preferredContact, setPreferredContact] = useState('')
+  const [note, setNote] = useState('')
+  const [contactError, setContactError] = useState('')
+  const fullNameInputRef = useRef<HTMLInputElement>(null)
+  const walkInDialogRef = useModalDialog<HTMLElement>(
+    walkInOpen,
+    closeWalkIn,
+    fullNameInputRef,
+  )
+
+  function closeWalkIn() {
+    setWalkInOpen(false)
+  }
+
+  useEffect(() => {
+    let active = true
+    void Promise.all([
+      apiRequest<ChurchEvent[]>('/events/'),
+      apiRequest<EventRegistration[]>(`/events/${eventId}/registrations/`),
+    ])
+      .then(([events, rows]) => {
+        if (!active) return
+        setEvent(events.find((item) => String(item.id) === eventId) ?? null)
+        setRegistrations(rows)
+      })
+      .catch(() => active && setError('We could not load this check-in list.'))
+      .finally(() => active && setIsLoading(false))
+    return () => {
+      active = false
+    }
+  }, [eventId])
+
+  const visible = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase()
+    return registrations.filter((registration) => {
+      if (registration.status === 'cancelled') return false
+      const matchesSearch = registration.person.full_name
+        .toLocaleLowerCase()
+        .includes(query)
+      const matchesFilter =
+        filter === 'checked_in'
+          ? Boolean(registration.checked_in_at)
+          : filter === 'walk_ins'
+            ? registration.status === 'walk_in'
+            : registration.status !== 'walk_in' && !registration.checked_in_at
+      return matchesSearch && matchesFilter
+    })
+  }, [filter, registrations, search])
+
+  if (session?.membership.role === 'member')
+    return <Navigate replace to="/events" />
+
+  async function setCheckedIn(
+    registration: EventRegistration,
+    checkedIn: boolean,
+  ) {
+    setError('')
+    setNotice('')
+    try {
+      const updated = await apiRequest<EventRegistration>(
+        `/events/${eventId}/registrations/${registration.id}/check-in/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ checked_in: checkedIn }),
+        },
+      )
+      setRegistrations((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      )
+      setNotice(
+        checkedIn
+          ? `${registration.person.full_name} is checked in.`
+          : `${registration.person.full_name}'s check-in was removed.`,
+      )
+    } catch {
+      setError('We could not update attendance. Retry.')
+    }
+  }
+
+  async function addWalkIn(formEvent: FormEvent<HTMLFormElement>) {
+    formEvent.preventDefault()
+    setError('')
+    setContactError('')
+    if (![email, phone, wechatId].some((value) => value.trim())) {
+      setContactError(
+        'Provide at least one contact method: email, phone, or WeChat ID.',
+      )
+      return
+    }
+    try {
+      const registration = await apiRequest<EventRegistration>(
+        `/events/${eventId}/walk-ins/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            full_name: fullName,
+            preferred_name: preferredName,
+            email,
+            phone,
+            wechat_id: wechatId,
+            has_whatsapp: hasWhatsapp,
+            preferred_contact: preferredContact,
+            note,
+          }),
+        },
+      )
+      setRegistrations((current) => [
+        ...current.filter((item) => item.id !== registration.id),
+        registration,
+      ])
+      closeWalkIn()
+      setFullName('')
+      setPreferredName('')
+      setEmail('')
+      setPhone('')
+      setWechatId('')
+      setHasWhatsapp(false)
+      setPreferredContact('')
+      setNote('')
+      setFilter('walk_ins')
+      setNotice(`${registration.person.full_name} was added and checked in.`)
+    } catch (requestError) {
+      const payload =
+        requestError instanceof ApiError ? requestError.payload : {}
+      const contact = payload.contact
+      setError(
+        typeof contact === 'string'
+          ? contact
+          : 'We could not add this walk-in. Check the details and retry.',
+      )
+    }
+  }
+
+  return (
+    <main className="check-in-page">
+      <Link className="text-button back-link" to="/events">
+        ← Back to events
+      </Link>
+      <section className="page-heading check-in-heading">
+        <div>
+          <p className="eyebrow">Event day</p>
+          <h1>{event?.title ?? 'Check-in'}</h1>
+          <p>Find each arrival and record attendance.</p>
+        </div>
+        <button
+          className="primary-button inline"
+          onClick={() => setWalkInOpen(true)}
+          type="button"
+        >
+          Add walk-in
+        </button>
+      </section>
+
+      <label className="roster-search">
+        <span>Find attendee</span>
+        <input
+          onChange={(changeEvent) => setSearch(changeEvent.target.value)}
+          placeholder="Search the registration list…"
+          type="search"
+          value={search}
+        />
+      </label>
+      <div
+        className="check-in-filters"
+        role="group"
+        aria-label="Check-in list filter"
+      >
+        {(
+          [
+            ['registered', 'Registered'],
+            ['checked_in', 'Checked in'],
+            ['walk_ins', 'Walk-ins'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            aria-pressed={filter === value}
+            className={filter === value ? 'active' : undefined}
+            key={value}
+            onClick={() => setFilter(value)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? <p>Loading check-in…</p> : null}
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p className="form-success" role="status">
+          {notice}
+        </p>
+      ) : null}
+      {!isLoading ? (
+        <section className="check-in-list" aria-label="Attendees">
+          {visible.map((registration) => (
+            <article key={registration.id}>
+              <div>
+                <strong>{registration.person.full_name}</strong>
+                <span>
+                  {registration.status === 'walk_in' ? 'Walk-in' : 'Registered'}
+                </span>
+              </div>
+              <button
+                className={
+                  registration.checked_in_at
+                    ? 'secondary-button'
+                    : 'primary-button'
+                }
+                onClick={() =>
+                  void setCheckedIn(registration, !registration.checked_in_at)
+                }
+                type="button"
+              >
+                {registration.checked_in_at ? 'Undo check-in' : 'Check in'}
+              </button>
+            </article>
+          ))}
+          {!visible.length ? <p>No attendees match this view.</p> : null}
+        </section>
+      ) : null}
+
+      {walkInOpen ? (
+        <div className="dialog-backdrop">
+          <section
+            aria-labelledby="walk-in-title"
+            aria-modal="true"
+            className="event-editor"
+            ref={walkInDialogRef}
+            role="dialog"
+            tabIndex={-1}
+          >
+            <div className="profile-panel-heading">
+              <div>
+                <p className="eyebrow">Event day</p>
+                <h2 id="walk-in-title">Add walk-in</h2>
+              </div>
+              <button
+                aria-label="Cancel"
+                className="dialog-close"
+                onClick={closeWalkIn}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
+            <form
+              className="event-form"
+              onSubmit={(formEvent) => void addWalkIn(formEvent)}
+            >
+              <p className="form-required-hint wide-field">
+                Full name and at least one contact method are required.
+              </p>
+              <label>
+                <span>Full name (required)</span>
+                <input
+                  ref={fullNameInputRef}
+                  required
+                  value={fullName}
+                  onChange={(changeEvent) =>
+                    setFullName(changeEvent.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Preferred name</span>
+                <input
+                  value={preferredName}
+                  onChange={(changeEvent) =>
+                    setPreferredName(changeEvent.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(changeEvent) => {
+                    setEmail(changeEvent.target.value)
+                    if (!changeEvent.target.value.trim()) {
+                      setPreferredContact((current) =>
+                        current === 'email' ? '' : current,
+                      )
+                    }
+                    setContactError('')
+                  }}
+                />
+              </label>
+              <label>
+                <span>Phone</span>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(changeEvent) => {
+                    setPhone(changeEvent.target.value)
+                    if (!changeEvent.target.value.trim()) {
+                      setHasWhatsapp(false)
+                      setPreferredContact((current) =>
+                        current === 'phone' || current === 'whatsapp'
+                          ? ''
+                          : current,
+                      )
+                    }
+                    setContactError('')
+                  }}
+                />
+              </label>
+              <label className="event-checkbox">
+                <input
+                  checked={hasWhatsapp}
+                  disabled={!phone.trim()}
+                  onChange={(changeEvent) => {
+                    setHasWhatsapp(changeEvent.target.checked)
+                    if (!changeEvent.target.checked) {
+                      setPreferredContact((current) =>
+                        current === 'whatsapp' ? '' : current,
+                      )
+                    }
+                  }}
+                  type="checkbox"
+                />
+                <span>This phone number uses WhatsApp</span>
+              </label>
+              <label>
+                <span>WeChat ID</span>
+                <input
+                  value={wechatId}
+                  onChange={(changeEvent) => {
+                    setWechatId(changeEvent.target.value)
+                    if (!changeEvent.target.value.trim()) {
+                      setPreferredContact((current) =>
+                        current === 'wechat' ? '' : current,
+                      )
+                    }
+                    setContactError('')
+                  }}
+                />
+              </label>
+              <label>
+                <span>Preferred contact</span>
+                <select
+                  value={preferredContact}
+                  onChange={(changeEvent) =>
+                    setPreferredContact(changeEvent.target.value)
+                  }
+                >
+                  <option value="">No preference</option>
+                  {hasWhatsapp && phone.trim() ? (
+                    <option value="whatsapp">WhatsApp</option>
+                  ) : null}
+                  {wechatId.trim() ? (
+                    <option value="wechat">WeChat</option>
+                  ) : null}
+                  {phone.trim() ? <option value="phone">Phone</option> : null}
+                  {email.trim() ? <option value="email">Email</option> : null}
+                </select>
+              </label>
+              <label>
+                <span>Note</span>
+                <input
+                  maxLength={200}
+                  value={note}
+                  onChange={(changeEvent) => setNote(changeEvent.target.value)}
+                />
+              </label>
+              {contactError ? (
+                <p className="form-error wide-field" role="alert">
+                  {contactError}
+                </p>
+              ) : null}
+              <div className="event-form-actions wide-field">
+                <button
+                  className="secondary-button"
+                  onClick={closeWalkIn}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button className="primary-button inline" type="submit">
+                  Add and check in
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+    </main>
+  )
+}

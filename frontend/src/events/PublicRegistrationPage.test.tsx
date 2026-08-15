@@ -13,7 +13,7 @@ const publicEvent = {
   location: 'Fictional Hall',
   registration_open: true,
   privacy_notice: {
-    version: '2026-07-draft',
+    version: '2026-08-contact-methods-v1',
     text: 'A fictional privacy notice for test data.',
   },
 }
@@ -46,13 +46,15 @@ it('clearly labels minimal required and optional visitor fields', async () => {
   expect(screen.getByLabelText(/Full name.*required/)).toBeRequired()
   expect(screen.getByLabelText('Email (optional)')).not.toBeRequired()
   expect(screen.getByLabelText('Phone (optional)')).not.toBeRequired()
+  expect(screen.getByLabelText('WeChat ID (optional)')).not.toBeRequired()
   expect(
-    screen.getByLabelText('Request transport (optional)'),
-  ).not.toBeRequired()
+    screen.getByLabelText('This phone number uses WhatsApp'),
+  ).toBeDisabled()
+  expect(screen.queryByText(/transport/i)).not.toBeInTheDocument()
   expect(
     screen.getByText('A fictional privacy notice for test data.'),
   ).toBeVisible()
-  expect(screen.getByText('Version 2026-07-draft')).toBeVisible()
+  expect(screen.getByText('Version 2026-08-contact-methods-v1')).toBeVisible()
   expect(screen.getByLabelText(/explicitly consent/)).toBeRequired()
   expect(screen.queryByText(/roster|directory/i)).not.toBeInTheDocument()
 })
@@ -103,7 +105,50 @@ it('submits consent version and confirms without exposing a roster', async () =>
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
   expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
     full_name: 'Fictional Visitor',
+    has_whatsapp: false,
+    wechat_id: '',
     consent: true,
-    notice_version: '2026-07-draft',
+    notice_version: '2026-08-contact-methods-v1',
   })
+})
+
+it('clears a preferred channel when its contact method becomes unavailable', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(publicEvent)))
+  const user = userEvent.setup()
+
+  render(
+    <MemoryRouter initialEntries={['/register/fictional-token']}>
+      <Routes>
+        <Route path="/register/:token" element={<PublicRegistrationPage />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+
+  await screen.findByRole('heading', { name: 'Fictional Community Lunch' })
+  const preference = screen.getByLabelText('Preferred contact (optional)')
+  const email = screen.getByLabelText('Email (optional)')
+  const phone = screen.getByLabelText('Phone (optional)')
+  const wechat = screen.getByLabelText('WeChat ID (optional)')
+  const whatsapp = screen.getByLabelText('This phone number uses WhatsApp')
+
+  await user.type(email, 'visitor@example.test')
+  await user.selectOptions(preference, 'email')
+  await user.clear(email)
+  expect(preference).toHaveValue('')
+
+  await user.type(wechat, 'fictional_wechat')
+  await user.selectOptions(preference, 'wechat')
+  await user.clear(wechat)
+  expect(preference).toHaveValue('')
+
+  await user.type(phone, '+61 400 000 099')
+  await user.selectOptions(preference, 'phone')
+  await user.clear(phone)
+  expect(preference).toHaveValue('')
+
+  await user.type(phone, '+61 400 000 099')
+  await user.click(whatsapp)
+  await user.selectOptions(preference, 'whatsapp')
+  await user.click(whatsapp)
+  expect(preference).toHaveValue('')
 })

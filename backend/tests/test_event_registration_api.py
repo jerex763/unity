@@ -78,13 +78,13 @@ def test_members_register_waitlist_reregister_and_cancel_themselves() -> None:
 
     first_response = client_for(first).post(
         list_url,
-        {"needs_transport": True, "note": "Fictional pickup"},
+        {"note": "Fictional signup note"},
         format="json",
     )
     second_response = client_for(second).post(list_url, {}, format="json")
     repeated = client_for(first).post(
         list_url,
-        {"needs_transport": False, "note": "Updated note"},
+        {"note": "Updated note"},
         format="json",
     )
     cancel_url = reverse(
@@ -95,7 +95,7 @@ def test_members_register_waitlist_reregister_and_cancel_themselves() -> None:
 
     assert first_response.status_code == 201
     assert first_response.json()["status"] == EventRegistration.Status.REGISTERED
-    assert first_response.json()["needs_transport"] is True
+    assert "needs_transport" not in first_response.json()
     assert second_response.json()["status"] == EventRegistration.Status.WAITLISTED
     assert repeated.json()["id"] == first_response.json()["id"]
     assert repeated.json()["note"] == "Updated note"
@@ -165,7 +165,6 @@ def test_leader_can_view_full_registration_list() -> None:
             church=church,
             event=event,
             person=person,
-            needs_transport=True,
         )
 
     response = client_for(leader).get(
@@ -176,7 +175,7 @@ def test_leader_can_view_full_registration_list() -> None:
     assert {item["person"]["id"] for item in response.json()} == {
         person.id for person in people
     }
-    assert all(item["needs_transport"] for item in response.json())
+    assert all("needs_transport" not in item for item in response.json())
 
 
 def test_registration_rejects_closed_events_and_invisible_people() -> None:

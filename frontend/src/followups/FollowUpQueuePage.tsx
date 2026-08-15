@@ -1,4 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, apiRequest } from '../api/client'
@@ -57,6 +64,10 @@ export function FollowUpQueuePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [editing, setEditing] = useState<FollowUp | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [queueFilter, setQueueFilter] = useState<
+    'mine' | 'unassigned' | 'overdue' | 'all'
+  >('all')
   const [fields, setFields] = useState<EditFields | null>(null)
   const [fieldErrors, setFieldErrors] = useState<EditFieldErrors>({})
   const [saveError, setSaveError] = useState('')
@@ -68,6 +79,51 @@ export function FollowUpQueuePage() {
     useState<Interaction['visibility']>('staff')
   const [interactionSummary, setInteractionSummary] = useState('')
   const [interactionError, setInteractionError] = useState('')
+  const selectionGeneration = useRef(0)
+  const interactionRequestGeneration = useRef(0)
+
+  const loadInteractions = useCallback(
+    (followUpId: number) => {
+      const generation = ++interactionRequestGeneration.current
+      setInteractions([])
+      setInteractionError('')
+      void apiRequest<Interaction[]>(`/follow-ups/${followUpId}/interactions/`)
+        .then((rows) => {
+          if (generation === interactionRequestGeneration.current) {
+            setInteractions(rows)
+          }
+        })
+        .catch(() => {
+          if (generation === interactionRequestGeneration.current) {
+            setInteractionError(t('followUps.interactions.loadError'))
+          }
+        })
+    },
+    [t],
+  )
+
+  const selectFollowUp = useCallback(
+    (item: FollowUp | null) => {
+      selectionGeneration.current += 1
+      setIsSaving(false)
+      setFieldErrors({})
+      setSaveError('')
+      if (!item) {
+        interactionRequestGeneration.current += 1
+        setEditing(null)
+        setFields(null)
+        setInteractions([])
+        setInteractionError('')
+        setIsEditing(false)
+        return
+      }
+      setEditing(item)
+      setIsEditing(false)
+      setFields(editFields(item))
+      loadInteractions(item.id)
+    },
+    [loadInteractions],
+  )
 
   useEffect(() => {
     let active = true
@@ -92,19 +148,13 @@ export function FollowUpQueuePage() {
   }, [t])
 
   function beginEdit(item: FollowUp) {
-    setEditing(item)
-    setFields(editFields(item))
-    setFieldErrors({})
-    setSaveError('')
-    setInteractionError('')
-    void apiRequest<Interaction[]>(`/follow-ups/${item.id}/interactions/`)
-      .then(setInteractions)
-      .catch(() => setInteractionError(t('followUps.interactions.loadError')))
+    selectFollowUp(item)
   }
 
   async function addInteraction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editing) return
+    const generation = interactionRequestGeneration.current
     setInteractionError('')
     try {
       const interaction = await apiRequest<Interaction>(
@@ -118,10 +168,14 @@ export function FollowUpQueuePage() {
           }),
         },
       )
-      setInteractions((current) => [interaction, ...current])
-      setInteractionSummary('')
+      if (generation === interactionRequestGeneration.current) {
+        setInteractions((current) => [interaction, ...current])
+        setInteractionSummary('')
+      }
     } catch {
-      setInteractionError(t('followUps.interactions.saveError'))
+      if (generation === interactionRequestGeneration.current) {
+        setInteractionError(t('followUps.interactions.saveError'))
+      }
     }
   }
 
@@ -155,6 +209,10 @@ export function FollowUpQueuePage() {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editing || !fields) return
+    const savedFollowUpId = editing.id
+    const savedSelectionGeneration = selectionGeneration.current
+    const isCurrentSelection = () =>
+      savedSelectionGeneration === selectionGeneration.current
     setIsSaving(true)
     setFieldErrors({})
     setSaveError('')
@@ -186,9 +244,13 @@ export function FollowUpQueuePage() {
       setItems((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       )
-      setEditing(null)
-      setFields(null)
+      if (isCurrentSelection() && updated.id === savedFollowUpId) {
+        setEditing(updated)
+        setFields(editFields(updated))
+        setIsEditing(false)
+      }
     } catch (error) {
+      if (!isCurrentSelection()) return
       if (error instanceof ApiError) {
         const nextFieldErrors = Object.fromEntries(
           (Object.keys(fields) as (keyof EditFields)[])
@@ -208,9 +270,48 @@ export function FollowUpQueuePage() {
         setSaveError(t('followUps.saveError'))
       }
     } finally {
-      setIsSaving(false)
+      if (isCurrentSelection()) setIsSaving(false)
     }
   }
+
+  const queueItems = useMemo(() => {
+    const priority = (item: FollowUp) => {
+      if (item.status === 'closed') return 5
+      if (item.attention?.escalated) return 0
+      if (item.attention?.overdue) return 1
+      if (item.attention?.due_today) return 2
+      if (item.assigned_to === null) return 3
+      return 4
+    }
+    return items
+      .map((item, serverIndex) => ({ item, serverIndex }))
+      .filter(({ item }) => {
+        if (queueFilter === 'mine') {
+          return item.assigned_to === session?.user.id
+        }
+        if (queueFilter === 'unassigned') return item.assigned_to === null
+        if (queueFilter === 'overdue') return Boolean(item.attention?.overdue)
+        return true
+      })
+      .sort((first, second) => {
+        const priorityDifference = priority(first.item) - priority(second.item)
+        if (priorityDifference) return priorityDifference
+        const firstDue = first.item.due_at
+        const secondDue = second.item.due_at
+        if (firstDue && secondDue && firstDue !== secondDue) {
+          return firstDue.localeCompare(secondDue)
+        }
+        if (firstDue && !secondDue) return -1
+        if (!firstDue && secondDue) return 1
+        return first.serverIndex - second.serverIndex
+      })
+      .map(({ item }) => item)
+  }, [items, queueFilter, session?.user.id])
+
+  useEffect(() => {
+    if (editing && queueItems.some((item) => item.id === editing.id)) return
+    selectFollowUp(queueItems[0] ?? null)
+  }, [editing, queueItems, selectFollowUp])
 
   return (
     <main className="follow-up-page">
@@ -229,415 +330,465 @@ export function FollowUpQueuePage() {
         </p>
       ) : null}
 
-      <section className="follow-up-board" aria-label={t('followUps.board')}>
-        {statuses.map((status) => {
-          const columnItems = items.filter((item) => item.status === status)
-          return (
-            <section className="follow-up-column" key={status}>
-              <header>
-                <h2>{t(`followUps.statuses.${status}`)}</h2>
-                <span>{columnItems.length}</span>
-              </header>
-              <div className="follow-up-card-list">
-                {columnItems.map((item) => (
-                  <article className="follow-up-card" key={item.id}>
-                    <div className="follow-up-card-heading">
-                      <h3>{item.person.full_name}</h3>
-                      <span
-                        className={`engagement-chip engagement-${item.engagement}`}
-                      >
-                        {t(`followUps.engagement.${item.engagement}`)}
-                      </span>
-                    </div>
-                    <p>{t(`followUps.sources.${item.source}`)}</p>
-                    <div
-                      className="follow-up-attention"
-                      aria-label={t('followUps.attention.label')}
-                    >
-                      {(
-                        [
-                          'escalated',
-                          'overdue',
-                          'due_today',
-                          'stale',
-                          'unassigned_too_long',
-                          'no_action',
-                        ] as const
-                      ).map((flag) =>
-                        item.attention?.[flag] ? (
-                          <span
-                            className={`attention-chip attention-${flag}`}
-                            key={flag}
-                          >
-                            {t(`followUps.attention.${flag}`)}
-                          </span>
-                        ) : null,
-                      )}
-                    </div>
-                    <p className="follow-up-next-action">
-                      <strong>{t('followUps.attention.nextAction')}:</strong>{' '}
-                      {item.attention?.next_action ??
-                        t('followUps.attention.defaultAction')}
-                    </p>
-                    <ContactActions
-                      email={item.person.email}
-                      fullName={item.person.full_name}
-                      hasWhatsapp={item.person.has_whatsapp}
-                      phone={item.person.phone}
-                      preferredName={item.person.preferred_name}
-                      wechatId={item.person.wechat_id}
-                    />
-                    <dl>
-                      <div>
-                        <dt>{t('followUps.assignee')}</dt>
-                        <dd>
-                          {item.assigned_to_name ?? t('followUps.unassigned')}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>{t('followUps.due')}</dt>
-                        <dd>{item.due_at ?? t('followUps.notSet')}</dd>
-                      </div>
-                    </dl>
-                    <div className="follow-up-actions">
-                      <button
-                        className="text-button"
-                        onClick={() => beginEdit(item)}
-                        type="button"
-                      >
-                        {t('followUps.update')}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-                {!columnItems.length ? (
-                  <p className="follow-up-column-empty">
-                    {t('followUps.emptyColumn')}
-                  </p>
-                ) : null}
-              </div>
-            </section>
-          )
-        })}
-      </section>
+      <div
+        className="follow-up-filters"
+        role="group"
+        aria-label="Follow-up queue filter"
+      >
+        {(['mine', 'unassigned', 'overdue', 'all'] as const).map((filter) => (
+          <button
+            aria-pressed={queueFilter === filter}
+            className={queueFilter === filter ? 'active' : undefined}
+            key={filter}
+            onClick={() => setQueueFilter(filter)}
+            type="button"
+          >
+            {filter === 'mine'
+              ? 'My follow-ups'
+              : filter === 'unassigned'
+                ? 'Unassigned'
+                : filter === 'overdue'
+                  ? 'Overdue'
+                  : 'All'}
+          </button>
+        ))}
+      </div>
 
-      {editing && fields ? (
-        <section
-          className="follow-up-editor"
-          aria-labelledby="follow-up-editor"
-        >
-          <div className="profile-panel-heading">
-            <div>
-              <p className="eyebrow">{t('followUps.editorEyebrow')}</p>
-              <h2 id="follow-up-editor">
-                {t('followUps.editorTitle', {
-                  name: editing.person.full_name,
-                })}
-              </h2>
-            </div>
-            <button
-              className="text-button"
-              onClick={() => setEditing(null)}
-              type="button"
-            >
-              {t('followUps.cancel')}
-            </button>
-          </div>
-          <form className="follow-up-form" onSubmit={save}>
-            <label>
-              <span>{t('followUps.status')}</span>
-              <select
-                onChange={(event) =>
-                  update('status', event.target.value as FollowUpStatus)
-                }
-                value={fields.status}
+      <div className="follow-up-workspace">
+        <section className="follow-up-board" aria-label={t('followUps.board')}>
+          <header>
+            <h2>Priority queue</h2>
+            <span>{queueItems.length}</span>
+          </header>
+          <div className="follow-up-card-list">
+            {queueItems.map((item) => (
+              <button
+                className={`follow-up-card${editing?.id === item.id ? ' selected' : ''}`}
+                key={item.id}
+                onClick={() => beginEdit(item)}
+                type="button"
               >
-                {statuses.map((status) => (
-                  <option key={status} value={status}>
-                    {t(`followUps.statuses.${status}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>{t('followUps.engagementLabel')}</span>
-              <select
-                onChange={(event) =>
-                  update(
-                    'engagement',
-                    event.target.value as FollowUp['engagement'],
-                  )
-                }
-                value={fields.engagement}
-              >
-                {(['possible', 'probable', 'likely'] as const).map((value) => (
-                  <option key={value} value={value}>
-                    {t(`followUps.engagement.${value}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <fieldset className="follow-up-assignment wide-field">
-              <legend>{t('followUps.assignmentLegend')}</legend>
-              <p>{t('followUps.assignmentHelp')}</p>
-              <div>
-                <label>
-                  <span>{t('followUps.assignee')}</span>
-                  <select
-                    aria-label={t('followUps.assignee')}
-                    aria-describedby={
-                      fieldErrors.assigned_to
-                        ? 'follow-up-assignee-error'
-                        : undefined
-                    }
-                    aria-invalid={Boolean(fieldErrors.assigned_to)}
-                    onChange={(event) =>
-                      update('assigned_to', event.target.value)
-                    }
-                    value={fields.assigned_to}
+                <div className="follow-up-card-heading">
+                  <h3>{item.person.full_name}</h3>
+                  <span
+                    className={`engagement-chip engagement-${item.engagement}`}
                   >
-                    <option value="">{t('followUps.unassigned')}</option>
-                    {workers.map((worker) => (
-                      <option key={worker.id} value={worker.id}>
-                        {worker.name}
+                    {t(`followUps.engagement.${item.engagement}`)}
+                  </span>
+                </div>
+                <p>
+                  {t(`followUps.statuses.${item.status}`)} ·{' '}
+                  {item.assigned_to_name ?? t('followUps.unassigned')} ·{' '}
+                  {item.due_at ?? t('followUps.notSet')}
+                </p>
+                <div
+                  className="follow-up-attention"
+                  aria-label={t('followUps.attention.label')}
+                >
+                  {(
+                    [
+                      'escalated',
+                      'overdue',
+                      'due_today',
+                      'stale',
+                      'unassigned_too_long',
+                      'no_action',
+                    ] as const
+                  ).map((flag) =>
+                    item.attention?.[flag] ? (
+                      <span
+                        className={`attention-chip attention-${flag}`}
+                        key={flag}
+                      >
+                        {t(`followUps.attention.${flag}`)}
+                      </span>
+                    ) : null,
+                  )}
+                </div>
+                <p className="follow-up-next-action">
+                  <strong>
+                    {t('followUps.attention.nextAction')}:{' '}
+                    {item.attention?.next_action ??
+                      t('followUps.attention.defaultAction')}
+                  </strong>
+                </p>
+              </button>
+            ))}
+            {!queueItems.length ? (
+              <p className="follow-up-column-empty">
+                No follow-ups match this filter.
+              </p>
+            ) : null}
+          </div>
+        </section>
+
+        {editing && fields ? (
+          <section
+            className="follow-up-editor"
+            aria-labelledby="follow-up-editor"
+          >
+            <div className="profile-panel-heading">
+              <div>
+                <p className="eyebrow">{t('followUps.editorEyebrow')}</p>
+                <h2 id="follow-up-editor">
+                  {t('followUps.editorTitle', {
+                    name: editing.person.full_name,
+                  })}
+                </h2>
+              </div>
+              <button
+                className="text-button"
+                onClick={() => setIsEditing((current) => !current)}
+                type="button"
+              >
+                {isEditing ? t('followUps.cancel') : t('followUps.update')}
+              </button>
+            </div>
+            <p className="follow-up-detail-next">
+              <strong>
+                {t('followUps.attention.nextAction')}:{' '}
+                {editing.attention?.next_action ??
+                  t('followUps.attention.defaultAction')}
+              </strong>
+            </p>
+            <dl className="follow-up-detail-summary">
+              <div>
+                <dt>{t('followUps.status')}</dt>
+                <dd>{t(`followUps.statuses.${editing.status}`)}</dd>
+              </div>
+              <div>
+                <dt>{t('followUps.assignee')}</dt>
+                <dd>{editing.assigned_to_name ?? t('followUps.unassigned')}</dd>
+              </div>
+              <div>
+                <dt>{t('followUps.due')}</dt>
+                <dd>{editing.due_at ?? t('followUps.notSet')}</dd>
+              </div>
+            </dl>
+            <ContactActions
+              email={editing.person.email}
+              fullName={editing.person.full_name}
+              hasWhatsapp={editing.person.has_whatsapp}
+              phone={editing.person.phone}
+              preferredContact={editing.person.preferred_contact}
+              preferredName={editing.person.preferred_name}
+              wechatId={editing.person.wechat_id}
+            />
+            {isEditing ? (
+              <form className="follow-up-form" onSubmit={save}>
+                <label>
+                  <span>{t('followUps.status')}</span>
+                  <select
+                    onChange={(event) =>
+                      update('status', event.target.value as FollowUpStatus)
+                    }
+                    value={fields.status}
+                  >
+                    {statuses.map((status) => (
+                      <option key={status} value={status}>
+                        {t(`followUps.statuses.${status}`)}
                       </option>
                     ))}
                   </select>
-                  {fieldErrors.assigned_to ? (
-                    <span
-                      className="field-error"
-                      id="follow-up-assignee-error"
-                      role="alert"
-                    >
-                      {fieldErrors.assigned_to}
-                    </span>
-                  ) : null}
                 </label>
                 <label>
-                  <span>{t('followUps.due')}</span>
-                  <input
-                    aria-label={t('followUps.due')}
-                    aria-describedby={
-                      fieldErrors.due_at ? 'follow-up-due-error' : undefined
+                  <span>{t('followUps.engagementLabel')}</span>
+                  <select
+                    onChange={(event) =>
+                      update(
+                        'engagement',
+                        event.target.value as FollowUp['engagement'],
+                      )
                     }
-                    aria-invalid={Boolean(fieldErrors.due_at)}
-                    onChange={(event) => update('due_at', event.target.value)}
-                    type="date"
-                    value={fields.due_at}
+                    value={fields.engagement}
+                  >
+                    {(['possible', 'probable', 'likely'] as const).map(
+                      (value) => (
+                        <option key={value} value={value}>
+                          {t(`followUps.engagement.${value}`)}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+                <fieldset className="follow-up-assignment wide-field">
+                  <legend>{t('followUps.assignmentLegend')}</legend>
+                  <p>{t('followUps.assignmentHelp')}</p>
+                  <div>
+                    <label>
+                      <span>{t('followUps.assignee')}</span>
+                      <select
+                        aria-label={t('followUps.assignee')}
+                        aria-describedby={
+                          fieldErrors.assigned_to
+                            ? 'follow-up-assignee-error'
+                            : undefined
+                        }
+                        aria-invalid={Boolean(fieldErrors.assigned_to)}
+                        onChange={(event) =>
+                          update('assigned_to', event.target.value)
+                        }
+                        value={fields.assigned_to}
+                      >
+                        <option value="">{t('followUps.unassigned')}</option>
+                        {workers.map((worker) => (
+                          <option key={worker.id} value={worker.id}>
+                            {worker.name}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.assigned_to ? (
+                        <span
+                          className="field-error"
+                          id="follow-up-assignee-error"
+                          role="alert"
+                        >
+                          {fieldErrors.assigned_to}
+                        </span>
+                      ) : null}
+                    </label>
+                    <label>
+                      <span>{t('followUps.due')}</span>
+                      <input
+                        aria-label={t('followUps.due')}
+                        aria-describedby={
+                          fieldErrors.due_at ? 'follow-up-due-error' : undefined
+                        }
+                        aria-invalid={Boolean(fieldErrors.due_at)}
+                        onChange={(event) =>
+                          update('due_at', event.target.value)
+                        }
+                        type="date"
+                        value={fields.due_at}
+                      />
+                      {fieldErrors.due_at ? (
+                        <span
+                          className="field-error"
+                          id="follow-up-due-error"
+                          role="alert"
+                        >
+                          {fieldErrors.due_at}
+                        </span>
+                      ) : null}
+                    </label>
+                  </div>
+                </fieldset>
+                {fields.due_at &&
+                editing.due_at &&
+                fields.due_at > editing.due_at &&
+                (editing.attention?.overdue ||
+                  (editing.attention?.postponement_count ?? 0) > 0) ? (
+                  <fieldset className="follow-up-assignment wide-field">
+                    <legend>{t('followUps.postpone.legend')}</legend>
+                    <p>{t('followUps.postpone.help')}</p>
+                    <div>
+                      <label>
+                        <span>{t('followUps.postpone.reason')}</span>
+                        <select
+                          aria-invalid={Boolean(fieldErrors.postpone_reason)}
+                          onChange={(event) =>
+                            update('postpone_reason', event.target.value)
+                          }
+                          value={fields.postpone_reason}
+                        >
+                          <option value="">
+                            {t('followUps.postpone.chooseReason')}
+                          </option>
+                          {(
+                            [
+                              'awaiting_response',
+                              'person_requested',
+                              'worker_availability',
+                              'other_operational',
+                            ] as const
+                          ).map((reason) => (
+                            <option key={reason} value={reason}>
+                              {t(`followUps.postpone.reasons.${reason}`)}
+                            </option>
+                          ))}
+                        </select>
+                        {fieldErrors.postpone_reason ? (
+                          <span className="field-error" role="alert">
+                            {fieldErrors.postpone_reason}
+                          </span>
+                        ) : null}
+                      </label>
+                      <label>
+                        <span>{t('followUps.postpone.interaction')}</span>
+                        <select
+                          aria-invalid={Boolean(
+                            fieldErrors.postpone_interaction,
+                          )}
+                          onChange={(event) =>
+                            update('postpone_interaction', event.target.value)
+                          }
+                          value={fields.postpone_interaction}
+                        >
+                          <option value="">
+                            {t('followUps.postpone.chooseInteraction')}
+                          </option>
+                          {interactions.map((interaction) => (
+                            <option key={interaction.id} value={interaction.id}>
+                              {t(
+                                `followUps.interactions.kinds.${interaction.kind}`,
+                              )}{' '}
+                              ·{' '}
+                              {new Date(
+                                interaction.created_at,
+                              ).toLocaleDateString()}
+                            </option>
+                          ))}
+                        </select>
+                        {fieldErrors.postpone_interaction ? (
+                          <span className="field-error" role="alert">
+                            {fieldErrors.postpone_interaction}
+                          </span>
+                        ) : null}
+                      </label>
+                    </div>
+                  </fieldset>
+                ) : null}
+                <label className="wide-field">
+                  <span>{t('followUps.outcome')}</span>
+                  <textarea
+                    aria-label={t('followUps.outcome')}
+                    aria-describedby={
+                      fieldErrors.outcome
+                        ? 'follow-up-outcome-error'
+                        : undefined
+                    }
+                    aria-invalid={Boolean(fieldErrors.outcome)}
+                    onChange={(event) => update('outcome', event.target.value)}
+                    rows={3}
+                    value={fields.outcome}
                   />
-                  {fieldErrors.due_at ? (
+                  {fieldErrors.outcome ? (
                     <span
                       className="field-error"
-                      id="follow-up-due-error"
+                      id="follow-up-outcome-error"
                       role="alert"
                     >
-                      {fieldErrors.due_at}
+                      {fieldErrors.outcome}
                     </span>
                   ) : null}
                 </label>
-              </div>
-            </fieldset>
-            {fields.due_at &&
-            editing.due_at &&
-            fields.due_at > editing.due_at &&
-            (editing.attention?.overdue ||
-              (editing.attention?.postponement_count ?? 0) > 0) ? (
-              <fieldset className="follow-up-assignment wide-field">
-                <legend>{t('followUps.postpone.legend')}</legend>
-                <p>{t('followUps.postpone.help')}</p>
-                <div>
-                  <label>
-                    <span>{t('followUps.postpone.reason')}</span>
-                    <select
-                      aria-invalid={Boolean(fieldErrors.postpone_reason)}
-                      onChange={(event) =>
-                        update('postpone_reason', event.target.value)
-                      }
-                      value={fields.postpone_reason}
-                    >
-                      <option value="">
-                        {t('followUps.postpone.chooseReason')}
-                      </option>
-                      {(
-                        [
-                          'awaiting_response',
-                          'person_requested',
-                          'worker_availability',
-                          'other_operational',
-                        ] as const
-                      ).map((reason) => (
-                        <option key={reason} value={reason}>
-                          {t(`followUps.postpone.reasons.${reason}`)}
-                        </option>
-                      ))}
-                    </select>
-                    {fieldErrors.postpone_reason ? (
-                      <span className="field-error" role="alert">
-                        {fieldErrors.postpone_reason}
-                      </span>
-                    ) : null}
-                  </label>
-                  <label>
-                    <span>{t('followUps.postpone.interaction')}</span>
-                    <select
-                      aria-invalid={Boolean(fieldErrors.postpone_interaction)}
-                      onChange={(event) =>
-                        update('postpone_interaction', event.target.value)
-                      }
-                      value={fields.postpone_interaction}
-                    >
-                      <option value="">
-                        {t('followUps.postpone.chooseInteraction')}
-                      </option>
-                      {interactions.map((interaction) => (
-                        <option key={interaction.id} value={interaction.id}>
-                          {t(
-                            `followUps.interactions.kinds.${interaction.kind}`,
-                          )}{' '}
-                          ·{' '}
-                          {new Date(
-                            interaction.created_at,
-                          ).toLocaleDateString()}
-                        </option>
-                      ))}
-                    </select>
-                    {fieldErrors.postpone_interaction ? (
-                      <span className="field-error" role="alert">
-                        {fieldErrors.postpone_interaction}
-                      </span>
-                    ) : null}
-                  </label>
+                {saveError ? (
+                  <p className="form-error wide-field" role="alert">
+                    {saveError}
+                  </p>
+                ) : null}
+                <div className="event-form-actions wide-field">
+                  <button
+                    className="primary-button inline"
+                    disabled={isSaving}
+                    type="submit"
+                  >
+                    {isSaving ? t('followUps.saving') : t('followUps.save')}
+                  </button>
                 </div>
-              </fieldset>
+              </form>
             ) : null}
-            <label className="wide-field">
-              <span>{t('followUps.outcome')}</span>
-              <textarea
-                aria-label={t('followUps.outcome')}
-                aria-describedby={
-                  fieldErrors.outcome ? 'follow-up-outcome-error' : undefined
-                }
-                aria-invalid={Boolean(fieldErrors.outcome)}
-                onChange={(event) => update('outcome', event.target.value)}
-                rows={3}
-                value={fields.outcome}
-              />
-              {fieldErrors.outcome ? (
-                <span
-                  className="field-error"
-                  id="follow-up-outcome-error"
-                  role="alert"
-                >
-                  {fieldErrors.outcome}
-                </span>
-              ) : null}
-            </label>
-            {saveError ? (
-              <p className="form-error wide-field" role="alert">
-                {saveError}
-              </p>
-            ) : null}
-            <div className="event-form-actions wide-field">
-              <button
-                className="primary-button inline"
-                disabled={isSaving}
-                type="submit"
-              >
-                {isSaving ? t('followUps.saving') : t('followUps.save')}
-              </button>
-            </div>
-          </form>
-          <section className="interaction-log">
-            <h3>{t('followUps.interactions.title')}</h3>
-            {interactions.length ? (
-              <div className="interaction-list">
-                {interactions.map((interaction) => (
-                  <article key={interaction.id}>
-                    <strong>
-                      {t(`followUps.interactions.kinds.${interaction.kind}`)}
-                    </strong>
-                    <span>
-                      {interaction.author} ·{' '}
-                      {new Intl.DateTimeFormat(undefined, {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      }).format(new Date(interaction.occurred_at))}
-                    </span>
-                    <p>{interaction.summary}</p>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p>{t('followUps.interactions.empty')}</p>
-            )}
-            <form className="interaction-form" onSubmit={addInteraction}>
-              <label>
-                <span>{t('followUps.interactions.kind')}</span>
-                <select
-                  onChange={(event) =>
-                    setInteractionKind(
-                      event.target.value as Interaction['kind'],
-                    )
-                  }
-                  value={interactionKind}
-                >
-                  {(
-                    ['call', 'message', 'visit', 'meeting', 'other'] as const
-                  ).map((kind) => (
-                    <option key={kind} value={kind}>
-                      {t(`followUps.interactions.kinds.${kind}`)}
-                    </option>
+            <section className="interaction-log">
+              <h3>{t('followUps.interactions.title')}</h3>
+              {interactions.length ? (
+                <div className="interaction-list">
+                  {interactions.map((interaction) => (
+                    <article key={interaction.id}>
+                      <strong>
+                        {t(`followUps.interactions.kinds.${interaction.kind}`)}
+                      </strong>
+                      <span>
+                        {interaction.author} ·{' '}
+                        {new Intl.DateTimeFormat(undefined, {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        }).format(new Date(interaction.occurred_at))}
+                      </span>
+                      <p>{interaction.summary}</p>
+                    </article>
                   ))}
-                </select>
-              </label>
-              <label>
-                <span>{t('followUps.interactions.visibility')}</span>
-                <select
-                  onChange={(event) =>
-                    setInteractionVisibility(
-                      event.target.value as Interaction['visibility'],
-                    )
-                  }
-                  value={interactionVisibility}
-                >
-                  <option value="staff">
-                    {t('followUps.interactions.visibilities.staff')}
-                  </option>
-                  <option value="leaders">
-                    {t('followUps.interactions.visibilities.leaders')}
-                  </option>
-                  {session?.membership.role !== 'leader' ? (
-                    <option value="pastors_only">
-                      {t('followUps.interactions.visibilities.pastors_only')}
+                </div>
+              ) : (
+                <p>{t('followUps.interactions.empty')}</p>
+              )}
+              <form className="interaction-form" onSubmit={addInteraction}>
+                <label>
+                  <span>{t('followUps.interactions.kind')}</span>
+                  <select
+                    onChange={(event) =>
+                      setInteractionKind(
+                        event.target.value as Interaction['kind'],
+                      )
+                    }
+                    value={interactionKind}
+                  >
+                    {(
+                      ['call', 'message', 'visit', 'meeting', 'other'] as const
+                    ).map((kind) => (
+                      <option key={kind} value={kind}>
+                        {t(`followUps.interactions.kinds.${kind}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{t('followUps.interactions.visibility')}</span>
+                  <select
+                    onChange={(event) =>
+                      setInteractionVisibility(
+                        event.target.value as Interaction['visibility'],
+                      )
+                    }
+                    value={interactionVisibility}
+                  >
+                    <option value="staff">
+                      {t('followUps.interactions.visibilities.staff')}
                     </option>
-                  ) : null}
-                </select>
-              </label>
-              <label className="wide-field">
-                <span>{t('followUps.interactions.summary')}</span>
-                <textarea
-                  onChange={(event) =>
-                    setInteractionSummary(event.target.value)
-                  }
-                  required
-                  rows={2}
-                  value={interactionSummary}
-                />
-              </label>
-              <button className="secondary-button" type="submit">
-                {t('followUps.interactions.add')}
-              </button>
-            </form>
-            {interactionError ? (
-              <p className="form-error" role="alert">
-                {interactionError}
-              </p>
-            ) : null}
+                    <option value="leaders">
+                      {t('followUps.interactions.visibilities.leaders')}
+                    </option>
+                    {session?.membership.role !== 'leader' ? (
+                      <option value="pastors_only">
+                        {t('followUps.interactions.visibilities.pastors_only')}
+                      </option>
+                    ) : null}
+                  </select>
+                </label>
+                <label className="wide-field">
+                  <span>{t('followUps.interactions.summary')}</span>
+                  <textarea
+                    onChange={(event) =>
+                      setInteractionSummary(event.target.value)
+                    }
+                    required
+                    rows={2}
+                    value={interactionSummary}
+                  />
+                </label>
+                <button className="secondary-button" type="submit">
+                  {t('followUps.interactions.add')}
+                </button>
+              </form>
+              {interactionError ? (
+                <p className="form-error" role="alert">
+                  {interactionError}
+                </p>
+              ) : null}
+            </section>
           </section>
-        </section>
-      ) : null}
+        ) : null}
+        {!editing ? (
+          <section className="follow-up-editor follow-up-detail-empty">
+            <h2>Select a follow-up</h2>
+            <p>
+              Choose a person from the priority queue to see contact details and
+              activity.
+            </p>
+          </section>
+        ) : null}
+      </div>
     </main>
   )
 }

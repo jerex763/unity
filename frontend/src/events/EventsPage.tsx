@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import { ApiError, apiRequest } from '../api/client'
+import { useModalDialog } from '../accessibility/useModalDialog'
 import { useAuth } from '../auth/useAuth'
 import type { DirectoryPerson } from '../people/types'
 import {
@@ -117,28 +119,25 @@ export function EventsPage() {
     {},
   )
   const [registrationPerson, setRegistrationPerson] = useState('')
-  const [needsTransport, setNeedsTransport] = useState(false)
   const [registrationNote, setRegistrationNote] = useState('')
   const [registrationError, setRegistrationError] = useState('')
-  const [registrationNotice, setRegistrationNotice] = useState('')
-  const [rosterSearch, setRosterSearch] = useState('')
   const [isSavingRegistration, setIsSavingRegistration] = useState(false)
-  const [walkInEvent, setWalkInEvent] = useState<number | null>(null)
-  const [walkInName, setWalkInName] = useState('')
-  const [walkInPreferredName, setWalkInPreferredName] = useState('')
-  const [walkInEmail, setWalkInEmail] = useState('')
-  const [walkInPhone, setWalkInPhone] = useState('')
-  const [walkInWechatId, setWalkInWechatId] = useState('')
-  const [walkInContactError, setWalkInContactError] = useState('')
   const [publicLinks, setPublicLinks] = useState<Record<number, string>>({})
+  const [visiblePublicLinks, setVisiblePublicLinks] = useState<Set<number>>(
+    new Set(),
+  )
   const [publicLinkNotice, setPublicLinkNotice] = useState('')
   const [publicLinkError, setPublicLinkError] = useState('')
   const [publicLinkFeedbackEvent, setPublicLinkFeedbackEvent] = useState<
     number | null
   >(null)
-  const editorRef = useRef<HTMLElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const canEdit = session?.membership.role !== 'member'
+  const editorRef = useModalDialog<HTMLElement>(
+    Boolean(formMode),
+    closeForm,
+    titleInputRef,
+  )
 
   useEffect(() => {
     let active = true
@@ -186,8 +185,7 @@ export function EventsPage() {
       behavior: prefersReducedMotion ? 'auto' : 'smooth',
       block: 'start',
     })
-    titleInputRef.current?.focus({ preventScroll: true })
-  }, [formOpenRequest, formMode])
+  }, [editorRef, formOpenRequest, formMode])
 
   function openForm(nextForm: EventForm, mode: EventFormMode) {
     setSaveError('')
@@ -300,7 +298,6 @@ export function EventsPage() {
             ...(canEdit && registrationPerson
               ? { person: Number(registrationPerson) }
               : {}),
-            needs_transport: needsTransport,
             note: registrationNote,
           }),
         },
@@ -328,7 +325,6 @@ export function EventsPage() {
       }
       setEvents(await apiRequest<ChurchEvent[]>('/events/'))
       setRegistrationPerson('')
-      setNeedsTransport(false)
       setRegistrationNote('')
     } catch {
       setRegistrationError(t('events.registrations.saveError'))
@@ -369,6 +365,12 @@ export function EventsPage() {
   }
 
   async function generatePublicLink(churchEvent: ChurchEvent) {
+    if (
+      churchEvent.public_registration_enabled &&
+      !window.confirm(t('events.publicLink.replaceConfirm'))
+    ) {
+      return
+    }
     setPublicLinkFeedbackEvent(churchEvent.id)
     setPublicLinkError('')
     setPublicLinkNotice('')
@@ -381,6 +383,11 @@ export function EventsPage() {
         ...current,
         [churchEvent.id]: result.url,
       }))
+      setVisiblePublicLinks((current) => {
+        const next = new Set(current)
+        next.delete(churchEvent.id)
+        return next
+      })
       setEvents((current) =>
         current.map((item) =>
           item.id === churchEvent.id
@@ -432,113 +439,6 @@ export function EventsPage() {
     }
   }
 
-  async function setCheckIn(
-    churchEvent: ChurchEvent,
-    registration: EventRegistration,
-    checkedIn: boolean,
-  ) {
-    setRegistrationError('')
-    setRegistrationNotice('')
-    try {
-      const updated = await apiRequest<EventRegistration>(
-        `/events/${churchEvent.id}/registrations/${registration.id}/check-in/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ checked_in: checkedIn }),
-        },
-      )
-      setRosters((current) => ({
-        ...current,
-        [churchEvent.id]: (current[churchEvent.id] ?? []).map((item) =>
-          item.id === updated.id ? updated : item,
-        ),
-      }))
-      setRegistrationNotice(
-        checkedIn
-          ? t('events.checkIn.success', {
-              name: registration.person.full_name,
-            })
-          : t('events.checkIn.undoSuccess', {
-              name: registration.person.full_name,
-            }),
-      )
-    } catch {
-      setRegistrationError(t('events.checkIn.error'))
-    }
-  }
-
-  async function addWalkIn(
-    formEvent: FormEvent<HTMLFormElement>,
-    churchEvent: ChurchEvent,
-  ) {
-    formEvent.preventDefault()
-    setRegistrationError('')
-    setWalkInContactError('')
-    if (
-      ![walkInEmail, walkInPhone, walkInWechatId].some((value) => value.trim())
-    ) {
-      setWalkInContactError(t('events.walkIn.contactRequired'))
-      return
-    }
-    setIsSavingRegistration(true)
-    try {
-      const registration = await apiRequest<EventRegistration>(
-        `/events/${churchEvent.id}/walk-ins/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            full_name: walkInName,
-            preferred_name: walkInPreferredName,
-            email: walkInEmail,
-            phone: walkInPhone,
-            wechat_id: walkInWechatId,
-            needs_transport: needsTransport,
-            note: registrationNote,
-          }),
-        },
-      )
-      setRosters((current) => ({
-        ...current,
-        [churchEvent.id]: [
-          ...(current[churchEvent.id] ?? []).filter(
-            (item) => item.id !== registration.id,
-          ),
-          registration,
-        ],
-      }))
-      const [eventRows, personRows] = await Promise.all([
-        apiRequest<ChurchEvent[]>('/events/'),
-        apiRequest<DirectoryPerson[]>('/people/'),
-      ])
-      setEvents(eventRows)
-      setPeople(personRows)
-      setWalkInEvent(null)
-      setWalkInName('')
-      setWalkInPreferredName('')
-      setWalkInEmail('')
-      setWalkInPhone('')
-      setWalkInWechatId('')
-      setWalkInContactError('')
-      setNeedsTransport(false)
-      setRegistrationNote('')
-    } catch (error) {
-      const contactError =
-        error instanceof ApiError ? error.payload.contact : undefined
-      if (typeof contactError === 'string') {
-        setWalkInContactError(contactError)
-      } else if (
-        Array.isArray(contactError) &&
-        typeof contactError[0] === 'string'
-      ) {
-        setWalkInContactError(contactError[0])
-      } else {
-        setRegistrationError(t('events.walkIn.saveError'))
-      }
-    } finally {
-      setIsSavingRegistration(false)
-    }
-  }
-
   return (
     <main className="events-page">
       <section className="page-heading events-heading">
@@ -559,199 +459,221 @@ export function EventsPage() {
       </section>
 
       {form && formMode ? (
-        <section
-          className="event-editor"
-          aria-labelledby="event-editor-title"
-          ref={editorRef}
-        >
-          <div className="profile-panel-heading">
-            <div>
-              <p className="eyebrow">{t(`events.${formMode}Eyebrow`)}</p>
-              <h2 id="event-editor-title">{t(`events.${formMode}Title`)}</h2>
-              {formMode === 'duplicate' ? (
-                <p className="event-form-mode-help">
-                  {t('events.duplicateHelp')}
-                </p>
-              ) : null}
-            </div>
-            <button className="text-button" onClick={closeForm} type="button">
-              {t('events.cancel')}
-            </button>
-          </div>
-          <form className="event-form" noValidate onSubmit={save}>
-            <p className="form-required-hint wide-field">
-              {t('forms.requiredHint')}
-            </p>
-            <label className="wide-field">
-              <span>
-                {t('events.fields.title')} <RequiredMarker />
-              </span>
-              <input
-                aria-describedby={
-                  fieldErrors.title ? 'event-title-error' : undefined
-                }
-                aria-invalid={Boolean(fieldErrors.title)}
-                onChange={(event) => update('title', event.target.value)}
-                ref={titleInputRef}
-                required
-                value={form.title}
-              />
-              {fieldErrors.title ? (
-                <small className="field-error" id="event-title-error">
-                  {fieldErrors.title}
-                </small>
-              ) : null}
-            </label>
-            <label>
-              <span>
-                {t('events.fields.startsAt')} <RequiredMarker />
-              </span>
-              <input
-                aria-describedby={
-                  fieldErrors.starts_at
-                    ? 'event-start-help event-start-error'
-                    : 'event-start-help'
-                }
-                aria-invalid={Boolean(fieldErrors.starts_at)}
-                min={
-                  form.id ? undefined : localDateTime(new Date().toISOString())
-                }
-                onChange={(event) => update('starts_at', event.target.value)}
-                required
-                type="datetime-local"
-                value={form.starts_at}
-              />
-              <small className="field-help" id="event-start-help">
-                {t('events.dateSelectionHelp')}
-              </small>
-              {fieldErrors.starts_at ? (
-                <small className="field-error" id="event-start-error">
-                  {fieldErrors.starts_at}
-                </small>
-              ) : null}
-            </label>
-            <label>
-              <span>
-                {t('events.fields.endsAt')} <RequiredMarker />
-              </span>
-              <input
-                aria-describedby={
-                  fieldErrors.ends_at
-                    ? 'event-end-help event-end-error'
-                    : 'event-end-help'
-                }
-                aria-invalid={Boolean(fieldErrors.ends_at)}
-                min={form.starts_at || undefined}
-                onChange={(event) => update('ends_at', event.target.value)}
-                required
-                type="datetime-local"
-                value={form.ends_at}
-              />
-              <small className="field-help" id="event-end-help">
-                {t('events.dateSelectionHelp')}
-              </small>
-              {fieldErrors.ends_at ? (
-                <small className="field-error" id="event-end-error">
-                  {fieldErrors.ends_at}
-                </small>
-              ) : null}
-            </label>
-            <label>
-              <span>{t('events.fields.group')}</span>
-              <select
-                onChange={(event) => update('group', event.target.value)}
-                value={form.group}
-              >
-                <option value="">{t('events.churchWide')}</option>
-                {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>{t('events.fields.location')}</span>
-              <input
-                onChange={(event) => update('location', event.target.value)}
-                value={form.location}
-              />
-            </label>
-            <label>
-              <span>{t('events.fields.capacity')}</span>
-              <input
-                aria-describedby={
-                  fieldErrors.capacity ? 'event-capacity-error' : undefined
-                }
-                aria-invalid={Boolean(fieldErrors.capacity)}
-                min="1"
-                onChange={(event) => update('capacity', event.target.value)}
-                placeholder={t('events.unlimited')}
-                type="number"
-                value={form.capacity}
-              />
-              {fieldErrors.capacity ? (
-                <small className="field-error" id="event-capacity-error">
-                  {fieldErrors.capacity}
-                </small>
-              ) : null}
-            </label>
-            <label>
-              <span>{t('events.fields.signupClosesAt')}</span>
-              <input
-                aria-describedby={
-                  fieldErrors.signup_closes_at
-                    ? 'event-signup-closes-error'
-                    : undefined
-                }
-                aria-invalid={Boolean(fieldErrors.signup_closes_at)}
-                max={form.starts_at || undefined}
-                onChange={(event) =>
-                  update('signup_closes_at', event.target.value)
-                }
-                type="datetime-local"
-                value={form.signup_closes_at}
-              />
-              {fieldErrors.signup_closes_at ? (
-                <small className="field-error" id="event-signup-closes-error">
-                  {fieldErrors.signup_closes_at}
-                </small>
-              ) : null}
-            </label>
-            <label className="event-checkbox wide-field">
-              <input
-                checked={form.signup_opens}
-                onChange={(event) =>
-                  update('signup_opens', event.target.checked)
-                }
-                type="checkbox"
-              />
-              <span>{t('events.fields.signupOpen')}</span>
-            </label>
-            <label className="wide-field">
-              <span>{t('events.fields.description')}</span>
-              <textarea
-                onChange={(event) => update('description', event.target.value)}
-                rows={3}
-                value={form.description}
-              />
-            </label>
-            {saveError ? (
-              <p className="form-error wide-field" role="alert">
-                {saveError}
-              </p>
-            ) : null}
-            <div className="event-form-actions wide-field">
+        <div className="dialog-backdrop">
+          <section
+            aria-labelledby="event-editor-title"
+            aria-modal="true"
+            className="event-editor"
+            ref={editorRef}
+            role="dialog"
+            tabIndex={-1}
+          >
+            <div className="profile-panel-heading">
+              <div>
+                <p className="eyebrow">{t(`events.${formMode}Eyebrow`)}</p>
+                <h2 id="event-editor-title">{t(`events.${formMode}Title`)}</h2>
+                {formMode === 'duplicate' ? (
+                  <p className="event-form-mode-help">
+                    {t('events.duplicateHelp')}
+                  </p>
+                ) : null}
+              </div>
               <button
-                className="primary-button inline"
-                disabled={isSaving}
-                type="submit"
+                aria-label={t('events.cancel')}
+                className="dialog-close"
+                onClick={closeForm}
+                type="button"
               >
-                {isSaving ? t('events.saving') : t('events.save')}
+                <span aria-hidden="true">×</span>
               </button>
             </div>
-          </form>
-        </section>
+            <form className="event-form" noValidate onSubmit={save}>
+              <p className="form-required-hint wide-field">
+                {t('forms.requiredHint')}
+              </p>
+              <label className="wide-field">
+                <span>
+                  {t('events.fields.title')} <RequiredMarker />
+                </span>
+                <input
+                  aria-describedby={
+                    fieldErrors.title ? 'event-title-error' : undefined
+                  }
+                  aria-invalid={Boolean(fieldErrors.title)}
+                  onChange={(event) => update('title', event.target.value)}
+                  ref={titleInputRef}
+                  required
+                  value={form.title}
+                />
+                {fieldErrors.title ? (
+                  <small className="field-error" id="event-title-error">
+                    {fieldErrors.title}
+                  </small>
+                ) : null}
+              </label>
+              <label>
+                <span>
+                  {t('events.fields.startsAt')} <RequiredMarker />
+                </span>
+                <input
+                  aria-describedby={
+                    fieldErrors.starts_at
+                      ? 'event-start-help event-start-error'
+                      : 'event-start-help'
+                  }
+                  aria-invalid={Boolean(fieldErrors.starts_at)}
+                  min={
+                    form.id
+                      ? undefined
+                      : localDateTime(new Date().toISOString())
+                  }
+                  onChange={(event) => update('starts_at', event.target.value)}
+                  required
+                  type="datetime-local"
+                  value={form.starts_at}
+                />
+                <small className="field-help" id="event-start-help">
+                  {t('events.dateSelectionHelp')}
+                </small>
+                {fieldErrors.starts_at ? (
+                  <small className="field-error" id="event-start-error">
+                    {fieldErrors.starts_at}
+                  </small>
+                ) : null}
+              </label>
+              <label>
+                <span>
+                  {t('events.fields.endsAt')} <RequiredMarker />
+                </span>
+                <input
+                  aria-describedby={
+                    fieldErrors.ends_at
+                      ? 'event-end-help event-end-error'
+                      : 'event-end-help'
+                  }
+                  aria-invalid={Boolean(fieldErrors.ends_at)}
+                  min={form.starts_at || undefined}
+                  onChange={(event) => update('ends_at', event.target.value)}
+                  required
+                  type="datetime-local"
+                  value={form.ends_at}
+                />
+                <small className="field-help" id="event-end-help">
+                  {t('events.dateSelectionHelp')}
+                </small>
+                {fieldErrors.ends_at ? (
+                  <small className="field-error" id="event-end-error">
+                    {fieldErrors.ends_at}
+                  </small>
+                ) : null}
+              </label>
+              <label>
+                <span>{t('events.fields.group')}</span>
+                <select
+                  onChange={(event) => update('group', event.target.value)}
+                  value={form.group}
+                >
+                  <option value="">{t('events.churchWide')}</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t('events.fields.location')}</span>
+                <input
+                  onChange={(event) => update('location', event.target.value)}
+                  value={form.location}
+                />
+              </label>
+              <label>
+                <span>{t('events.fields.capacity')}</span>
+                <input
+                  aria-describedby={
+                    fieldErrors.capacity ? 'event-capacity-error' : undefined
+                  }
+                  aria-invalid={Boolean(fieldErrors.capacity)}
+                  min="1"
+                  onChange={(event) => update('capacity', event.target.value)}
+                  placeholder={t('events.unlimited')}
+                  type="number"
+                  value={form.capacity}
+                />
+                {fieldErrors.capacity ? (
+                  <small className="field-error" id="event-capacity-error">
+                    {fieldErrors.capacity}
+                  </small>
+                ) : null}
+              </label>
+              <label>
+                <span>{t('events.fields.signupClosesAt')}</span>
+                <input
+                  aria-describedby={
+                    fieldErrors.signup_closes_at
+                      ? 'event-signup-closes-error'
+                      : undefined
+                  }
+                  aria-invalid={Boolean(fieldErrors.signup_closes_at)}
+                  max={form.starts_at || undefined}
+                  onChange={(event) =>
+                    update('signup_closes_at', event.target.value)
+                  }
+                  type="datetime-local"
+                  value={form.signup_closes_at}
+                />
+                {fieldErrors.signup_closes_at ? (
+                  <small className="field-error" id="event-signup-closes-error">
+                    {fieldErrors.signup_closes_at}
+                  </small>
+                ) : null}
+              </label>
+              <label className="event-checkbox wide-field">
+                <input
+                  checked={form.signup_opens}
+                  onChange={(event) =>
+                    update('signup_opens', event.target.checked)
+                  }
+                  type="checkbox"
+                />
+                <span>{t('events.fields.signupOpen')}</span>
+              </label>
+              <label className="wide-field">
+                <span>{t('events.fields.description')}</span>
+                <textarea
+                  onChange={(event) =>
+                    update('description', event.target.value)
+                  }
+                  rows={3}
+                  value={form.description}
+                />
+              </label>
+              {saveError ? (
+                <p className="form-error wide-field" role="alert">
+                  {saveError}
+                </p>
+              ) : null}
+              <div className="event-form-actions wide-field">
+                <button
+                  className="secondary-button"
+                  disabled={isSaving}
+                  onClick={closeForm}
+                  type="button"
+                >
+                  {t('events.cancel')}
+                </button>
+                <button
+                  className="primary-button inline"
+                  disabled={isSaving}
+                  type="submit"
+                >
+                  {isSaving ? t('events.saving') : t('events.save')}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       ) : null}
 
       {isLoading ? (
@@ -829,6 +751,12 @@ export function EventsPage() {
                   >
                     {t('events.edit')}
                   </button>
+                  <Link
+                    className="secondary-button check-in-link"
+                    to={`/events/${event.id}/check-in`}
+                  >
+                    {t('events.checkIn.open')}
+                  </Link>
                   <button
                     className="secondary-button"
                     onClick={() =>
@@ -865,7 +793,7 @@ export function EventsPage() {
                     type="button"
                   >
                     {event.public_registration_enabled
-                      ? t('events.publicLink.rotate')
+                      ? t('events.publicLink.replace')
                       : t('events.publicLink.create')}
                   </button>
                 </div>
@@ -905,13 +833,31 @@ export function EventsPage() {
                   aria-label={t('events.publicLink.title')}
                 >
                   <p>{t('events.publicLink.privateHint')}</p>
-                  <input
-                    aria-label={t('events.publicLink.url')}
-                    readOnly
-                    type="url"
-                    value={publicLinks[event.id]}
-                  />
+                  {visiblePublicLinks.has(event.id) ? (
+                    <input
+                      aria-label={t('events.publicLink.url')}
+                      readOnly
+                      type="url"
+                      value={publicLinks[event.id]}
+                    />
+                  ) : null}
                   <div>
+                    <button
+                      className="secondary-button"
+                      onClick={() =>
+                        setVisiblePublicLinks((current) => {
+                          const next = new Set(current)
+                          if (next.has(event.id)) next.delete(event.id)
+                          else next.add(event.id)
+                          return next
+                        })
+                      }
+                      type="button"
+                    >
+                      {visiblePublicLinks.has(event.id)
+                        ? t('events.publicLink.hide')
+                        : t('events.publicLink.show')}
+                    </button>
                     <button
                       className="secondary-button"
                       onClick={() => void copyPublicLink(event)}
@@ -954,76 +900,36 @@ export function EventsPage() {
                   aria-label={t('events.registrations.title')}
                 >
                   <h3>{t('events.registrations.title')}</h3>
-                  {canEdit ? (
-                    <label className="roster-search">
-                      <span>{t('events.checkIn.search')}</span>
-                      <input
-                        onChange={(changeEvent) =>
-                          setRosterSearch(changeEvent.target.value)
-                        }
-                        placeholder={t('events.checkIn.searchPlaceholder')}
-                        type="search"
-                        value={rosterSearch}
-                      />
-                    </label>
-                  ) : null}
                   {(rosters[event.id] ?? []).length ? (
                     <div className="registration-list">
-                      {(rosters[event.id] ?? [])
-                        .filter((registration) =>
-                          registration.person.full_name
-                            .toLocaleLowerCase()
-                            .includes(rosterSearch.trim().toLocaleLowerCase()),
-                        )
-                        .map((registration) => (
-                          <article key={registration.id}>
-                            <div>
-                              <strong>{registration.person.full_name}</strong>
-                              <span>
-                                {t(
-                                  `events.registrations.statuses.${registration.status}`,
-                                )}
-                                {registration.needs_transport
-                                  ? ` · ${t('events.registrations.transport')}`
-                                  : ''}
-                              </span>
-                              {registration.note ? (
-                                <small>{registration.note}</small>
-                              ) : null}
-                            </div>
-                            <div className="registration-actions">
-                              {canEdit &&
-                              registration.status !== 'cancelled' ? (
-                                <button
-                                  className="secondary-button"
-                                  onClick={() =>
-                                    void setCheckIn(
-                                      event,
-                                      registration,
-                                      !registration.checked_in_at,
-                                    )
-                                  }
-                                  type="button"
-                                >
-                                  {registration.checked_in_at
-                                    ? t('events.checkIn.undo')
-                                    : t('events.checkIn.mark')}
-                                </button>
-                              ) : null}
-                              {registration.status !== 'cancelled' ? (
-                                <button
-                                  className="text-button"
-                                  onClick={() =>
-                                    void cancelRegistration(event, registration)
-                                  }
-                                  type="button"
-                                >
-                                  {t('events.registrations.cancel')}
-                                </button>
-                              ) : null}
-                            </div>
-                          </article>
-                        ))}
+                      {(rosters[event.id] ?? []).map((registration) => (
+                        <article key={registration.id}>
+                          <div>
+                            <strong>{registration.person.full_name}</strong>
+                            <span>
+                              {t(
+                                `events.registrations.statuses.${registration.status}`,
+                              )}
+                            </span>
+                            {registration.note ? (
+                              <small>{registration.note}</small>
+                            ) : null}
+                          </div>
+                          <div className="registration-actions">
+                            {registration.status !== 'cancelled' ? (
+                              <button
+                                className="text-button"
+                                onClick={() =>
+                                  void cancelRegistration(event, registration)
+                                }
+                                type="button"
+                              >
+                                {t('events.registrations.cancel')}
+                              </button>
+                            ) : null}
+                          </div>
+                        </article>
+                      ))}
                     </div>
                   ) : (
                     <p>{t('events.registrations.empty')}</p>
@@ -1064,16 +970,6 @@ export function EventsPage() {
                           </label>
                         </>
                       ) : null}
-                      <label className="event-checkbox">
-                        <input
-                          checked={needsTransport}
-                          onChange={(changeEvent) =>
-                            setNeedsTransport(changeEvent.target.checked)
-                          }
-                          type="checkbox"
-                        />
-                        <span>{t('events.registrations.needsTransport')}</span>
-                      </label>
                       <label>
                         <span>{t('events.registrations.note')}</span>
                         <input
@@ -1097,134 +993,9 @@ export function EventsPage() {
                       </button>
                     </form>
                   ) : null}
-                  {canEdit && new Date(event.ends_at) > new Date() ? (
-                    <>
-                      <button
-                        className="secondary-button walk-in-toggle"
-                        onClick={() =>
-                          setWalkInEvent((current) =>
-                            current === event.id ? null : event.id,
-                          )
-                        }
-                        type="button"
-                      >
-                        {t('events.walkIn.add')}
-                      </button>
-                      {walkInEvent === event.id ? (
-                        <form
-                          className="registration-form walk-in-form"
-                          onSubmit={(formEvent) =>
-                            void addWalkIn(formEvent, event)
-                          }
-                        >
-                          <h4>{t('events.walkIn.title')}</h4>
-                          <p className="form-required-hint">
-                            {t('forms.requiredHint')}
-                          </p>
-                          <p className="form-required-hint">
-                            {t('events.walkIn.contactHint')}
-                          </p>
-                          <label>
-                            <span>
-                              {t('events.walkIn.fullName')} <RequiredMarker />
-                            </span>
-                            <input
-                              onChange={(changeEvent) =>
-                                setWalkInName(changeEvent.target.value)
-                              }
-                              required
-                              value={walkInName}
-                            />
-                          </label>
-                          <label>
-                            <span>{t('events.walkIn.preferredName')}</span>
-                            <input
-                              onChange={(changeEvent) =>
-                                setWalkInPreferredName(changeEvent.target.value)
-                              }
-                              value={walkInPreferredName}
-                            />
-                          </label>
-                          <label>
-                            <span>{t('events.walkIn.email')}</span>
-                            <input
-                              onChange={(changeEvent) => {
-                                setWalkInEmail(changeEvent.target.value)
-                                setWalkInContactError('')
-                              }}
-                              type="email"
-                              value={walkInEmail}
-                            />
-                          </label>
-                          <label>
-                            <span>{t('events.walkIn.phone')}</span>
-                            <input
-                              onChange={(changeEvent) => {
-                                setWalkInPhone(changeEvent.target.value)
-                                setWalkInContactError('')
-                              }}
-                              type="tel"
-                              value={walkInPhone}
-                            />
-                          </label>
-                          <label>
-                            <span>{t('events.walkIn.wechatId')}</span>
-                            <input
-                              onChange={(changeEvent) => {
-                                setWalkInWechatId(changeEvent.target.value)
-                                setWalkInContactError('')
-                              }}
-                              value={walkInWechatId}
-                            />
-                          </label>
-                          {walkInContactError ? (
-                            <p className="form-error wide-field" role="alert">
-                              {walkInContactError}
-                            </p>
-                          ) : null}
-                          <label className="event-checkbox">
-                            <input
-                              checked={needsTransport}
-                              onChange={(changeEvent) =>
-                                setNeedsTransport(changeEvent.target.checked)
-                              }
-                              type="checkbox"
-                            />
-                            <span>
-                              {t('events.registrations.needsTransport')}
-                            </span>
-                          </label>
-                          <label>
-                            <span>{t('events.registrations.note')}</span>
-                            <input
-                              maxLength={200}
-                              onChange={(changeEvent) =>
-                                setRegistrationNote(changeEvent.target.value)
-                              }
-                              value={registrationNote}
-                            />
-                          </label>
-                          <button
-                            className="primary-button inline"
-                            disabled={isSavingRegistration}
-                            type="submit"
-                          >
-                            {isSavingRegistration
-                              ? t('events.walkIn.saving')
-                              : t('events.walkIn.confirm')}
-                          </button>
-                        </form>
-                      ) : null}
-                    </>
-                  ) : null}
                   {registrationError ? (
                     <p className="form-error" role="alert">
                       {registrationError}
-                    </p>
-                  ) : null}
-                  {registrationNotice ? (
-                    <p className="form-success" role="status">
-                      {registrationNotice}
                     </p>
                   ) : null}
                 </section>

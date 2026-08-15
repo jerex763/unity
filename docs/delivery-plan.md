@@ -57,7 +57,6 @@ Build the shared foundation before real member data enters Unity:
 
 - Event create/edit
 - Registration and cancellation
-- Transport need and leader list
 - Manual check-in ([#33](https://github.com/jerex763/unity/issues/33))
 - Walk-in quick-add
 

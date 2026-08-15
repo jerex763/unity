@@ -36,7 +36,9 @@ export function PublicRegistrationPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [needsTransport, setNeedsTransport] = useState(false)
+  const [hasWhatsapp, setHasWhatsapp] = useState(false)
+  const [wechatId, setWechatId] = useState('')
+  const [preferredContact, setPreferredContact] = useState('')
   const [consent, setConsent] = useState(false)
   const [contactError, setContactError] = useState('')
   const [error, setError] = useState('')
@@ -63,8 +65,10 @@ export function PublicRegistrationPage() {
   async function submit(formEvent: FormEvent<HTMLFormElement>) {
     formEvent.preventDefault()
     if (!event) return
-    if (!email.trim() && !phone.trim()) {
-      setContactError('Provide an email address or phone number.')
+    if (![email, phone, wechatId].some((value) => value.trim())) {
+      setContactError(
+        'Provide at least one contact method: email, phone, or WeChat ID.',
+      )
       return
     }
     setContactError('')
@@ -77,7 +81,9 @@ export function PublicRegistrationPage() {
           full_name: fullName,
           email,
           phone,
-          needs_transport: needsTransport,
+          has_whatsapp: hasWhatsapp,
+          wechat_id: wechatId,
+          preferred_contact: preferredContact,
           consent,
           notice_version: event.privacy_notice.version,
           website: '',
@@ -143,8 +149,8 @@ export function PublicRegistrationPage() {
         ) : (
           <form className="public-registration-form" onSubmit={submit}>
             <p className="form-required-hint">
-              Fields marked (required) must be completed. All others are
-              optional.
+              Your full name and at least one contact method are required.
+              Individual contact fields are optional.
             </p>
             <label>
               <span>
@@ -172,6 +178,11 @@ export function PublicRegistrationPage() {
                   autoComplete="email"
                   onChange={(changeEvent) => {
                     setEmail(changeEvent.target.value)
+                    if (!changeEvent.target.value.trim()) {
+                      setPreferredContact((current) =>
+                        current === 'email' ? '' : current,
+                      )
+                    }
                     setContactError('')
                   }}
                   type="email"
@@ -185,11 +196,71 @@ export function PublicRegistrationPage() {
                   maxLength={30}
                   onChange={(changeEvent) => {
                     setPhone(changeEvent.target.value)
+                    if (!changeEvent.target.value.trim()) {
+                      setHasWhatsapp(false)
+                      setPreferredContact((current) =>
+                        current === 'phone' || current === 'whatsapp'
+                          ? ''
+                          : current,
+                      )
+                    }
                     setContactError('')
                   }}
                   type="tel"
                   value={phone}
                 />
+              </label>
+              <label className="public-checkbox">
+                <input
+                  checked={hasWhatsapp}
+                  disabled={!phone.trim()}
+                  onChange={(changeEvent) => {
+                    setHasWhatsapp(changeEvent.target.checked)
+                    if (!changeEvent.target.checked) {
+                      setPreferredContact((current) =>
+                        current === 'whatsapp' ? '' : current,
+                      )
+                    }
+                  }}
+                  type="checkbox"
+                />
+                <span>This phone number uses WhatsApp</span>
+              </label>
+              <label>
+                <span>WeChat ID (optional)</span>
+                <input
+                  autoComplete="off"
+                  maxLength={100}
+                  onChange={(changeEvent) => {
+                    setWechatId(changeEvent.target.value)
+                    if (!changeEvent.target.value.trim()) {
+                      setPreferredContact((current) =>
+                        current === 'wechat' ? '' : current,
+                      )
+                    }
+                    setContactError('')
+                  }}
+                  value={wechatId}
+                />
+              </label>
+              <label>
+                <span>Preferred contact (optional)</span>
+                <select
+                  onChange={(changeEvent) =>
+                    setPreferredContact(changeEvent.target.value)
+                  }
+                  value={preferredContact}
+                >
+                  <option value="">No preference</option>
+                  {hasWhatsapp && phone.trim() ? (
+                    <option value="whatsapp">WhatsApp</option>
+                  ) : null}
+                  {wechatId.trim() ? (
+                    <option value="wechat">WeChat</option>
+                  ) : null}
+                  {phone.trim() ? <option value="phone">Phone</option> : null}
+                  {email.trim() ? <option value="email">Email</option> : null}
+                </select>
               </label>
               {contactError ? (
                 <p className="field-error" role="alert">
@@ -197,16 +268,6 @@ export function PublicRegistrationPage() {
                 </p>
               ) : null}
             </fieldset>
-            <label className="public-checkbox">
-              <input
-                checked={needsTransport}
-                onChange={(changeEvent) =>
-                  setNeedsTransport(changeEvent.target.checked)
-                }
-                type="checkbox"
-              />
-              <span>Request transport (optional)</span>
-            </label>
             <section className="privacy-notice" aria-labelledby="privacy-title">
               <h2 id="privacy-title">Privacy notice</h2>
               <p>{event.privacy_notice.text}</p>

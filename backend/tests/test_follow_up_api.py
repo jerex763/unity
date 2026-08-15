@@ -48,6 +48,7 @@ def follow_up(
         church=church,
         full_name=f"Follow-up Person {suffix}",
         phone="+61000000000",
+        has_whatsapp=True,
         wechat_id="fictional_followup",
     )
     return FollowUp.objects.create(

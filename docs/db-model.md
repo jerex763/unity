@@ -200,7 +200,6 @@ Replaces the WhatsApp numbered-list ritual. Check-in is folded in (no separate a
 | event_id | FK event | |
 | person_id | FK person | |
 | status | enum | `registered` / `waitlisted` / `cancelled` / `walk_in` |
-| needs_transport | boolean | the "(L)" from the badminton lists |
 | note | varchar(200) | e.g. "+1 friend coming" |
 | registered_at | timestamptz | |
 | checked_in_at | timestamptz, nullable | null = not attended |

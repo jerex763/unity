@@ -96,6 +96,7 @@ class PersonSerializer(serializers.ModelSerializer):
             "phone",
             "wechat_id",
             "has_whatsapp",
+            "preferred_contact",
             "photo_url",
             "home_country",
             "suburb",
@@ -201,6 +202,31 @@ class PersonSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"email": "A person with this email already exists in this church."}
                 )
+        phone = attrs.get("phone", getattr(self.instance, "phone", None))
+        email = attrs.get("email", getattr(self.instance, "email", None))
+        wechat_id = attrs.get(
+            "wechat_id", getattr(self.instance, "wechat_id", None)
+        )
+        has_whatsapp = attrs.get(
+            "has_whatsapp", getattr(self.instance, "has_whatsapp", False)
+        )
+        preferred = attrs.get(
+            "preferred_contact", getattr(self.instance, "preferred_contact", None)
+        )
+        if has_whatsapp and not phone:
+            raise serializers.ValidationError(
+                {"has_whatsapp": "WhatsApp requires a phone number."}
+            )
+        available = {
+            Person.PreferredContact.PHONE: bool(phone),
+            Person.PreferredContact.WHATSAPP: bool(phone and has_whatsapp),
+            Person.PreferredContact.WECHAT: bool(wechat_id),
+            Person.PreferredContact.EMAIL: bool(email),
+        }
+        if preferred and not available[preferred]:
+            raise serializers.ValidationError(
+                {"preferred_contact": "Choose an available contact method."}
+            )
         return attrs
 
     def validate_full_name(self, value: str) -> str:

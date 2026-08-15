@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -39,6 +40,16 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json' },
   })
+}
+
+function deferred<Value>() {
+  let resolve!: (value: Value) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<Value>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, reject, resolve }
 }
 
 function renderApp(path = '/') {
@@ -528,7 +539,6 @@ describe('Events', () => {
               preferred_name: 'Mimi',
             },
             status: 'registered',
-            needs_transport: true,
             note: 'Pickup near station',
             registered_at: '2026-07-10T02:00:00Z',
             checked_in_at: null,
@@ -536,40 +546,6 @@ describe('Events', () => {
           },
         ]),
       )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          id: 51,
-          person: {
-            id: 1,
-            full_name: 'Mia Chen',
-            preferred_name: 'Mimi',
-          },
-          status: 'registered',
-          needs_transport: true,
-          note: 'Pickup near station',
-          registered_at: '2026-07-10T02:00:00Z',
-          checked_in_at: '2026-07-25T02:01:00Z',
-          checkin_method: 'manual',
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          id: 52,
-          person: {
-            id: 2,
-            full_name: 'Walk In Guest',
-            preferred_name: null,
-          },
-          status: 'walk_in',
-          needs_transport: false,
-          note: '',
-          registered_at: '2026-07-25T02:30:00Z',
-          checked_in_at: '2026-07-25T02:30:00Z',
-          checkin_method: 'manual',
-        }),
-      )
-      .mockResolvedValueOnce(jsonResponse([event]))
-      .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(jsonResponse(created))
     vi.stubGlobal('fetch', fetchMock)
     const user = userEvent.setup()
@@ -616,44 +592,11 @@ describe('Events', () => {
       'event-21-registrations',
     )
     expect(await screen.findByText('Pickup near station')).toBeVisible()
-    expect(screen.getByText(/Transport needed/)).toBeVisible()
-    await user.type(screen.getByLabelText('Find attendee'), 'nobody')
-    expect(screen.queryByText('Pickup near station')).not.toBeInTheDocument()
-    await user.clear(screen.getByLabelText('Find attendee'))
-    await user.click(screen.getByRole('button', { name: 'Check in' }))
-    expect(await screen.findByText('Mia Chen is checked in.')).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'Add walk-in' }))
-    expect(
-      screen.getByRole('heading', { name: 'Quick-add walk-in', level: 4 }),
-    ).toBeVisible()
-    expect(
-      screen.getAllByText('Fields marked (required) must be completed.'),
-    ).not.toHaveLength(0)
-    expect(screen.getByLabelText(/Full name/)).toBeVisible()
-    await user.type(screen.getByLabelText(/Full name/), 'Walk In Guest')
-    await user.click(screen.getByRole('button', { name: 'Add and check in' }))
-    expect(
-      screen.getByText(
-        'Provide at least one contact method: email, phone, or WeChat ID.',
-      ),
-    ).toBeVisible()
-    await user.type(screen.getByLabelText('WeChat ID'), ' walk_in_wechat ')
-    await user.click(screen.getByRole('button', { name: 'Add and check in' }))
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('heading', {
-          name: 'Quick-add walk-in',
-          level: 4,
-        }),
-      ).not.toBeInTheDocument()
-    })
-    expect(fetchMock.mock.calls[6]?.[0]).toBe('/api/events/21/walk-ins/')
-    expect(
-      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
-    ).toMatchObject({
-      full_name: 'Walk In Guest',
-      wechat_id: ' walk_in_wechat ',
-    })
+    expect(screen.queryByText(/transport/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open check-in' })).toHaveAttribute(
+      'href',
+      '/events/21/check-in',
+    )
     await user.click(
       screen.getByRole('button', { name: 'Hide registration list' }),
     )
@@ -680,7 +623,7 @@ describe('Events', () => {
       behavior: 'smooth',
       block: 'start',
     })
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getAllByRole('button', { name: 'Cancel' })[1])
 
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
     await user.click(screen.getByRole('button', { name: 'Edit' }))
@@ -693,7 +636,7 @@ describe('Events', () => {
       behavior: 'auto',
       block: 'start',
     })
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getAllByRole('button', { name: 'Cancel' })[1])
 
     await user.click(screen.getByRole('button', { name: 'Create event' }))
     expect(
@@ -730,8 +673,8 @@ describe('Events', () => {
     await user.click(screen.getByRole('button', { name: 'Save event' }))
 
     expect(await screen.findByText('Welcome Dinner')).toBeVisible()
-    expect(fetchMock.mock.calls[9]?.[0]).toBe('/api/events/')
-    expect(fetchMock.mock.calls[9]?.[1]).toMatchObject({ method: 'POST' })
+    expect(fetchMock.mock.calls[5]?.[0]).toBe('/api/events/')
+    expect(fetchMock.mock.calls[5]?.[1]).toMatchObject({ method: 'POST' })
   })
 })
 
@@ -809,11 +752,11 @@ describe('Follow-up queue', () => {
       }),
     ).toBeVisible()
     expect(await screen.findByText('Mia Chen')).toBeVisible()
-    expect(screen.getByText('Overdue')).toBeVisible()
+    expect(screen.getAllByText('Overdue')).not.toHaveLength(0)
     expect(
-      screen.getByText('Complete or reschedule the overdue action'),
+      screen.getAllByText(/Complete or reschedule the overdue action/)[0],
     ).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await user.click(await screen.findByRole('button', { name: 'Update' }))
     expect(await screen.findByText('Fictional welcome call')).toBeVisible()
     await user.selectOptions(screen.getByLabelText('Stage'), 'connected')
     await user.selectOptions(screen.getByLabelText('Engagement'), 'likely')
@@ -849,7 +792,7 @@ describe('Follow-up queue', () => {
 
     renderApp('/follow-ups')
     await screen.findByText('Mia Chen')
-    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await user.click(await screen.findByRole('button', { name: 'Update' }))
 
     expect(
       screen.getByRole('group', { name: 'Assignment and due date' }),
@@ -880,7 +823,7 @@ describe('Follow-up queue', () => {
 
     renderApp('/follow-ups')
     await screen.findByText('Mia Chen')
-    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await user.click(await screen.findByRole('button', { name: 'Update' }))
     fireEvent.change(screen.getByLabelText('Due'), {
       target: { value: '2026-07-21' },
     })
@@ -923,7 +866,7 @@ describe('Follow-up queue', () => {
 
     renderApp('/follow-ups')
     await screen.findByText('Mia Chen')
-    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await user.click(await screen.findByRole('button', { name: 'Update' }))
     await screen.findByText('Fictional scheduling call')
     fireEvent.change(screen.getByLabelText('Due'), {
       target: { value: '2026-07-22' },
@@ -949,5 +892,357 @@ describe('Follow-up queue', () => {
     expect(payload).not.toHaveProperty('postpone_reason')
     expect(payload).not.toHaveProperty('postpone_interaction')
     expect(payload).toMatchObject({ due_at: '2026-07-19' })
+  })
+
+  it('ignores a stale interaction response after a newer selection loads', async () => {
+    const slowInteractions = deferred<Response>()
+    const second = {
+      ...followUp,
+      id: 72,
+      person: {
+        ...followUp.person,
+        id: 2,
+        full_name: 'Noah Park',
+        email: 'noah@example.test',
+      },
+      assigned_to: 1,
+      assigned_to_name: 'Alex Chen',
+      due_at: '2026-07-21',
+      attention: {
+        ...followUp.attention,
+        overdue: false,
+        unassigned_too_long: false,
+        next_action: 'Send a fictional welcome message',
+      },
+    }
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/auth/session/')
+        return Promise.resolve(jsonResponse(session))
+      if (url === '/api/follow-ups/') {
+        return Promise.resolve(jsonResponse([followUp, second]))
+      }
+      if (url === '/api/follow-ups/workers/') {
+        return Promise.resolve(jsonResponse([]))
+      }
+      if (url === '/api/follow-ups/71/interactions/') {
+        return slowInteractions.promise
+      }
+      if (url === '/api/follow-ups/72/interactions/') {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              id: 82,
+              kind: 'message',
+              occurred_at: '2026-07-17T03:00:00Z',
+              summary: 'Fast fictional interaction for Noah',
+              visibility: 'staff',
+              author: 'alex',
+              created_at: '2026-07-17T03:00:00Z',
+            },
+          ]),
+        )
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+
+    renderApp('/follow-ups')
+    await screen.findByText('Mia Chen')
+    await user.click(screen.getByRole('button', { name: /Noah Park/ }))
+    expect(
+      await screen.findByText('Fast fictional interaction for Noah'),
+    ).toBeVisible()
+
+    slowInteractions.resolve(
+      jsonResponse([
+        {
+          id: 81,
+          kind: 'call',
+          occurred_at: '2026-07-17T02:00:00Z',
+          summary: 'Stale fictional interaction for Mia',
+          visibility: 'staff',
+          author: 'alex',
+          created_at: '2026-07-17T02:00:00Z',
+        },
+      ]),
+    )
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Stale fictional interaction for Mia'),
+      ).not.toBeInTheDocument()
+    })
+    expect(
+      screen.getByText('Fast fictional interaction for Noah'),
+    ).toBeVisible()
+  })
+
+  it('ignores a stale interaction error after a newer selection loads', async () => {
+    const slowInteractions = deferred<Response>()
+    const second = {
+      ...followUp,
+      id: 72,
+      person: {
+        ...followUp.person,
+        id: 2,
+        full_name: 'Noah Park',
+        email: 'noah@example.test',
+      },
+      assigned_to: 1,
+      assigned_to_name: 'Alex Chen',
+      attention: {
+        ...followUp.attention,
+        overdue: false,
+        unassigned_too_long: false,
+      },
+    }
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/auth/session/') {
+        return Promise.resolve(jsonResponse(session))
+      }
+      if (url === '/api/follow-ups/') {
+        return Promise.resolve(jsonResponse([followUp, second]))
+      }
+      if (url === '/api/follow-ups/workers/') {
+        return Promise.resolve(jsonResponse([]))
+      }
+      if (url === '/api/follow-ups/71/interactions/') {
+        return slowInteractions.promise
+      }
+      if (url === '/api/follow-ups/72/interactions/') {
+        return Promise.resolve(jsonResponse([]))
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+
+    renderApp('/follow-ups')
+    await screen.findByText('Mia Chen')
+    await user.click(screen.getByRole('button', { name: /Noah Park/ }))
+    expect(
+      await screen.findByRole('heading', { name: 'Update Noah Park' }),
+    ).toBeVisible()
+
+    await act(async () => {
+      slowInteractions.resolve(
+        jsonResponse({ detail: 'Fictional failure' }, 500),
+      )
+      await slowInteractions.promise
+    })
+    expect(
+      screen.queryByText('We could not load the interaction history.'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Update Noah Park' }),
+    ).toBeVisible()
+  })
+
+  it.each(['success', 'error'] as const)(
+    'keeps the new selection isolated from a delayed PATCH %s',
+    async (result) => {
+      const delayedPatch = deferred<Response>()
+      const second = {
+        ...followUp,
+        id: 72,
+        person: {
+          ...followUp.person,
+          id: 2,
+          full_name: 'Noah Park',
+          email: 'noah@example.test',
+        },
+        status: 'assigned',
+        assigned_to: 1,
+        assigned_to_name: 'Alex Chen',
+        due_at: '2026-07-21',
+        attention: {
+          ...followUp.attention,
+          overdue: false,
+          unassigned_too_long: false,
+          next_action: 'Send a fictional welcome message',
+        },
+      }
+      const fetchMock = vi.fn(
+        (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = String(input)
+          if (url === '/api/auth/session/') {
+            return Promise.resolve(jsonResponse(session))
+          }
+          if (url === '/api/follow-ups/') {
+            return Promise.resolve(jsonResponse([followUp, second]))
+          }
+          if (url === '/api/follow-ups/workers/') {
+            return Promise.resolve(jsonResponse([]))
+          }
+          if (url === '/api/follow-ups/71/' && init?.method === 'PATCH') {
+            return delayedPatch.promise
+          }
+          if (url === '/api/follow-ups/71/interactions/') {
+            return Promise.resolve(jsonResponse([]))
+          }
+          if (url === '/api/follow-ups/72/interactions/') {
+            return Promise.resolve(
+              jsonResponse([
+                {
+                  id: 82,
+                  kind: 'message',
+                  occurred_at: '2026-07-17T03:00:00Z',
+                  summary: 'Current fictional interaction for Noah',
+                  visibility: 'staff',
+                  author: 'alex',
+                  created_at: '2026-07-17T03:00:00Z',
+                },
+              ]),
+            )
+          }
+          throw new Error(`Unexpected request: ${url}`)
+        },
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      const user = userEvent.setup()
+
+      renderApp('/follow-ups')
+      await user.click(await screen.findByRole('button', { name: 'Update' }))
+      await user.selectOptions(screen.getByLabelText('Stage'), 'connected')
+      await user.click(screen.getByRole('button', { name: 'Save update' }))
+      await user.click(screen.getByRole('button', { name: /Noah Park/ }))
+      await user.click(await screen.findByRole('button', { name: 'Update' }))
+      expect(screen.getByLabelText('Stage')).toHaveValue('assigned')
+      expect(
+        await screen.findByText('Current fictional interaction for Noah'),
+      ).toBeVisible()
+
+      await act(async () => {
+        delayedPatch.resolve(
+          result === 'success'
+            ? jsonResponse({ ...followUp, status: 'connected' })
+            : jsonResponse({ due_at: ['Fictional A-only save error'] }, 400),
+        )
+        await delayedPatch.promise
+      })
+
+      expect(
+        screen.getByRole('heading', { name: 'Update Noah Park' }),
+      ).toBeVisible()
+      expect(screen.getByLabelText('Stage')).toHaveValue('assigned')
+      expect(
+        screen.getByText('Current fictional interaction for Noah'),
+      ).toBeVisible()
+      expect(
+        screen.queryByText('Fictional A-only save error'),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Save update' })).toBeEnabled()
+    },
+  )
+
+  it('sorts by attention and due date, keeps closed last, and syncs filters', async () => {
+    const attention = {
+      ...followUp.attention,
+      unassigned_too_long: false,
+      next_action: 'Continue fictional follow-up',
+    }
+    const rows = [
+      {
+        ...followUp,
+        id: 80,
+        person: { ...followUp.person, id: 80, full_name: 'Closed Escalated' },
+        status: 'closed',
+        assigned_to: 2,
+        due_at: '2026-07-01',
+        attention: { ...attention, escalated: true, overdue: true },
+      },
+      {
+        ...followUp,
+        id: 100,
+        person: {
+          ...followUp.person,
+          id: 100,
+          full_name: 'Early Server First',
+        },
+        assigned_to: 2,
+        due_at: '2026-07-10',
+        attention: { ...attention, overdue: true },
+      },
+      {
+        ...followUp,
+        id: 90,
+        person: { ...followUp.person, id: 90, full_name: 'Later Overdue' },
+        assigned_to: 2,
+        due_at: '2026-07-12',
+        attention: { ...attention, overdue: true },
+      },
+      {
+        ...followUp,
+        id: 70,
+        person: {
+          ...followUp.person,
+          id: 70,
+          full_name: 'My Visible Follow-up',
+        },
+        assigned_to: 1,
+        assigned_to_name: 'Alex Chen',
+        due_at: '2026-07-25',
+        attention: { ...attention, overdue: false },
+      },
+      {
+        ...followUp,
+        id: 1,
+        person: { ...followUp.person, id: 1, full_name: 'Early Server Second' },
+        assigned_to: 2,
+        due_at: '2026-07-10',
+        attention: { ...attention, overdue: true },
+      },
+    ]
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/auth/session/')
+        return Promise.resolve(jsonResponse(session))
+      if (url === '/api/follow-ups/') return Promise.resolve(jsonResponse(rows))
+      if (url === '/api/follow-ups/workers/') {
+        return Promise.resolve(jsonResponse([]))
+      }
+      if (/\/api\/follow-ups\/\d+\/interactions\//.test(url)) {
+        return Promise.resolve(jsonResponse([]))
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+
+    renderApp('/follow-ups')
+    const board = await screen.findByRole('region', {
+      name: 'Follow-up pipeline',
+    })
+    await screen.findByRole('heading', { name: /Early Server First/ })
+    const names = within(board)
+      .getAllByRole('heading', { level: 3 })
+      .map((heading) => heading.textContent)
+    expect(names).toEqual([
+      'Early Server First',
+      'Early Server Second',
+      'Later Overdue',
+      'My Visible Follow-up',
+      'Closed Escalated',
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'My follow-ups' }))
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Update My Visible Follow-up',
+      }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Unassigned' }))
+    expect(screen.getByText('No follow-ups match this filter.')).toBeVisible()
+    expect(
+      screen.getByRole('heading', { name: 'Select a follow-up' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Update My Visible Follow-up',
+      }),
+    ).not.toBeInTheDocument()
   })
 })

@@ -28,7 +28,7 @@ test('public registration is usable without login at mobile widths', async ({
         location: 'Fictional Hall',
         registration_open: true,
         privacy_notice: {
-          version: '2026-07-draft',
+          version: '2026-08-contact-methods-v1',
           text: 'A fictional privacy notice used only for acceptance testing.',
         },
       },
@@ -41,7 +41,7 @@ test('public registration is usable without login at mobile widths', async ({
   ).toBeVisible()
   await page.getByLabel(/Full name/).fill('Fictional Mobile Visitor')
   await page.getByLabel('Phone (optional)').fill('+61 400 000 099')
-  await page.getByLabel('Request transport (optional)').check()
+  await page.getByLabel('This phone number uses WhatsApp').check()
   await page.getByLabel(/explicitly consent/).check()
   await page.getByRole('button', { name: 'Register' }).click()
 

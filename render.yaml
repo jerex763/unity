@@ -18,3 +18,7 @@ services:
         sync: false
       - key: MIGRATION_DATABASE_URL
         sync: false
+      - key: PRIVACY_NOTICE_VERSION
+        value: 2026-08-contact-methods-v1
+      - key: PRIVACY_NOTICE_TEXT
+        sync: false

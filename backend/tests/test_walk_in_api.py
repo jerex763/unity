@@ -46,7 +46,6 @@ def test_worker_quick_adds_checked_in_walk_in_atomically() -> None:
             "preferred_name": "Walk",
             "email": "WALK.IN@example.test",
             "phone": " +61000000999 ",
-            "needs_transport": True,
             "note": "Fictional late pickup",
         },
         format="json",
@@ -60,7 +59,7 @@ def test_worker_quick_adds_checked_in_walk_in_atomically() -> None:
     assert registration.status == EventRegistration.Status.WALK_IN
     assert registration.checked_in_at is not None
     assert registration.checkin_method == EventRegistration.CheckinMethod.MANUAL
-    assert response.json()["needs_transport"] is True
+    assert "needs_transport" not in response.json()
     assert (
         FollowUp.objects.filter(
             church=church,
@@ -215,7 +214,7 @@ def test_walk_in_reuses_wechat_id_only_within_active_church() -> None:
     assert current_person.full_name == "Current WeChat Contact"
 
 
-def test_walk_in_contact_matching_prefers_email_then_phone_then_wechat() -> None:
+def test_walk_in_rejects_contacts_that_match_different_people() -> None:
     church = Church.objects.create(name="Fictional Contact Priority")
     client, worker = client_with_role(church, ChurchMembership.Role.PASTOR)
     email_person = Person.objects.create(
@@ -269,10 +268,12 @@ def test_walk_in_contact_matching_prefers_email_then_phone_then_wechat() -> None
         format="json",
     )
 
-    assert email_response.status_code == 201
-    assert email_response.json()["person"]["id"] == email_person.id
-    assert phone_response.status_code == 201
-    assert phone_response.json()["person"]["id"] == phone_person.id
+    assert email_response.status_code == 400
+    assert phone_response.status_code == 400
+    assert EventRegistration.objects.filter(
+        event__in=(email_event, phone_event)
+    ).count() == 0
+    assert Person.objects.filter(pk__in=(email_person.pk, phone_person.pk)).count() == 2
 
 
 def test_member_cannot_quick_add_walk_in_and_cross_church_event_is_hidden() -> None:

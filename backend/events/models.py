@@ -82,7 +82,6 @@ class EventRegistration(ChurchScopedModel):
         default=Status.REGISTERED,
         max_length=20,
     )
-    needs_transport = models.BooleanField(default=False)
     note = models.CharField(blank=True, max_length=200)
     registered_at = models.DateTimeField(default=timezone.now)
     checked_in_at = models.DateTimeField(blank=True, null=True)

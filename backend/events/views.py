@@ -17,7 +17,7 @@ from audit.models import AuditEvent
 from audit.services import record_audit_event
 from groups.models import Group
 from people.models import Person
-from people.normalization import normalize_email, normalize_phone
+from people.normalization import normalize_email, normalize_phone, normalize_wechat_id
 from tenancy.permissions import HasActiveChurchMembership
 
 from .models import Event, EventRegistration, PublicRegistrationLink
@@ -32,7 +32,9 @@ from .serializers import (
 )
 from .services import (
     PublicRegistrationError,
+    PublicRegistrationIdentityConflict,
     PublicRegistrationRateLimited,
+    anonymous_public_registration_outcome,
     cancel_public_registration,
     cancel_registration,
     enforce_public_client_rate_limit,
@@ -150,7 +152,6 @@ class EventRegistrationListCreateView(APIView):
             registration = register_for_event(
                 event=event,
                 person=serializer.validated_data["person"],
-                needs_transport=serializer.validated_data["needs_transport"],
                 note=serializer.validated_data.get("note", ""),
             )
         except DjangoValidationError as error:
@@ -198,17 +199,27 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
         serializer.is_valid(raise_exception=True)
         values = serializer.validated_data
         people = Person.objects.for_church(request.church)
-        person = None
-        if values.get("email"):
-            person = people.filter(
-                normalized_email=normalize_email(values["email"])
-            ).first()
-        if person is None and values.get("phone"):
-            person = people.filter(
-                normalized_phone=normalize_phone(values["phone"])
-            ).first()
-        if person is None and values.get("wechat_id"):
-            person = people.filter(wechat_id=values["wechat_id"]).first()
+        match_sets: list[list[int]] = []
+        for field, value in (
+            ("normalized_email", normalize_email(values.get("email"))),
+            ("normalized_phone", normalize_phone(values.get("phone"))),
+            (
+                "normalized_wechat_id",
+                normalize_wechat_id(values.get("wechat_id")),
+            ),
+        ):
+            if value:
+                match_sets.append(
+                    list(people.filter(**{field: value}).values_list("id", flat=True))
+                )
+        anchor = next((ids[0] for ids in match_sets if len(ids) == 1), None)
+        if anchor is None and any(len(ids) > 1 for ids in match_sets):
+            raise ValidationError({"detail": "Unable to match this contact."})
+        if anchor is not None and any(
+            ids and anchor not in ids for ids in match_sets
+        ):
+            raise ValidationError({"detail": "Unable to match this contact."})
+        person = people.filter(pk=anchor).first() if anchor is not None else None
         if person is None:
             person = Person(
                 church=request.church,
@@ -217,6 +228,8 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
                 email=values.get("email") or None,
                 phone=values.get("phone") or None,
                 wechat_id=values.get("wechat_id") or None,
+                has_whatsapp=values["has_whatsapp"],
+                preferred_contact=values.get("preferred_contact") or None,
                 membership_status=Person.MembershipStatus.VISITOR,
             )
             person.full_clean(exclude={"interests"})
@@ -227,7 +240,6 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
             defaults={
                 "church": request.church,
                 "status": EventRegistration.Status.WALK_IN,
-                "needs_transport": values["needs_transport"],
                 "note": values.get("note", "").strip(),
                 "registered_at": timezone.now(),
                 "checked_in_at": timezone.now(),
@@ -391,9 +403,15 @@ class PublicEventRegistrationView(APIView):
                 full_name=values["full_name"],
                 email=values.get("email") or None,
                 phone=values.get("phone") or None,
-                needs_transport=values["needs_transport"],
+                wechat_id=values.get("wechat_id") or None,
+                has_whatsapp=values["has_whatsapp"],
+                preferred_contact=values.get("preferred_contact") or None,
                 notice_version=values["notice_version"],
             )
+        except PublicRegistrationIdentityConflict:
+            # Contact ambiguity is indistinguishable from success to anonymous
+            # callers. This prevents the endpoint becoming an identity oracle.
+            outcome = anonymous_public_registration_outcome()
         except PublicRegistrationError as error:
             raise ValidationError(
                 {"detail": "Unable to process registration."}

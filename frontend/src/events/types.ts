@@ -11,7 +11,6 @@ export type EventRegistration = {
     preferred_name: string | null
   }
   status: 'registered' | 'waitlisted' | 'cancelled' | 'walk_in'
-  needs_transport: boolean
   note: string
   registered_at: string
   checked_in_at: string | null

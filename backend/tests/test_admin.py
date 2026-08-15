@@ -136,7 +136,6 @@ def test_person_admin_form_uses_human_friendly_date_and_interests_fields() -> No
             "date_of_birth_day": "3",
             "email": "",
             "phone": "",
-            "has_whatsapp": "on",
             "interests": "Music, Hiking, Music",
             "membership_status": Person.MembershipStatus.VISITOR,
             "notes": "",

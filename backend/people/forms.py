@@ -36,6 +36,7 @@ class PersonAdminForm(forms.ModelForm):
             "phone",
             "wechat_id",
             "has_whatsapp",
+            "preferred_contact",
             "photo_url",
             "home_country",
             "suburb",

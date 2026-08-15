@@ -11,6 +11,7 @@ export type FollowUp = {
     email: string | null
     wechat_id: string | null
     has_whatsapp: boolean
+    preferred_contact: 'phone' | 'whatsapp' | 'wechat' | 'email' | null
   }
   source: 'event_visit' | 'friend_invite' | 'walk_in' | 'other'
   engagement: 'possible' | 'probable' | 'likely'

@@ -29,11 +29,10 @@ class EventRegistrationAdmin(SuperuserOnlyAdminMixin, admin.ModelAdmin):
         "person",
         "event",
         "status",
-        "needs_transport",
         "checked_in_at",
         "church",
     )
-    list_filter = ("church", "status", "needs_transport", "checkin_method")
+    list_filter = ("church", "status", "checkin_method")
     search_fields = ("person__full_name", "event__title", "note")
     autocomplete_fields = ("event", "person")
     list_select_related = ("church", "event", "person")

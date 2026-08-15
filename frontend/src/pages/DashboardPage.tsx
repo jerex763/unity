@@ -30,7 +30,7 @@ const cards = [
 export function DashboardPage() {
   const { t } = useTranslation()
   const { session } = useAuth()
-  const name = session?.user.first_name || session?.user.username || ''
+  const name = session?.user.first_name.trim() || ''
   const canWorkFollowUps = session?.membership.role !== 'member'
   const [followUps, setFollowUps] = useState<FollowUp[]>([])
   const [followUpsError, setFollowUpsError] = useState('')
@@ -71,7 +71,11 @@ export function DashboardPage() {
     <main>
       <section className="page-heading">
         <p className="eyebrow">{t('dashboard.eyebrow')}</p>
-        <h1>{t('dashboard.greeting', { name })}</h1>
+        <h1>
+          {name
+            ? t('dashboard.greeting', { name })
+            : t('dashboard.greetingWithoutName')}
+        </h1>
         <p>{t('dashboard.intro')}</p>
       </section>
 

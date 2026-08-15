@@ -5,7 +5,7 @@ from django.db.models import Q
 
 from tenancy.models import ChurchScopedModel, ChurchScopedQuerySet
 
-from .normalization import normalize_email, normalize_phone
+from .normalization import normalize_email, normalize_phone, normalize_wechat_id
 
 
 class Household(ChurchScopedModel):
@@ -27,6 +27,12 @@ class PersonQuerySet(ChurchScopedQuerySet):
 
 
 class Person(ChurchScopedModel):
+    class PreferredContact(models.TextChoices):
+        PHONE = "phone", "Phone"
+        WHATSAPP = "whatsapp", "WhatsApp"
+        WECHAT = "wechat", "WeChat"
+        EMAIL = "email", "Email"
+
     class Gender(models.TextChoices):
         MALE = "male", "Male"
         FEMALE = "female", "Female"
@@ -65,7 +71,14 @@ class Person(ChurchScopedModel):
     normalized_email = models.CharField(blank=True, max_length=254, null=True)
     normalized_phone = models.CharField(blank=True, max_length=30, null=True)
     wechat_id = models.CharField(blank=True, max_length=100, null=True)
-    has_whatsapp = models.BooleanField(default=True)
+    normalized_wechat_id = models.CharField(blank=True, max_length=100, null=True)
+    has_whatsapp = models.BooleanField(default=False)
+    preferred_contact = models.CharField(
+        blank=True,
+        choices=PreferredContact.choices,
+        max_length=20,
+        null=True,
+    )
     photo_url = models.URLField(blank=True, max_length=500, null=True)
     home_country = models.CharField(blank=True, max_length=2, null=True)
     suburb = models.CharField(blank=True, max_length=100, null=True)
@@ -123,6 +136,7 @@ class Person(ChurchScopedModel):
             models.Index(fields=("church", "full_name")),
             models.Index(fields=("church", "membership_status")),
             models.Index(fields=("church", "normalized_phone")),
+            models.Index(fields=("church", "normalized_wechat_id")),
         ]
 
     def __str__(self) -> str:
@@ -135,12 +149,25 @@ class Person(ChurchScopedModel):
             errors["household"] = "Household and person must belong to the same church."
         if self.invited_by_id and self.invited_by.church_id != self.church_id:
             errors["invited_by"] = "Inviter and person must belong to the same church."
+        if self.has_whatsapp and not self.phone:
+            errors["has_whatsapp"] = "WhatsApp requires a phone number."
+        contact_available = {
+            self.PreferredContact.PHONE: bool(self.phone),
+            self.PreferredContact.WHATSAPP: bool(self.phone and self.has_whatsapp),
+            self.PreferredContact.WECHAT: bool(self.wechat_id),
+            self.PreferredContact.EMAIL: bool(self.email),
+        }
+        if self.preferred_contact and not contact_available[self.preferred_contact]:
+            errors["preferred_contact"] = (
+                "Preferred contact must identify an available contact method."
+            )
         if errors:
             raise ValidationError(errors)
 
     def save(self, *args: object, **kwargs: object) -> None:
         self.normalized_email = normalize_email(self.email)
         self.normalized_phone = normalize_phone(self.phone)
+        self.normalized_wechat_id = normalize_wechat_id(self.wechat_id)
         update_fields = kwargs.get("update_fields")
         if update_fields is not None:
             fields = set(update_fields)
@@ -148,6 +175,8 @@ class Person(ChurchScopedModel):
                 fields.add("normalized_email")
             if "phone" in fields:
                 fields.add("normalized_phone")
+            if "wechat_id" in fields:
+                fields.add("normalized_wechat_id")
             kwargs["update_fields"] = fields
         super().save(*args, **kwargs)
 

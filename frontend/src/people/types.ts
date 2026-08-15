@@ -14,6 +14,7 @@ export type DirectoryPerson = {
   phone: string | null
   wechat_id: string | null
   has_whatsapp: boolean
+  preferred_contact: 'phone' | 'whatsapp' | 'wechat' | 'email' | null
   photo_url: string | null
   suburb: string | null
   university: string | null

@@ -114,10 +114,16 @@ precedence.
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` | required hostnames |
 | `DATABASE_URL` | local Postgres URL | required Postgres URL |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | empty | HTTPS origins when needed |
+| `PRIVACY_NOTICE_VERSION` | `2026-08-contact-methods-v1` | required current notice identifier; change whenever wording changes |
+| `PRIVACY_NOTICE_TEXT` | built-in pilot text | required reviewed production notice |
 | `DJANGO_SECURE_SSL_REDIRECT` | `true` in production | disable only behind infrastructure that handles it safely |
 
 Production settings enable secure cookies, HSTS, SSL redirect and proxy HTTPS
 header handling. Run deployment checks before release:
+
+Before deploying notice changes, inspect Render and other environment overrides.
+Replace any explicit `2026-07-draft` value; reusing it would allow consent stored
+for the previous wording to be treated as current.
 
 ```bash
 DJANGO_SETTINGS_MODULE=config.settings.prod python manage.py check --deploy

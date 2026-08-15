@@ -69,6 +69,20 @@ const attentionFollowUp = {
   },
 }
 
+const registration = {
+  id: 51,
+  person: {
+    id: 31,
+    full_name: 'Fictional Registered Visitor',
+    preferred_name: null,
+  },
+  status: 'registered',
+  note: '',
+  registered_at: '2026-08-01T00:00:00Z',
+  checked_in_at: null,
+  checkin_method: null,
+}
+
 async function mockApi(page: Page) {
   await page.route('**/api/**', async (route) => {
     const request = route.request()
@@ -111,7 +125,38 @@ async function mockApi(page: Page) {
       return
     }
     if (path === '/api/events/21/registrations/') {
-      await route.fulfill({ json: [] })
+      await route.fulfill({ json: [registration] })
+      return
+    }
+    if (path === '/api/events/21/registrations/51/check-in/') {
+      const checkedIn = Boolean(
+        (request.postDataJSON() as { checked_in: boolean }).checked_in,
+      )
+      await route.fulfill({
+        json: {
+          ...registration,
+          checked_in_at: checkedIn ? '2026-08-15T01:00:00Z' : null,
+          checkin_method: checkedIn ? 'manual' : null,
+        },
+      })
+      return
+    }
+    if (path === '/api/events/21/walk-ins/') {
+      await route.fulfill({
+        status: 201,
+        json: {
+          ...registration,
+          id: 52,
+          person: {
+            id: 32,
+            full_name: 'Fictional Walk-in',
+            preferred_name: null,
+          },
+          status: 'walk_in',
+          checked_in_at: '2026-08-15T01:05:00Z',
+          checkin_method: 'manual',
+        },
+      })
       return
     }
     if (path === '/api/events/21/' && request.method() === 'PATCH') {
@@ -213,16 +258,28 @@ test('event organizer interactions remain usable at the configured viewport', as
   await expect(page.locator('#event-21-registrations')).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
-  await page.getByRole('button', { name: 'Edit' }).click()
+  const editButton = page.getByRole('button', { name: 'Edit' })
+  await editButton.click()
+  const eventDialog = page.getByRole('dialog', { name: 'Edit event' })
   const titleInput = page.getByLabel('Event title (required)')
   await expect(titleInput).toBeFocused()
+  await expect(page.locator('.topbar')).toHaveAttribute('inert', '')
   await expect(titleInput).toHaveValue('Community Lunch')
   await expect(page.getByRole('heading', { name: 'Edit event' })).toBeVisible()
   await expectNoHorizontalOverflow(page)
+  const eventClose = eventDialog.locator('.dialog-close')
+  const eventSave = eventDialog.getByRole('button', { name: 'Save event' })
+  await eventClose.focus()
+  await page.keyboard.press('Shift+Tab')
+  await expect(eventSave).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(eventClose).toBeFocused()
   await page.getByRole('button', { name: 'Save event' }).click()
   await expect(page.getByRole('heading', { name: 'Edit event' })).toBeHidden()
+  await expect(editButton).toBeFocused()
 
-  await page.getByRole('button', { name: 'Duplicate' }).click()
+  const duplicateButton = page.getByRole('button', { name: 'Duplicate' })
+  await duplicateButton.click()
   await expect(titleInput).toBeFocused()
   await expect(titleInput).toHaveValue('Community Lunch copy')
   await expect(
@@ -243,6 +300,13 @@ test('event organizer interactions remain usable at the configured viewport', as
     block: 'start',
   })
   await expectNoHorizontalOverflow(page)
+  await page.keyboard.press('Escape')
+  await expect(
+    page.getByRole('heading', { name: 'Duplicate event' }),
+  ).toBeHidden()
+  await expect(duplicateButton).toBeFocused()
+  await duplicateButton.click()
+  await expect(titleInput).toBeFocused()
   await page.getByRole('button', { name: 'Save event' }).click()
 
   await expect
@@ -279,11 +343,13 @@ test('follow-up attention and postponement stay usable at the configured viewpor
   })
 
   await page.goto('/follow-ups')
-  await expect(page.getByText('Fictional Attention Visitor')).toBeVisible()
+  await expect(
+    page.getByText('Fictional Attention Visitor', { exact: true }),
+  ).toBeVisible()
   await expect(page.getByText('Escalated')).toBeVisible()
   await expect(page.getByText('Stale')).toBeVisible()
   await expect(
-    page.getByText('Escalate and agree the next action'),
+    page.getByText(/Escalate and agree the next action/).first(),
   ).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
@@ -301,4 +367,99 @@ test('follow-up attention and postponement stay usable at the configured viewpor
   await expect
     .poll(() => patchBody?.postpone_reason)
     .toBe('worker_availability')
+})
+
+test('event-day check-in is separate, searchable, and supports walk-ins', async ({
+  page,
+}) => {
+  await page.goto('/events/21/check-in')
+  await expect(
+    page.getByRole('heading', { name: 'Community Lunch' }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Fictional Registered Visitor', { exact: true }),
+  ).toBeVisible()
+  await page.getByLabel('Find attendee').fill('nobody')
+  await expect(page.getByText('No attendees match this view.')).toBeVisible()
+  await page.getByLabel('Find attendee').fill('')
+  await page.getByRole('button', { name: 'Check in' }).click()
+  await expect(
+    page.getByText('Fictional Registered Visitor is checked in.'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Checked in' }).click()
+  await expect(
+    page.getByText('Fictional Registered Visitor', { exact: true }),
+  ).toBeVisible()
+
+  const addWalkInButton = page.getByRole('button', { name: 'Add walk-in' })
+  await addWalkInButton.click()
+  const walkInDialog = page.getByRole('dialog', { name: 'Add walk-in' })
+  const walkInName = page.getByLabel('Full name (required)')
+  await expect(walkInName).toBeFocused()
+  await expect(page.locator('.topbar')).toHaveAttribute('inert', '')
+  const walkInClose = walkInDialog.locator('.dialog-close')
+  const walkInSubmit = walkInDialog.getByRole('button', {
+    name: 'Add and check in',
+  })
+  await walkInClose.focus()
+  await page.keyboard.press('Shift+Tab')
+  await expect(walkInSubmit).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(walkInClose).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(walkInDialog).toBeHidden()
+  await expect(addWalkInButton).toBeFocused()
+  await addWalkInButton.click()
+  await expect(walkInName).toBeFocused()
+  await page.getByLabel('Full name (required)').fill('Fictional Walk-in')
+  const walkInPhone = page.getByRole('textbox', {
+    name: 'Phone',
+    exact: true,
+  })
+  const walkInPreference = page.getByLabel('Preferred contact')
+  await walkInPhone.fill('+61 400 000 099')
+  await walkInPreference.selectOption('phone')
+  await walkInPhone.fill('')
+  await expect(walkInPreference).toHaveValue('')
+  await walkInPhone.fill('+61 400 000 099')
+  await expect(page.getByLabel('This phone number uses WhatsApp')).toBeEnabled()
+  await page.getByLabel('This phone number uses WhatsApp').check()
+  await walkInPreference.selectOption('whatsapp')
+  await page.getByLabel('This phone number uses WhatsApp').uncheck()
+  await expect(walkInPreference).toHaveValue('')
+  await page.getByRole('button', { name: 'Add and check in' }).click()
+  await expect(
+    page.getByText('Fictional Walk-in was added and checked in.'),
+  ).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+})
+
+test('shell contains SVG navigation and handles missing names without username leakage', async ({
+  page,
+}) => {
+  await page.route('**/api/auth/session/', (route) =>
+    route.fulfill({
+      json: {
+        ...session,
+        user: {
+          ...session.user,
+          first_name: '',
+          username:
+            'technical-account-name-that-must-not-appear-in-the-greeting-at-any-width',
+        },
+        membership: {
+          ...session.membership,
+          church_name:
+            'A very long fictional church name used to verify shell wrapping behaviour',
+        },
+      },
+    }),
+  )
+  await page.goto('/')
+  await expect(
+    page.getByRole('heading', { name: 'Welcome back', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText(/technical-account-name/)).toHaveCount(0)
+  await expect(page.locator('.bottom-nav svg')).toHaveCount(4)
+  await expectNoHorizontalOverflow(page)
 })

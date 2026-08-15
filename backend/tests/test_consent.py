@@ -14,7 +14,7 @@ from tenancy.models import Church
 
 pytestmark = pytest.mark.django_db
 
-NOTICE_VERSION = "2026-07-draft"
+NOTICE_VERSION = "2026-08-contact-methods-v1"
 
 
 def authenticated_client(

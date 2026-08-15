@@ -18,7 +18,6 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
             "id",
             "person",
             "status",
-            "needs_transport",
             "note",
             "registered_at",
             "checked_in_at",
@@ -39,7 +38,6 @@ class EventRegistrationCreateSerializer(serializers.Serializer):
         queryset=Person.objects.none(),
         required=False,
     )
-    needs_transport = serializers.BooleanField(default=False)
     note = serializers.CharField(allow_blank=True, max_length=200, required=False)
 
     def __init__(self, *args: object, **kwargs: object) -> None:
@@ -70,12 +68,17 @@ class WalkInCreateSerializer(serializers.Serializer):
     )
     email = serializers.EmailField(allow_blank=True, required=False)
     phone = serializers.CharField(allow_blank=True, max_length=30, required=False)
+    has_whatsapp = serializers.BooleanField(default=False)
     wechat_id = serializers.CharField(
         allow_blank=True,
         max_length=100,
         required=False,
     )
-    needs_transport = serializers.BooleanField(default=False)
+    preferred_contact = serializers.ChoiceField(
+        allow_blank=True,
+        choices=Person.PreferredContact.choices,
+        required=False,
+    )
     note = serializers.CharField(allow_blank=True, max_length=200, required=False)
 
     def validate_full_name(self, value: str) -> str:
@@ -103,7 +106,28 @@ class WalkInCreateSerializer(serializers.Serializer):
                     )
                 }
             )
+        if attrs.get("has_whatsapp") and not attrs.get("phone"):
+            raise serializers.ValidationError(
+                {"has_whatsapp": "WhatsApp requires a phone number."}
+            )
+        self._validate_preferred_contact(attrs)
         return attrs
+
+    @staticmethod
+    def _validate_preferred_contact(attrs: dict[str, object]) -> None:
+        preferred = attrs.get("preferred_contact")
+        available = {
+            Person.PreferredContact.PHONE: bool(attrs.get("phone")),
+            Person.PreferredContact.WHATSAPP: bool(
+                attrs.get("phone") and attrs.get("has_whatsapp")
+            ),
+            Person.PreferredContact.WECHAT: bool(attrs.get("wechat_id")),
+            Person.PreferredContact.EMAIL: bool(attrs.get("email")),
+        }
+        if preferred and not available[preferred]:
+            raise serializers.ValidationError(
+                {"preferred_contact": "Choose an available contact method."}
+            )
 
 
 class ManualCheckInSerializer(serializers.Serializer):
@@ -114,7 +138,17 @@ class PublicRegistrationSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=200)
     email = serializers.EmailField(allow_blank=True, required=False)
     phone = serializers.CharField(allow_blank=True, max_length=30, required=False)
-    needs_transport = serializers.BooleanField(default=False)
+    has_whatsapp = serializers.BooleanField(default=False)
+    wechat_id = serializers.CharField(
+        allow_blank=True,
+        max_length=100,
+        required=False,
+    )
+    preferred_contact = serializers.ChoiceField(
+        allow_blank=True,
+        choices=Person.PreferredContact.choices,
+        required=False,
+    )
     consent = serializers.BooleanField()
     notice_version = serializers.CharField(max_length=50)
     website = serializers.CharField(allow_blank=True, required=False, write_only=True)
@@ -131,6 +165,9 @@ class PublicRegistrationSerializer(serializers.Serializer):
     def validate_phone(self, value: str) -> str:
         return value.strip()
 
+    def validate_wechat_id(self, value: str) -> str:
+        return value.strip()
+
     def validate_consent(self, value: bool) -> bool:
         if not value:
             raise serializers.ValidationError("Consent is required.")
@@ -139,10 +176,20 @@ class PublicRegistrationSerializer(serializers.Serializer):
     def validate(self, attrs: dict[str, object]) -> dict[str, object]:
         if attrs.get("website"):
             raise serializers.ValidationError({"detail": "Unable to process request."})
-        if not attrs.get("email") and not attrs.get("phone"):
+        if not any(attrs.get(field) for field in ("email", "phone", "wechat_id")):
             raise serializers.ValidationError(
-                {"contact": "Provide an email address or phone number."}
+                {
+                    "contact": (
+                        "Provide at least one contact method: email, phone, "
+                        "or WeChat ID."
+                    )
+                }
             )
+        if attrs.get("has_whatsapp") and not attrs.get("phone"):
+            raise serializers.ValidationError(
+                {"has_whatsapp": "WhatsApp requires a phone number."}
+            )
+        WalkInCreateSerializer._validate_preferred_contact(attrs)
         return attrs
 
 

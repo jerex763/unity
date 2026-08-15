@@ -24,13 +24,13 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 PRIVACY_NOTICE_VERSION = env(
     "PRIVACY_NOTICE_VERSION",
-    default="2026-07-draft",
+    default="2026-08-contact-methods-v1",
 )
 PRIVACY_NOTICE_TEXT = env(
     "PRIVACY_NOTICE_TEXT",
     default=(
-        "Unity collects your name, contact details, event registration and transport "
-        "request so the hosting church can administer this event and contact you about "
+        "Unity collects your name, contact details and event registration "
+        "so the hosting church can administer this event and contact you about "
         "it. Authorized church workers and the services needed to operate Unity may "
         "access this information. It is not sold or used for commercial advertising. "
         "Contact the hosting church to access or correct your information, ask a "

@@ -16,12 +16,17 @@ record a review covering:
 4. normalized contact collision report before migration (shared phone numbers,
    case-only email duplicates, malformed historical contacts);
 5. reverse-proxy client-IP behaviour and rate-limit thresholds under expected load;
-6. accessibility and safeguarding review, including the transport request workflow;
+6. accessibility and safeguarding review of the registration workflow;
 7. incident response and link-revocation ownership.
 
 Set `PRIVACY_NOTICE_VERSION` and `PRIVACY_NOTICE_TEXT` from that approved result.
 They are the single backend configuration source returned to the public UI and
 recorded with consent; do not duplicate notice wording in frontend code.
+The contact-methods wording uses version `2026-08-contact-methods-v1`. Before
+deploying, inspect Render and every other production environment for an explicit
+`PRIVACY_NOTICE_VERSION` override and replace the former `2026-07-draft` value.
+Never reuse a version identifier after notice wording changes: doing so could
+incorrectly treat historical consent as consent to the current notice.
 
 ## Manual acceptance script (fictional data only)
 
@@ -32,8 +37,8 @@ Church`, and browser profiles that contain no real personal data.
   open it signed out on 320 px and 375 px viewports, and confirm there is no login
   redirect or horizontal overflow.
 - Confirm full name and consent are labelled required. Confirm contact is labelled
-  required as a group (email or phone) while its individual fields and transport
-  are clearly optional. Confirm no notes, sensitive fields or church directory are
+  required as a group (email, phone or WeChat) while its individual fields are
+  clearly optional. Confirm no notes, sensitive fields or church directory are
   requested or shown.
 - Read the displayed notice and version. Submit without consent, with no contact,
   and with a stale version using developer tools; each must fail without creating a
@@ -46,7 +51,7 @@ Church`, and browser profiles that contain no real personal data.
   registration only when their latest consent is current, granted self-service
   consent. Otherwise the request is a generic no-op for staff follow-up. Repeat an
   existing registration and confirm the Person, registration, consent decision,
-  transport, status and original cancellation credential remain byte-for-byte
+  status and original cancellation credential remain byte-for-byte
   unchanged.
 - Fill an event to capacity and submit another fictional visitor request. Confirm
   internally that the existing service assigns the waitlist and signup-close rules
@@ -62,8 +67,9 @@ Church`, and browser profiles that contain no real personal data.
   verify it fails. Confirm raw tokens are absent from database rows and event-list
   API responses.
 - Submit rapidly from one test client until HTTP 429. Confirm invalid/revoked links,
-  contact conflicts and tenant differences use generic errors suitable for public
-  callers. Spoof `X-Forwarded-For` values and confirm they do not bypass the limit
+  contact conflicts return the same accepted response as valid and duplicate
+  submissions without creating records. Tenant differences use generic behaviour
+  suitable for public callers. Spoof `X-Forwarded-For` values and confirm they do not bypass the limit
   with the default trusted-proxy setting. Flood random invalid tokens and confirm
   only one client/window counter is created, never one row per invalid token.
 - Recheck `/login`, signed-in event registration, roster/check-in, person consent

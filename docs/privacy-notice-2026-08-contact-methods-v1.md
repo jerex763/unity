@@ -1,6 +1,6 @@
 # Short privacy notice / 简短隐私声明
 
-**Version:** `2026-07-draft`
+**Version:** `2026-08-contact-methods-v1`
 
 **Status:** Draft for church and legal/privacy review — not approved for
 production use. Replace every bracketed placeholder before publication.

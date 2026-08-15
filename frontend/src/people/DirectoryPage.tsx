@@ -305,6 +305,7 @@ export function DirectoryPage() {
                   fullName={person.full_name}
                   hasWhatsapp={person.has_whatsapp}
                   phone={person.phone}
+                  preferredContact={person.preferred_contact}
                   preferredName={person.preferred_name}
                   wechatId={person.wechat_id}
                 />

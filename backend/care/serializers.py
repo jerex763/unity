@@ -83,6 +83,7 @@ class FollowUpSerializer(serializers.ModelSerializer):
             "email": instance.person.email,
             "wechat_id": instance.person.wechat_id,
             "has_whatsapp": instance.person.has_whatsapp,
+            "preferred_contact": instance.person.preferred_contact,
         }
 
     def get_attention(self, instance: FollowUp) -> dict[str, object]:

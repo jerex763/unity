@@ -26,6 +26,8 @@ from tenancy.models import Church
 
 pytestmark = pytest.mark.django_db
 
+CURRENT_NOTICE_VERSION = "2026-08-contact-methods-v1"
+
 
 def organizer(church: Church, suffix: str = "organizer") -> tuple[User, APIClient]:
     user = User.objects.create_user(username=f"fictional.public.{suffix}")
@@ -68,9 +70,8 @@ def registration_payload(**overrides: object) -> dict[str, object]:
         "full_name": "Fictional Visitor",
         "email": "visitor@example.test",
         "phone": "",
-        "needs_transport": True,
         "consent": True,
-        "notice_version": "2026-07-draft",
+        "notice_version": CURRENT_NOTICE_VERSION,
         **overrides,
     }
 
@@ -152,8 +153,69 @@ def test_public_payload_is_minimal_and_registration_records_explicit_consent() -
     assert consent.status == ConsentRecord.Status.GRANTED
     assert consent.method == ConsentRecord.Method.SELF_SERVICE
     assert consent.recorded_by is None
-    assert consent.notice_version == "2026-07-draft"
-    assert EventRegistration.objects.get(person=person).needs_transport is True
+    assert consent.notice_version == CURRENT_NOTICE_VERSION
+    assert EventRegistration.objects.filter(person=person).exists()
+
+
+def test_public_registration_supports_contact_preferences_without_name_match(
+) -> None:
+    church = Church.objects.create(name="Fictional Contact Preference Church")
+    user, client = organizer(church)
+    event = future_event(church, user)
+    _, token = create_link(client, event)
+    url = reverse("public-event-registration", args=(token,))
+
+    first = APIClient().post(
+        url,
+        registration_payload(
+            full_name="Shared Fictional Name",
+            email="",
+            wechat_id=" Fictional_WeChat ",
+            preferred_contact="wechat",
+        ),
+        format="json",
+    )
+    second = APIClient().post(
+        url,
+        registration_payload(
+            full_name="Shared Fictional Name",
+            email="second@example.test",
+        ),
+        format="json",
+    )
+
+    assert first.status_code == second.status_code == 201
+    same_names = Person.objects.filter(
+        church=church,
+        full_name="Shared Fictional Name",
+    )
+    assert same_names.count() == 2
+    wechat_person = Person.objects.get(wechat_id="Fictional_WeChat")
+    assert wechat_person.normalized_wechat_id == "fictional_wechat"
+    assert wechat_person.preferred_contact == Person.PreferredContact.WECHAT
+    assert wechat_person.has_whatsapp is False
+
+
+def test_public_registration_rejects_whatsapp_without_phone() -> None:
+    church = Church.objects.create(name="Fictional WhatsApp Validation Church")
+    user, client = organizer(church)
+    event = future_event(church, user)
+    _, token = create_link(client, event)
+
+    response = APIClient().post(
+        reverse("public-event-registration", args=(token,)),
+        registration_payload(
+            email="",
+            wechat_id="fictional_wechat",
+            has_whatsapp=True,
+            preferred_contact="whatsapp",
+        ),
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "has_whatsapp" in response.json()
+    assert Person.objects.filter(church=church).count() == 0
 
 
 @pytest.mark.parametrize(
@@ -205,7 +267,7 @@ def test_contact_matching_is_normalized_same_church_only_and_duplicate_safe() ->
         church=church,
         person=existing,
         status=ConsentRecord.Status.GRANTED,
-        notice_version="2026-07-draft",
+        notice_version=CURRENT_NOTICE_VERSION,
         consented_at=timezone.now(),
         method=ConsentRecord.Method.SELF_SERVICE,
         recorded_by=None,
@@ -300,7 +362,7 @@ def test_existing_active_registration_cannot_be_taken_over() -> None:
         church=church,
         person=person,
         status=ConsentRecord.Status.DECLINED,
-        notice_version="2026-07-draft",
+        notice_version=CURRENT_NOTICE_VERSION,
         consented_at=timezone.now(),
         method=ConsentRecord.Method.SELF_SERVICE,
         recorded_by=None,
@@ -311,7 +373,6 @@ def test_existing_active_registration_cannot_be_taken_over() -> None:
         event=event,
         person=person,
         status=EventRegistration.Status.REGISTERED,
-        needs_transport=False,
         note="Private fictional staff note",
         cancellation_token_digest=token_digest(original_token),
     )
@@ -323,7 +384,6 @@ def test_existing_active_registration_cannot_be_taken_over() -> None:
         registration_payload(
             full_name="Attacker Supplied Name",
             email="EXISTING@example.test",
-            needs_transport=True,
         ),
         format="json",
     )
@@ -337,7 +397,6 @@ def test_existing_active_registration_cannot_be_taken_over() -> None:
     assert attack.json()["accepted"] is True
     assert decoy_cancel.status_code == 200
     assert registration.status == EventRegistration.Status.REGISTERED
-    assert registration.needs_transport is False
     assert registration.note == "Private fictional staff note"
     assert registration.registered_at == original_registered_at
     assert registration.cancellation_token_digest == token_digest(original_token)
@@ -364,7 +423,7 @@ def test_existing_cancelled_registration_and_consent_are_unchanged() -> None:
         church=church,
         person=person,
         status=ConsentRecord.Status.DECLINED,
-        notice_version="2026-07-draft",
+        notice_version=CURRENT_NOTICE_VERSION,
         consented_at=timezone.now(),
         method=ConsentRecord.Method.SELF_SERVICE,
         recorded_by=None,
@@ -374,7 +433,6 @@ def test_existing_cancelled_registration_and_consent_are_unchanged() -> None:
         event=event,
         person=person,
         status=EventRegistration.Status.CANCELLED,
-        needs_transport=False,
         cancellation_token_digest=token_digest("preserved-cancelled-secret"),
     )
     _, public_token = create_link(client, event)
@@ -388,7 +446,6 @@ def test_existing_cancelled_registration_and_consent_are_unchanged() -> None:
     registration.refresh_from_db()
     assert response.status_code == 201
     assert registration.status == EventRegistration.Status.CANCELLED
-    assert registration.needs_transport is False
     assert registration.cancellation_token_digest == token_digest(
         "preserved-cancelled-secret"
     )
@@ -408,7 +465,7 @@ def test_existing_person_requires_current_self_service_consent() -> None:
         church=church,
         person=person,
         status=ConsentRecord.Status.DECLINED,
-        notice_version="2026-07-draft",
+        notice_version=CURRENT_NOTICE_VERSION,
         consented_at=timezone.now(),
         method=ConsentRecord.Method.SELF_SERVICE,
         recorded_by=None,
@@ -428,6 +485,39 @@ def test_existing_person_requires_current_self_service_consent() -> None:
     assert Person.objects.filter(church=church).count() == 1
 
 
+def test_old_notice_consent_is_not_reused_for_the_current_notice() -> None:
+    church = Church.objects.create(name="Fictional Old Notice Church")
+    user, client = organizer(church)
+    event = future_event(church, user)
+    person = Person.objects.create(
+        church=church,
+        full_name="Fictional Old Notice Person",
+        email="old-notice@example.test",
+    )
+    old_consent = ConsentRecord.objects.create(
+        church=church,
+        person=person,
+        status=ConsentRecord.Status.GRANTED,
+        notice_version="2026-07-draft",
+        consented_at=timezone.now(),
+        method=ConsentRecord.Method.SELF_SERVICE,
+        recorded_by=None,
+    )
+    _, public_token = create_link(client, event)
+
+    response = APIClient().post(
+        reverse("public-event-registration", args=(public_token,)),
+        registration_payload(email="old-notice@example.test"),
+        format="json",
+    )
+
+    assert response.status_code == 201
+    assert set(response.json()) == {"accepted", "event_title", "cancellation_url"}
+    assert response.json()["accepted"] is True
+    assert not EventRegistration.objects.filter(event=event, person=person).exists()
+    assert list(ConsentRecord.objects.filter(person=person)) == [old_consent]
+
+
 def test_existing_current_self_service_consent_allows_first_registration() -> None:
     church = Church.objects.create(name="Fictional Existing Granted Church")
     user, client = organizer(church)
@@ -441,7 +531,7 @@ def test_existing_current_self_service_consent_allows_first_registration() -> No
         church=church,
         person=person,
         status=ConsentRecord.Status.GRANTED,
-        notice_version="2026-07-draft",
+        notice_version=CURRENT_NOTICE_VERSION,
         consented_at=timezone.now(),
         method=ConsentRecord.Method.SELF_SERVICE,
         recorded_by=None,
@@ -482,7 +572,7 @@ def test_unique_email_wins_when_its_person_shares_the_supplied_phone() -> None:
         church=church,
         person=email_person,
         status=ConsentRecord.Status.GRANTED,
-        notice_version="2026-07-draft",
+        notice_version=CURRENT_NOTICE_VERSION,
         consented_at=timezone.now(),
         method=ConsentRecord.Method.SELF_SERVICE,
         recorded_by=None,
@@ -518,8 +608,9 @@ def test_phone_only_shared_match_is_ambiguous_and_creates_nothing() -> None:
         format="json",
     )
 
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Unable to process registration."
+    assert response.status_code == 201
+    assert set(response.json()) == {"accepted", "event_title", "cancellation_url"}
+    assert response.json()["accepted"] is True
     assert not EventRegistration.objects.filter(event=event).exists()
     assert Person.objects.filter(church=church).count() == 3
 
@@ -546,10 +637,77 @@ def test_email_and_phone_pointing_to_different_people_is_rejected() -> None:
         format="json",
     )
 
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Unable to process registration."
+    assert response.status_code == 201
+    assert set(response.json()) == {"accepted", "event_title", "cancellation_url"}
+    assert response.json()["accepted"] is True
     assert not EventRegistration.objects.filter(event=event).exists()
     assert Person.objects.filter(pk__in=(email_person.pk, phone_person.pk)).count() == 2
+
+
+def test_unknown_existing_conflict_and_duplicate_responses_are_indistinguishable(
+) -> None:
+    church = Church.objects.create(name="Fictional Opaque Response Church")
+    user, client = organizer(church)
+    event = future_event(church, user)
+    _, public_token = create_link(client, event)
+    url = reverse("public-event-registration", args=(public_token,))
+
+    existing = Person.objects.create(
+        church=church,
+        full_name="Fictional Existing Opaque Person",
+        email="existing-opaque@example.test",
+    )
+    ConsentRecord.objects.create(
+        church=church,
+        person=existing,
+        status=ConsentRecord.Status.GRANTED,
+        notice_version=CURRENT_NOTICE_VERSION,
+        consented_at=timezone.now(),
+        method=ConsentRecord.Method.SELF_SERVICE,
+        recorded_by=None,
+    )
+    phone_owner = Person.objects.create(
+        church=church,
+        full_name="Fictional Conflict Phone Owner",
+        phone="+61 400 000 043",
+    )
+
+    public_client = APIClient()
+    unknown = public_client.post(
+        url,
+        registration_payload(email="unknown-opaque@example.test"),
+        format="json",
+    )
+    existing_response = public_client.post(
+        url,
+        registration_payload(email="existing-opaque@example.test"),
+        format="json",
+    )
+    conflict = public_client.post(
+        url,
+        registration_payload(
+            email="existing-opaque@example.test",
+            phone=phone_owner.phone,
+        ),
+        format="json",
+    )
+    duplicate = public_client.post(
+        url,
+        registration_payload(email="unknown-opaque@example.test"),
+        format="json",
+    )
+
+    responses = (unknown, existing_response, conflict, duplicate)
+    assert {response.status_code for response in responses} == {201}
+    assert {
+        tuple(sorted(response.json().keys())) for response in responses
+    } == {("accepted", "cancellation_url", "event_title")}
+    assert {response.json()["accepted"] for response in responses} == {True}
+    assert {response.json()["event_title"] for response in responses} == {
+        event.title
+    }
+    assert EventRegistration.objects.filter(event=event).count() == 2
+    assert Person.objects.filter(church=church).count() == 3
 
 
 @override_settings(
@@ -656,8 +814,10 @@ def test_concurrent_public_submissions_share_one_same_church_person(
                 full_name="Fictional Concurrent Visitor",
                 email=None,
                 phone="+61 400 000 088",
-                needs_transport=False,
-                notice_version="2026-07-draft",
+                wechat_id=None,
+                has_whatsapp=False,
+                preferred_contact=None,
+                notice_version=CURRENT_NOTICE_VERSION,
             )
             assert outcome.registration is not None
             return outcome.registration.person_id

@@ -60,7 +60,7 @@ def test_fictional_pilot_flow_from_signup_to_recorded_outcome() -> None:
 
     signup = client_for(member_membership).post(
         reverse("events:event-registration-list", args=(event.id,)),
-        {"needs_transport": True, "note": "Fictional pickup request"},
+        {"note": "Fictional signup note"},
         format="json",
     )
     check_in = client_for(worker_membership).post(
@@ -113,7 +113,7 @@ def test_fictional_pilot_flow_from_signup_to_recorded_outcome() -> None:
     )
 
     assert signup.status_code == 201
-    assert signup.json()["needs_transport"] is True
+    assert "needs_transport" not in signup.json()
     assert check_in.status_code == 200
     assert check_in.json()["checked_in_at"] is not None
     assert walk_in.status_code == 201

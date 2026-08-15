@@ -7,12 +7,14 @@ type EmailContactActionsProps = {
   email: string
   fullName: string
   preferredName: string | null
+  preferred?: boolean
 }
 
 export function EmailContactActions({
   email,
   fullName,
   preferredName,
+  preferred = false,
 }: EmailContactActionsProps) {
   const { t } = useTranslation()
   const contactName = preferredName?.trim() || fullName
@@ -20,10 +22,18 @@ export function EmailContactActions({
   return (
     <div
       aria-label={t('contact.emailActionsFor', { name: contactName })}
-      className="contact-channel email-contact-actions"
+      className={`contact-channel email-contact-actions${preferred ? ' preferred' : ''}`}
       data-contact-channel="email"
       role="group"
     >
+      <strong className="contact-channel-label">
+        Email{preferred ? ' · Preferred' : ''}
+      </strong>
+      <CopyableContact
+        copyLabel={t('contact.copyEmailFor', { name: contactName })}
+        inputLabel={t('contact.emailAddressFor', { name: contactName })}
+        value={email}
+      />
       <a
         aria-label={t('contact.openEmailAppFor', { name: contactName })}
         className="contact-link secondary"
@@ -31,11 +41,6 @@ export function EmailContactActions({
       >
         {t('contact.openEmailApp')}
       </a>
-      <CopyableContact
-        copyLabel={t('contact.copyEmailFor', { name: contactName })}
-        inputLabel={t('contact.emailAddressFor', { name: contactName })}
-        value={email}
-      />
     </div>
   )
 }

@@ -42,14 +42,6 @@ export function CopyableContact({
 
   return (
     <>
-      <button
-        aria-label={copyLabel}
-        className={`contact-link${primary ? '' : ' secondary'}`}
-        onClick={() => void copyValue()}
-        type="button"
-      >
-        {t('contact.copy')}
-      </button>
       <textarea
         aria-label={inputLabel}
         className="contact-value-copy"
@@ -59,6 +51,14 @@ export function CopyableContact({
         rows={1}
         value={value}
       />
+      <button
+        aria-label={copyLabel}
+        className={`contact-link${primary ? '' : ' secondary'}`}
+        onClick={() => void copyValue()}
+        type="button"
+      >
+        {t('contact.copy')}
+      </button>
       {copyState !== 'idle' ? (
         <p
           className={`contact-copy-feedback ${copyState}`}

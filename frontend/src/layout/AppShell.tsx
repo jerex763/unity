@@ -4,11 +4,52 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 
 const navItems = [
-  { to: '/', label: 'nav.home', icon: '⌂', end: true },
-  { to: '/people', label: 'nav.people', icon: '◉', end: false },
-  { to: '/events', label: 'nav.events', icon: '◇', end: false },
-  { to: '/follow-ups', label: 'nav.followUps', icon: '↗', end: false },
+  { to: '/', label: 'nav.home', icon: 'home', end: true },
+  { to: '/people', label: 'nav.people', icon: 'people', end: false },
+  { to: '/events', label: 'nav.events', icon: 'calendar', end: false },
+  { to: '/follow-ups', label: 'nav.followUps', icon: 'followup', end: false },
 ] as const
+
+function NavIcon({ name }: { name: (typeof navItems)[number]['icon'] }) {
+  const common = {
+    fill: 'none',
+    height: 24,
+    stroke: 'currentColor',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    strokeWidth: 1.8,
+    viewBox: '0 0 24 24',
+    width: 24,
+  }
+  if (name === 'home') {
+    return (
+      <svg {...common}>
+        <path d="m3 10 9-7 9 7v10H7V12h10v8" />
+      </svg>
+    )
+  }
+  if (name === 'people') {
+    return (
+      <svg {...common}>
+        <circle cx="9" cy="8" r="3" />
+        <path d="M3.5 20v-2a5.5 5.5 0 0 1 11 0v2M16 5.5a3 3 0 0 1 0 5.8M17 14a5 5 0 0 1 3.5 4.8V20" />
+      </svg>
+    )
+  }
+  if (name === 'calendar') {
+    return (
+      <svg {...common}>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M8 3v4M16 3v4M3 10h18" />
+      </svg>
+    )
+  }
+  return (
+    <svg {...common}>
+      <path d="M5 19h14M7 16l4-4 3 2 4-6M16 8h2v2" />
+    </svg>
+  )
+}
 
 export function AppShell() {
   const { t } = useTranslation()
@@ -53,7 +94,9 @@ export function AppShell() {
               key={item.to}
               to={item.to}
             >
-              <span aria-hidden="true">{item.icon}</span>
+              <span aria-hidden="true" className="nav-icon">
+                <NavIcon name={item.icon} />
+              </span>
               <span>{t(item.label)}</span>
             </NavLink>
           ))}
@@ -72,7 +115,9 @@ export function AppShell() {
             key={item.to}
             to={item.to}
           >
-            <span aria-hidden="true">{item.icon}</span>
+            <span aria-hidden="true" className="nav-icon">
+              <NavIcon name={item.icon} />
+            </span>
             <small>{t(item.label)}</small>
           </NavLink>
         ))}
