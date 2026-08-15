@@ -53,11 +53,4 @@ class Migration(migrations.Migration):
             field=models.BooleanField(default=False),
         ),
         migrations.RunPython(populate_normalized_wechat, migrations.RunPython.noop),
-        migrations.AddIndex(
-            model_name="person",
-            index=models.Index(
-                fields=["church", "normalized_wechat_id"],
-                name="person_church__9b7c6c_idx",
-            ),
-        ),
     ]
