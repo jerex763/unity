@@ -1,6 +1,6 @@
 # Unity project handoff and operating guide
 
-Last verified: **2026-08-20 (Australia/Sydney)**
+Last verified: **2026-08-21 (Australia/Sydney)**
 
 This is the first document to read when starting a new Unity chat or work
 session. It records the current state and operating rules so the team does not
@@ -35,11 +35,11 @@ ethnicity/race collection, and in-app payment processing. See
 
 Verified on 2026-08-20:
 
-- `codex/mvp-next` remote and deployed code HEAD:
-  `e204ee1 Separate check-in access from directory writes`.
-- The local branch contains one additional docs-only handoff commit that has not
-  been pushed; no application code differs from the deployed remote branch.
-- `main` remains protected at `a2ba850`; `codex/mvp-next` is 20 commits ahead.
+- Local and remote `codex/mvp-next` are aligned. The latest application-code
+  commit is `e204ee1 Separate check-in access from directory writes`; the later
+  commits are docs-only operating-guide updates, so deployed application code
+  behavior is unchanged.
+- `main` remains protected at `a2ba850`; `codex/mvp-next` is 21 commits ahead.
 - There is no authorization to merge or open a PR into `main`.
 - GitHub CI for `e204ee1` passed:
   <https://github.com/jerex763/unity/actions/runs/32339216386>.
