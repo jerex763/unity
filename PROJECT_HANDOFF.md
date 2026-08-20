@@ -33,13 +33,13 @@ ethnicity/race collection, and in-app payment processing. See
 
 ## 2. Current technical state
 
-Verified on 2026-08-20:
+Verified on 2026-08-21:
 
 - Local and remote `codex/mvp-next` are aligned. The latest application-code
   commit is `e204ee1 Separate check-in access from directory writes`; the later
   commits are docs-only operating-guide updates, so deployed application code
   behavior is unchanged.
-- `main` remains protected at `a2ba850`; `codex/mvp-next` is 21 commits ahead.
+- `main` remains protected at `a2ba850`; `codex/mvp-next` remains ahead of it.
 - There is no authorization to merge or open a PR into `main`.
 - GitHub CI for `e204ee1` passed:
   <https://github.com/jerex763/unity/actions/runs/32339216386>.
