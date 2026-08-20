@@ -60,7 +60,8 @@ class EventRegistrationCreateSerializer(serializers.Serializer):
 
 
 class WalkInCreateSerializer(serializers.Serializer):
-    full_name = serializers.CharField(max_length=200)
+    person = serializers.IntegerField(min_value=1, required=False)
+    full_name = serializers.CharField(max_length=200, required=False)
     preferred_name = serializers.CharField(
         allow_blank=True,
         max_length=100,
@@ -97,6 +98,10 @@ class WalkInCreateSerializer(serializers.Serializer):
         return value.strip()
 
     def validate(self, attrs: dict[str, object]) -> dict[str, object]:
+        if attrs.get("person"):
+            return attrs
+        if not attrs.get("full_name"):
+            raise serializers.ValidationError({"full_name": "Full name is required."})
         if not any(attrs.get(field) for field in ("email", "phone", "wechat_id")):
             raise serializers.ValidationError(
                 {

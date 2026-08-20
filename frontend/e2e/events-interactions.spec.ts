@@ -141,18 +141,47 @@ async function mockApi(page: Page) {
       })
       return
     }
+    if (path === '/api/events/21/check-in/people/') {
+      await route.fulfill({
+        json: [
+          {
+            id: 41,
+            full_name: 'Duplicate Existing Person',
+            preferred_name: 'First',
+            membership_status: 'regular',
+            current_registration_status: null,
+            contact_hint: 'Phone · ending 0101',
+          },
+          {
+            id: 42,
+            full_name: 'Duplicate Existing Person',
+            preferred_name: 'Second',
+            membership_status: 'member',
+            current_registration_status: 'waitlisted',
+            contact_hint: 'Email · s***@e***.test',
+          },
+        ],
+      })
+      return
+    }
     if (path === '/api/events/21/walk-ins/') {
+      const body = request.postDataJSON() as {
+        person?: number
+        full_name?: string
+      }
       await route.fulfill({
         status: 201,
         json: {
           ...registration,
           id: 52,
           person: {
-            id: 32,
-            full_name: 'Fictional Walk-in',
+            id: body.person ?? 32,
+            full_name: body.person
+              ? 'Duplicate Existing Person'
+              : (body.full_name ?? 'Fictional Walk-in'),
             preferred_name: null,
           },
-          status: 'walk_in',
+          status: body.person ? 'registered' : 'walk_in',
           checked_in_at: '2026-08-15T01:05:00Z',
           checkin_method: 'manual',
         },
@@ -372,6 +401,12 @@ test('follow-up attention and postponement stay usable at the configured viewpor
 test('event-day check-in is separate, searchable, and supports walk-ins', async ({
   page,
 }) => {
+  const walkInBodies: Record<string, unknown>[] = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/events/21/walk-ins/') {
+      walkInBodies.push(request.postDataJSON() as Record<string, unknown>)
+    }
+  })
   await page.goto('/events/21/check-in')
   await expect(
     page.getByRole('heading', { name: 'Community Lunch' }),
@@ -394,12 +429,18 @@ test('event-day check-in is separate, searchable, and supports walk-ins', async 
   const addWalkInButton = page.getByRole('button', { name: 'Add walk-in' })
   await addWalkInButton.click()
   const walkInDialog = page.getByRole('dialog', { name: 'Add walk-in' })
-  const walkInName = page.getByLabel('Full name (required)')
-  await expect(walkInName).toBeFocused()
+  const existingSearch = page.getByLabel('Find existing person')
+  await expect(existingSearch).toBeFocused()
+  await expect(
+    page.getByRole('radio', { name: /^Existing person/ }),
+  ).toBeChecked()
+  await expect(
+    page.getByRole('radio', { name: /^New visitor/ }),
+  ).not.toBeChecked()
   await expect(page.locator('.topbar')).toHaveAttribute('inert', '')
   const walkInClose = walkInDialog.locator('.dialog-close')
   const walkInSubmit = walkInDialog.getByRole('button', {
-    name: 'Add and check in',
+    name: 'Check in selected person',
   })
   await walkInClose.focus()
   await page.keyboard.press('Shift+Tab')
@@ -410,8 +451,32 @@ test('event-day check-in is separate, searchable, and supports walk-ins', async 
   await expect(walkInDialog).toBeHidden()
   await expect(addWalkInButton).toBeFocused()
   await addWalkInButton.click()
-  await expect(walkInName).toBeFocused()
-  await page.getByLabel('Full name (required)').fill('Fictional Walk-in')
+  await expect(existingSearch).toBeFocused()
+  await existingSearch.fill('Duplicate')
+  const duplicateChoices = walkInDialog.getByRole('radio', {
+    name: /Duplicate Existing Person/,
+  })
+  await expect(duplicateChoices).toHaveCount(2)
+  await duplicateChoices.first().check()
+  await page.getByRole('radio', { name: /^New visitor/ }).check()
+  await page.getByRole('radio', { name: /^Existing person/ }).check()
+  await expect(duplicateChoices).toHaveCount(2)
+  await walkInSubmit.click()
+  await expect(
+    walkInDialog.getByText('Search for and select an existing person.'),
+  ).toBeVisible()
+  expect(walkInBodies).toHaveLength(0)
+  await duplicateChoices.nth(1).check()
+  await walkInSubmit.click()
+  await expect(
+    page.getByText('Duplicate Existing Person was checked in.'),
+  ).toBeVisible()
+  await expect.poll(() => walkInBodies[0]).toEqual({ person: 42, note: '' })
+
+  await addWalkInButton.click()
+  await page.getByRole('radio', { name: /^New visitor/ }).check()
+  const walkInName = page.getByLabel('Full name (required)')
+  await walkInName.fill('Fictional Walk-in')
   const walkInPhone = page.getByRole('textbox', {
     name: 'Phone',
     exact: true,
@@ -427,10 +492,14 @@ test('event-day check-in is separate, searchable, and supports walk-ins', async 
   await walkInPreference.selectOption('whatsapp')
   await page.getByLabel('This phone number uses WhatsApp').uncheck()
   await expect(walkInPreference).toHaveValue('')
-  await page.getByRole('button', { name: 'Add and check in' }).click()
+  await page.getByRole('button', { name: 'Add visitor and check in' }).click()
   await expect(
     page.getByText('Fictional Walk-in was added and checked in.'),
   ).toBeVisible()
+  expect(walkInBodies[1]).toMatchObject({
+    full_name: 'Fictional Walk-in',
+    phone: '+61 400 000 099',
+  })
   await expectNoHorizontalOverflow(page)
 })
 

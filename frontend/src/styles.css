@@ -1620,6 +1620,76 @@ button.contact-link.secondary {
   flex: 0 0 auto;
 }
 
+.walk-in-path {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0;
+  border: 0;
+}
+
+.walk-in-path legend {
+  margin-bottom: 0.5rem;
+  font-weight: 750;
+}
+
+.walk-in-path label,
+.existing-person-results label {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  cursor: pointer;
+}
+
+.walk-in-path input,
+.existing-person-results input {
+  width: 1.15rem;
+  min-height: 1.15rem;
+  margin-top: 0.15rem;
+  flex: 0 0 auto;
+}
+
+.walk-in-path span,
+.existing-person-results span {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+
+.walk-in-path strong,
+.existing-person-results strong {
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.existing-person-picker {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.existing-person-picker > label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.existing-person-results {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 17rem;
+  overflow-y: auto;
+}
+
+.existing-person-results small {
+  overflow-wrap: anywhere;
+}
+
 .event-actions .event-action-primary {
   width: auto;
   margin: 0;
@@ -2376,6 +2446,10 @@ button.contact-link.secondary {
 
   .check-in-list article button {
     width: 100%;
+  }
+
+  .walk-in-path {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    EventCheckInPersonSearchView,
     EventDetailView,
     EventGroupChoicesView,
     EventListCreateView,
@@ -16,6 +17,11 @@ app_name = "events"
 urlpatterns = [
     path("", EventListCreateView.as_view(), name="event-list"),
     path("groups/", EventGroupChoicesView.as_view(), name="event-group-choices"),
+    path(
+        "<int:event_id>/check-in/people/",
+        EventCheckInPersonSearchView.as_view(),
+        name="event-check-in-person-search",
+    ),
     path(
         "<int:event_id>/public-link/",
         EventPublicLinkView.as_view(),

@@ -133,6 +133,9 @@ export function EventsPage() {
   >(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const canEdit = session?.membership.role !== 'member'
+  const canCheckIn = ['admin', 'pastor', 'leader'].includes(
+    session?.membership.role ?? '',
+  )
   const editorRef = useModalDialog<HTMLElement>(
     Boolean(formMode),
     closeForm,
@@ -751,12 +754,14 @@ export function EventsPage() {
                   >
                     {t('events.edit')}
                   </button>
-                  <Link
-                    className="secondary-button check-in-link"
-                    to={`/events/${event.id}/check-in`}
-                  >
-                    {t('events.checkIn.open')}
-                  </Link>
+                  {canCheckIn ? (
+                    <Link
+                      className="secondary-button check-in-link"
+                      to={`/events/${event.id}/check-in`}
+                    >
+                      {t('events.checkIn.open')}
+                    </Link>
+                  ) : null}
                   <button
                     className="secondary-button"
                     onClick={() =>

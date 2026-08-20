@@ -383,9 +383,13 @@ describe('Person profile', () => {
 
   it('shows role-gated sections and saves overview edits', async () => {
     const updatedProfile = { ...profile, preferred_name: 'Mia' }
+    const pastorSession = {
+      ...session,
+      membership: { ...session.membership, role: 'pastor' as const },
+    }
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValueOnce(jsonResponse(pastorSession))
       .mockResolvedValueOnce(jsonResponse(profile))
       .mockResolvedValueOnce(
         jsonResponse([
@@ -436,6 +440,32 @@ describe('Person profile', () => {
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/people/1/')
     expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'PATCH' })
+  })
+
+  it('keeps a leader profile read-only, including relationships', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(session))
+        .mockResolvedValueOnce(jsonResponse(profile))
+        .mockResolvedValueOnce(jsonResponse([profile])),
+    )
+    const user = userEvent.setup()
+
+    renderApp('/people/1')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Mia Chen', level: 1 }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Edit overview' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Relationships' }))
+    expect(screen.queryByText('Add relationship')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Remove relationship/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows multiline staff notes as wrapping text without interpreting HTML', async () => {

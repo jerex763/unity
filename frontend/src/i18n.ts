@@ -198,13 +198,30 @@ const resources = {
         walkIn: {
           add: 'Add walk-in',
           confirm: 'Add and check in',
+          choosePath: 'Choose a check-in path',
           contactHint: 'At least one contact method is required.',
           contactRequired:
             'Provide at least one contact method: email, phone, or WeChat ID.',
           email: 'Email',
+          existing: 'Existing person',
+          existingConfirm: 'Check in selected person',
+          existingHelp:
+            'Search the church directory without changing their profile.',
+          findExisting: 'Find existing person',
           fullName: 'Full name',
+          maskedHint:
+            'Enter at least 2 characters. Contact details stay masked.',
+          newConfirm: 'Add visitor and check in',
+          newHelp: 'Create a visitor record with contact details.',
+          newVisitor: 'New visitor',
+          noMatches: 'No matching people. Try another name or contact.',
+          notRegistered: 'Not registered',
           phone: 'Phone',
           preferredName: 'Preferred name',
+          searchError: 'We could not search people. Retry.',
+          searchPlaceholder: 'Search name or contact…',
+          searching: 'Searching…',
+          selectError: 'Search for and select an existing person.',
           saveError:
             'We could not add this walk-in. Check the details and retry.',
           saving: 'Adding…',

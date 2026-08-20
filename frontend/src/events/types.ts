@@ -17,6 +17,15 @@ export type EventRegistration = {
   checkin_method: 'qr' | 'manual' | null
 }
 
+export type CheckInPerson = {
+  id: number
+  full_name: string
+  preferred_name: string | null
+  membership_status: 'visitor' | 'newcomer' | 'regular' | 'member' | 'inactive'
+  current_registration_status: EventRegistration['status'] | null
+  contact_hint: string | null
+}
+
 export type ChurchEvent = {
   id: number
   group: number | null

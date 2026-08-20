@@ -12,6 +12,8 @@ class Capability(StrEnum):
     EXPORT_PERSON_DATA = "export_person_data"
     VIEW_SENSITIVE_PERSON = "view_sensitive_person"
     VIEW_CONFIDENTIAL_CARE = "view_confidential_care"
+    WRITE_PERSON_DIRECTORY = "write_person_directory"
+    EVENT_CHECK_IN = "event_check_in"
     LEAD_MINISTRY = "lead_ministry"
     SELF_SERVICE = "self_service"
 
@@ -24,12 +26,15 @@ ROLE_CAPABILITIES: dict[str, frozenset[Capability]] = {
             Capability.VIEW_CONFIDENTIAL_CARE,
             Capability.LEAD_MINISTRY,
             Capability.MANAGE_PERSON_CONSENT,
+            Capability.WRITE_PERSON_DIRECTORY,
+            Capability.EVENT_CHECK_IN,
             Capability.SELF_SERVICE,
         }
     ),
     ChurchMembership.Role.LEADER: frozenset(
         {
             Capability.LEAD_MINISTRY,
+            Capability.EVENT_CHECK_IN,
             Capability.SELF_SERVICE,
         }
     ),

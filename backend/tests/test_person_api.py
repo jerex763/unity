@@ -7,7 +7,6 @@ from rest_framework.test import APIClient
 
 from accounts.constants import ACTIVE_CHURCH_SESSION_KEY
 from accounts.models import ChurchMembership, User
-from audit.models import AuditEvent
 from care.models import FollowUp
 from events.models import Event, EventRegistration
 from groups.models import Group, GroupMembership
@@ -42,7 +41,7 @@ def authenticated_client(membership: ChurchMembership) -> APIClient:
     return client
 
 
-def test_leader_can_list_create_and_update_without_sensitive_fields() -> None:
+def test_leader_keeps_scoped_reads_but_cannot_create_or_update_people() -> None:
     church = Church.objects.create(name="Fictional Leader Directory")
     existing = Person.objects.create(
         church=church,
@@ -114,22 +113,11 @@ def test_leader_can_list_create_and_update_without_sensitive_fields() -> None:
     ]
     assert "faith_background" not in list_response.json()[0]
     assert "discipleship_stage" not in list_response.json()[0]
-    assert create_response.status_code == 201
-    assert create_response.json()["full_name"] == "New Fictional Person"
-    assert create_response.json()["email"] == "new.person@example.test"
-    assert create_response.json()["phone"] == "+61000000000"
-    assert create_response.json()["wechat_id"] == "fictional_wechat"
-    assert create_response.json()["home_country"] == "AU"
-    assert update_response.status_code == 200
-    assert update_response.json()["preferred_name"] == "New"
-    assert "faith_background" not in update_response.json()
-    created = Person.objects.get(pk=create_response.json()["id"])
-    assert created.church == church
-    assert AuditEvent.objects.filter(
-        action=AuditEvent.Action.PERSON_CREATED,
-        actor=membership.user,
-        target_id=str(created.id),
-    ).exists()
+    assert create_response.status_code == 403
+    assert update_response.status_code == 403
+    existing.refresh_from_db()
+    assert existing.preferred_name is None
+    assert not Person.objects.filter(full_name="New Fictional Person").exists()
 
 
 def test_pastor_can_read_and_set_sensitive_fields() -> None:
@@ -156,6 +144,60 @@ def test_pastor_can_read_and_set_sensitive_fields() -> None:
     assert response.json()["faith_background"] == "Fictional background"
     assert response.json()["discipleship_stage"] == Person.DiscipleshipStage.EVANGELISM
     assert detail.json()["faith_background"] == "Fictional background"
+
+
+@pytest.mark.parametrize(
+    ("role", "allowed"),
+    (
+        (ChurchMembership.Role.ADMIN, True),
+        (ChurchMembership.Role.PASTOR, True),
+        (ChurchMembership.Role.LEADER, False),
+        (ChurchMembership.Role.MEMBER, False),
+    ),
+)
+def test_directory_write_capability_covers_profiles_and_relationships(
+    role: str,
+    allowed: bool,
+) -> None:
+    church = Church.objects.create(name=f"Fictional Directory Matrix {role}")
+    person = Person.objects.create(church=church, full_name="Matrix Subject")
+    friend = Person.objects.create(church=church, full_name="Matrix Friend")
+    membership = make_membership(
+        church,
+        role=role,
+        suffix=f"directory.matrix.{role}",
+        person=person,
+    )
+    client = authenticated_client(membership)
+
+    create = client.post(
+        reverse("people:person-list"),
+        {"full_name": "Matrix Created Person"},
+        format="json",
+    )
+    update = client.patch(
+        reverse("people:person-detail", args=(person.id,)),
+        {"preferred_name": "Updated"},
+        format="json",
+    )
+    relationship = client.post(
+        reverse("people:person-relationship-list", args=(person.id,)),
+        {"person": friend.id, "kind": Relationship.Kind.FRIEND},
+        format="json",
+    )
+
+    if allowed:
+        assert create.status_code == 201
+        assert update.status_code == 200
+        assert relationship.status_code == 201
+    else:
+        assert create.status_code == 403
+        assert update.status_code == 403
+        assert relationship.status_code == 403
+        person.refresh_from_db()
+        assert person.preferred_name is None
+        assert not Person.objects.filter(full_name="Matrix Created Person").exists()
+        assert not Relationship.objects.filter(church=church).exists()
 
 
 @pytest.mark.parametrize(
@@ -238,10 +280,7 @@ def test_unauthorized_roles_cannot_write_sensitive_fields(role: str) -> None:
         format="json",
     )
 
-    expected_status = 403 if role == ChurchMembership.Role.MEMBER else 400
-    assert response.status_code == expected_status
-    if role == ChurchMembership.Role.LEADER:
-        assert set(response.json()) == {"faith_background", "discipleship_stage"}
+    assert response.status_code == 403
     person.refresh_from_db()
     assert person.faith_background is None
     assert person.discipleship_stage is None

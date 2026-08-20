@@ -5,7 +5,7 @@ from accounts.permissions import ROLE_CAPABILITIES, Capability
 
 
 class HasPersonDirectoryAccess(BasePermission):
-    """Allow self-service reads, but require ministry capability for writes."""
+    """Allow scoped reads, but require directory-write capability for writes."""
 
     message = "The active church role does not allow this directory action."
 
@@ -15,7 +15,7 @@ class HasPersonDirectoryAccess(BasePermission):
             return False
         if request.method in SAFE_METHODS:
             return True
-        return Capability.LEAD_MINISTRY in ROLE_CAPABILITIES.get(
+        return Capability.WRITE_PERSON_DIRECTORY in ROLE_CAPABILITIES.get(
             membership.role,
             frozenset(),
         )

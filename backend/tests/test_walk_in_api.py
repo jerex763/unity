@@ -101,6 +101,42 @@ def test_walk_in_reuses_same_church_contact_without_duplicate_person() -> None:
     assert Person.objects.for_church(church).count() == 1
 
 
+def test_new_visitor_path_never_matches_by_name() -> None:
+    church = Church.objects.create(name="Fictional No Name Matching")
+    client, worker = client_with_role(church, ChurchMembership.Role.LEADER)
+    existing = Person.objects.create(
+        church=church,
+        full_name="Duplicate Display Name",
+        email="existing.name@example.test",
+    )
+    now = timezone.now()
+    event = Event.objects.create(
+        church=church,
+        title="Fictional Duplicate Name Event",
+        starts_at=now,
+        ends_at=now + timedelta(hours=1),
+        created_by=worker,
+    )
+
+    response = client.post(
+        reverse("events:event-walk-in-create", args=(event.id,)),
+        {
+            "full_name": "Duplicate Display Name",
+            "email": "new.name@example.test",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 201
+    assert response.json()["person"]["id"] != existing.id
+    assert (
+        Person.objects.for_church(church)
+        .filter(full_name="Duplicate Display Name")
+        .count()
+        == 2
+    )
+
+
 def test_walk_in_requires_a_contact_method_without_creating_records() -> None:
     church = Church.objects.create(name="Fictional Contact Required")
     client, worker = client_with_role(church, ChurchMembership.Role.LEADER)
@@ -275,6 +311,114 @@ def test_walk_in_rejects_contacts_that_match_different_people() -> None:
         == 0
     )
     assert Person.objects.filter(pk__in=(email_person.pk, phone_person.pk)).count() == 2
+
+
+@pytest.mark.parametrize(
+    ("contact_field", "contact_value", "lifecycle_field"),
+    (
+        ("email", "inactive.email@example.test", "deactivated_at"),
+        ("phone", "+61 400 777 111", "anonymized_at"),
+        ("wechat_id", "inactive_wechat", "deactivated_at"),
+    ),
+)
+def test_new_visitor_contact_cannot_reuse_inactive_lifecycle_person(
+    contact_field: str,
+    contact_value: str,
+    lifecycle_field: str,
+) -> None:
+    church = Church.objects.create(name=f"Fictional Inactive {contact_field}")
+    client, worker = client_with_role(church, ChurchMembership.Role.LEADER)
+    person = Person.objects.create(
+        church=church,
+        full_name="Inactive Contact Person",
+        **{contact_field: contact_value, lifecycle_field: timezone.now()},
+    )
+    original_profile = (
+        person.full_name,
+        person.email,
+        person.phone,
+        person.wechat_id,
+        person.deactivated_at,
+        person.anonymized_at,
+    )
+    now = timezone.now()
+    event = Event.objects.create(
+        church=church,
+        title=f"Fictional Inactive {contact_field} Event",
+        starts_at=now,
+        ends_at=now + timedelta(hours=1),
+        created_by=worker,
+    )
+
+    response = client.post(
+        reverse("events:event-walk-in-create", args=(event.id,)),
+        {"full_name": "Submitted New Visitor", contact_field: contact_value},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "This contact needs Pastor or Admin review before check-in."
+    )
+    assert Person.objects.for_church(church).count() == 1
+    assert not EventRegistration.objects.filter(event=event).exists()
+    assert not FollowUp.objects.filter(church=church).exists()
+    person.refresh_from_db()
+    assert (
+        person.full_name,
+        person.email,
+        person.phone,
+        person.wechat_id,
+        person.deactivated_at,
+        person.anonymized_at,
+    ) == original_profile
+
+
+def test_new_visitor_mixed_active_and_inactive_contact_match_requires_review() -> None:
+    church = Church.objects.create(name="Fictional Mixed Lifecycle Contact")
+    client, worker = client_with_role(church, ChurchMembership.Role.PASTOR)
+    active_person = Person.objects.create(
+        church=church,
+        full_name="Active Email Person",
+        email="active.mixed@example.test",
+    )
+    inactive_person = Person.objects.create(
+        church=church,
+        full_name="Inactive Phone Person",
+        phone="+61 400 888 222",
+        deactivated_at=timezone.now(),
+    )
+    now = timezone.now()
+    event = Event.objects.create(
+        church=church,
+        title="Fictional Mixed Contact Event",
+        starts_at=now,
+        ends_at=now + timedelta(hours=1),
+        created_by=worker,
+    )
+
+    response = client.post(
+        reverse("events:event-walk-in-create", args=(event.id,)),
+        {
+            "full_name": "Submitted Mixed Person",
+            "email": "ACTIVE.MIXED@example.test",
+            "phone": "+61 400 888 222",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "This contact needs Pastor or Admin review before check-in."
+    )
+    assert Person.objects.for_church(church).count() == 2
+    assert not EventRegistration.objects.filter(event=event).exists()
+    active_person.refresh_from_db()
+    inactive_person.refresh_from_db()
+    assert active_person.full_name == "Active Email Person"
+    assert active_person.phone is None
+    assert inactive_person.full_name == "Inactive Phone Person"
+    assert inactive_person.email is None
 
 
 def test_member_cannot_quick_add_walk_in_and_cross_church_event_is_hidden() -> None:

@@ -111,7 +111,7 @@ export function ProfilePage() {
   }, [personId])
 
   const person = state.person
-  const canEdit = session?.membership.role !== 'member'
+  const canEdit = ['admin', 'pastor'].includes(session?.membership.role ?? '')
   const canViewSensitive = ['admin', 'pastor'].includes(
     session?.membership.role ?? '',
   )

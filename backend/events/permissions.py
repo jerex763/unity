@@ -19,3 +19,18 @@ class HasEventAccess(BasePermission):
             membership.role,
             frozenset(),
         )
+
+
+class HasEventCheckIn(BasePermission):
+    """Allow event-day attendance actions without granting event management."""
+
+    message = "The active church role does not allow event check-in."
+
+    def has_permission(self, request: Request, view: object) -> bool:
+        membership = getattr(request, "church_membership", None)
+        if membership is None:
+            return False
+        return Capability.EVENT_CHECK_IN in ROLE_CAPABILITIES.get(
+            membership.role,
+            frozenset(),
+        )

@@ -522,10 +522,16 @@ def set_manual_check_in(
     if locked.status == EventRegistration.Status.CANCELLED and checked_in:
         raise ValidationError("A cancelled registration cannot be checked in.")
     if checked_in:
+        update_fields: list[str] = []
+        if locked.status == EventRegistration.Status.WAITLISTED:
+            locked.status = EventRegistration.Status.REGISTERED
+            update_fields.append("status")
         if locked.checked_in_at is None:
             locked.checked_in_at = timezone.now()
             locked.checkin_method = EventRegistration.CheckinMethod.MANUAL
-            locked.save(update_fields=("checked_in_at", "checkin_method", "updated_at"))
+            update_fields.extend(("checked_in_at", "checkin_method"))
+        if update_fields:
+            locked.save(update_fields=(*update_fields, "updated_at"))
         from care.services import ensure_first_event_follow_up
 
         ensure_first_event_follow_up(locked)

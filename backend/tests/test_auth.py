@@ -175,12 +175,18 @@ def test_logout_requires_csrf_and_clears_session(church: Church, user: User) -> 
                 Capability.VIEW_CONFIDENTIAL_CARE,
                 Capability.LEAD_MINISTRY,
                 Capability.MANAGE_PERSON_CONSENT,
+                Capability.WRITE_PERSON_DIRECTORY,
+                Capability.EVENT_CHECK_IN,
                 Capability.SELF_SERVICE,
             },
         ),
         (
             ChurchMembership.Role.LEADER,
-            {Capability.LEAD_MINISTRY, Capability.SELF_SERVICE},
+            {
+                Capability.LEAD_MINISTRY,
+                Capability.EVENT_CHECK_IN,
+                Capability.SELF_SERVICE,
+            },
         ),
         (
             ChurchMembership.Role.MEMBER,

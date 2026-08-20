@@ -16,12 +16,12 @@ from accounts.models import ChurchMembership
 from audit.models import AuditEvent
 from audit.services import record_audit_event
 from groups.models import Group
-from people.models import Person
+from people.models import Person, PersonQuerySet
 from people.normalization import normalize_email, normalize_phone, normalize_wechat_id
 from tenancy.permissions import HasActiveChurchMembership
 
 from .models import Event, EventRegistration, PublicRegistrationLink
-from .permissions import HasEventAccess
+from .permissions import HasEventAccess, HasEventCheckIn
 from .serializers import (
     EventRegistrationCreateSerializer,
     EventRegistrationSerializer,
@@ -184,8 +184,82 @@ class EventRegistrationCancelView(EventRegistrationListCreateView):
         return Response(EventRegistrationSerializer(cancelled).data)
 
 
+def _masked_contact_hint(person: Person) -> str | None:
+    if person.email:
+        local, separator, domain = person.email.partition("@")
+        if separator:
+            domain_name, dot, suffix = domain.rpartition(".")
+            masked_domain = f"{domain_name[:1]}***.{suffix}" if dot else "***"
+            return f"Email · {local[:1]}***@{masked_domain}"
+    if person.phone:
+        digits = "".join(character for character in person.phone if character.isdigit())
+        return f"Phone · ending {digits[-4:]}" if digits else "Phone available"
+    if person.wechat_id:
+        return f"WeChat · {person.wechat_id[:1]}***"
+    return None
+
+
+def _locked_contact_candidates(
+    people: PersonQuerySet,
+    contact_predicate: Q,
+) -> list[Person]:
+    return list(people.select_for_update().filter(contact_predicate).order_by("pk"))
+
+
+class EventCheckInPersonSearchView(EventRegistrationListCreateView):
+    permission_classes = (HasActiveChurchMembership, HasEventCheckIn)
+    http_method_names = ("get", "head", "options")
+
+    def get(self, request: Request, event_id: int) -> Response:
+        event = self._event(request, event_id)
+        query = " ".join(request.query_params.get("q", "").split())[:100]
+        if len(query) < 2:
+            return Response([])
+
+        contact_query = Q()
+        normalized_email = normalize_email(query)
+        normalized_phone = normalize_phone(query)
+        normalized_wechat_id = normalize_wechat_id(query)
+        if normalized_email:
+            contact_query |= Q(normalized_email__icontains=normalized_email)
+        if normalized_phone:
+            contact_query |= Q(normalized_phone__icontains=normalized_phone)
+        if normalized_wechat_id:
+            contact_query |= Q(normalized_wechat_id__icontains=normalized_wechat_id)
+
+        people = list(
+            Person.objects.for_church(request.church)
+            .filter(anonymized_at__isnull=True, deactivated_at__isnull=True)
+            .exclude(membership_status=Person.MembershipStatus.INACTIVE)
+            .filter(
+                Q(full_name__icontains=query)
+                | Q(preferred_name__icontains=query)
+                | contact_query
+            )
+            .order_by("full_name", "id")[:20]
+        )
+        registration_statuses = dict(
+            EventRegistration.objects.for_church(request.church)
+            .filter(event=event, person_id__in=[person.id for person in people])
+            .values_list("person_id", "status")
+        )
+        return Response(
+            [
+                {
+                    "id": person.id,
+                    "full_name": person.full_name,
+                    "preferred_name": person.preferred_name,
+                    "membership_status": person.membership_status,
+                    "current_registration_status": registration_statuses.get(person.id),
+                    "contact_hint": _masked_contact_hint(person),
+                }
+                for person in people
+            ]
+        )
+
+
 class EventWalkInCreateView(EventRegistrationListCreateView):
-    permission_classes = (HasActiveChurchMembership, HasEventAccess)
+    permission_classes = (HasActiveChurchMembership, HasEventCheckIn)
 
     @transaction.atomic
     def post(self, request: Request, event_id: int) -> Response:
@@ -199,25 +273,83 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
         serializer.is_valid(raise_exception=True)
         values = serializer.validated_data
         people = Person.objects.for_church(request.church)
-        match_sets: list[list[int]] = []
-        for field, value in (
-            ("normalized_email", normalize_email(values.get("email"))),
-            ("normalized_phone", normalize_phone(values.get("phone"))),
-            (
-                "normalized_wechat_id",
-                normalize_wechat_id(values.get("wechat_id")),
-            ),
-        ):
-            if value:
-                match_sets.append(
-                    list(people.filter(**{field: value}).values_list("id", flat=True))
+        person_id = values.get("person")
+        person = None
+        if person_id is not None:
+            person = generics.get_object_or_404(
+                people.select_for_update()
+                .filter(
+                    anonymized_at__isnull=True,
+                    deactivated_at__isnull=True,
                 )
-        anchor = next((ids[0] for ids in match_sets if len(ids) == 1), None)
-        if anchor is None and any(len(ids) > 1 for ids in match_sets):
-            raise ValidationError({"detail": "Unable to match this contact."})
-        if anchor is not None and any(ids and anchor not in ids for ids in match_sets):
-            raise ValidationError({"detail": "Unable to match this contact."})
-        person = people.filter(pk=anchor).first() if anchor is not None else None
+                .exclude(membership_status=Person.MembershipStatus.INACTIVE),
+                pk=person_id,
+            )
+        else:
+            normalized_contacts = tuple(
+                (field, value)
+                for field, value in (
+                    ("normalized_email", normalize_email(values.get("email"))),
+                    ("normalized_phone", normalize_phone(values.get("phone"))),
+                    (
+                        "normalized_wechat_id",
+                        normalize_wechat_id(values.get("wechat_id")),
+                    ),
+                )
+                if value
+            )
+            contact_predicate = Q()
+            for field, value in normalized_contacts:
+                contact_predicate |= Q(**{field: value})
+            locked_candidates = (
+                _locked_contact_candidates(people, contact_predicate)
+                if normalized_contacts
+                else []
+            )
+            if any(
+                candidate.anonymized_at is not None
+                or candidate.deactivated_at is not None
+                or candidate.membership_status == Person.MembershipStatus.INACTIVE
+                for candidate in locked_candidates
+            ):
+                raise ValidationError(
+                    {
+                        "detail": (
+                            "This contact needs Pastor or Admin review before check-in."
+                        )
+                    }
+                )
+            match_sets = [
+                [
+                    candidate.pk
+                    for candidate in locked_candidates
+                    if getattr(candidate, field) == value
+                ]
+                for field, value in normalized_contacts
+            ]
+            anchor = next((ids[0] for ids in match_sets if len(ids) == 1), None)
+            if anchor is None and any(len(ids) > 1 for ids in match_sets):
+                raise ValidationError({"detail": "Unable to match this contact."})
+            if anchor is not None and any(
+                ids and anchor not in ids for ids in match_sets
+            ):
+                raise ValidationError({"detail": "Unable to match this contact."})
+            person = next(
+                (
+                    candidate
+                    for candidate in locked_candidates
+                    if candidate.pk == anchor
+                ),
+                None,
+            )
+            if anchor is not None and person is None:
+                raise ValidationError(
+                    {
+                        "detail": (
+                            "This contact needs Pastor or Admin review before check-in."
+                        )
+                    }
+                )
         if person is None:
             person = Person(
                 church=request.church,
@@ -232,21 +364,37 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
             )
             person.full_clean(exclude={"interests"})
             person.save()
-        registration, _ = EventRegistration.objects.update_or_create(
-            event=event,
-            person=person,
-            defaults={
-                "church": request.church,
-                "status": EventRegistration.Status.WALK_IN,
-                "note": values.get("note", "").strip(),
-                "registered_at": timezone.now(),
-                "checked_in_at": timezone.now(),
-                "checkin_method": EventRegistration.CheckinMethod.MANUAL,
-            },
+        registration = (
+            EventRegistration.objects.select_for_update()
+            .filter(event=event, person=person)
+            .first()
         )
-        from care.services import ensure_first_event_follow_up
-
-        ensure_first_event_follow_up(registration)
+        if registration is None:
+            registration = EventRegistration.objects.create(
+                church=request.church,
+                event=event,
+                person=person,
+                status=EventRegistration.Status.WALK_IN,
+                note=values.get("note", "").strip(),
+            )
+        elif registration.status == EventRegistration.Status.CANCELLED:
+            registration.status = EventRegistration.Status.WALK_IN
+            registration.note = values.get("note", "").strip()
+            registration.registered_at = timezone.now()
+            registration.cancellation_token_digest = None
+            registration.save(
+                update_fields=(
+                    "status",
+                    "note",
+                    "registered_at",
+                    "cancellation_token_digest",
+                    "updated_at",
+                )
+            )
+        try:
+            registration = set_manual_check_in(registration, checked_in=True)
+        except DjangoValidationError as error:
+            raise ValidationError({"detail": error.messages[0]}) from error
         registration = EventRegistration.objects.select_related("person").get(
             pk=registration.pk
         )
@@ -257,7 +405,7 @@ class EventWalkInCreateView(EventRegistrationListCreateView):
 
 
 class EventRegistrationCheckInView(EventRegistrationListCreateView):
-    permission_classes = (HasActiveChurchMembership, HasEventAccess)
+    permission_classes = (HasActiveChurchMembership, HasEventCheckIn)
 
     def post(
         self,

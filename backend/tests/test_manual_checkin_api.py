@@ -124,3 +124,24 @@ def test_cancelled_registration_cannot_be_checked_in() -> None:
     assert response.json()["detail"] == (
         "A cancelled registration cannot be checked in."
     )
+
+
+def test_waitlisted_registration_is_admitted_when_checked_in() -> None:
+    church = Church.objects.create(name="Fictional Waitlist Admission")
+    client, pastor = client_for(church, ChurchMembership.Role.PASTOR, "waitlist")
+    event, registration = registration_fixture(church, pastor)
+    registration.status = EventRegistration.Status.WAITLISTED
+    registration.save(update_fields=("status", "updated_at"))
+
+    response = client.post(
+        reverse(
+            "events:event-registration-check-in",
+            args=(event.id, registration.id),
+        ),
+        {"checked_in": True},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == EventRegistration.Status.REGISTERED
+    assert response.json()["checked_in_at"] is not None
