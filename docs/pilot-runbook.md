@@ -6,6 +6,12 @@ is fictional-data-only: actual church workers may evaluate it, but every church,
 event, participant, contact method, interaction and outcome entered in Unity must
 be fictional.
 
+The current worker session is scheduled to be completed by **Friday 2026-08-28
+(Australia/Sydney)**. The pilot owner will deliver each worker's distinct
+temporary credentials through a direct one-to-one WhatsApp conversation. Do not
+use a WhatsApp group, forward credentials, or include credentials in the feedback
+record.
+
 ## Session shape
 
 Use three separate temporary accounts and ask each worker to test on their own
@@ -21,6 +27,31 @@ Give each worker the demo URL and their own temporary credentials through an
 agreed private channel. Never place credentials in GitHub, chat transcripts,
 shared checklists or screenshots. Tell workers that the session contains no real
 participant data and that they must stop rather than enter any.
+
+## Coordinated end-to-end order
+
+Allow about 45–55 minutes for one coordinated session. Each worker's hands-on
+portion remains approximately 10–15 minutes.
+
+1. **Briefing — 5 minutes.** State the fictional-data rule, stop conditions and
+   private feedback channel. Each worker confirms they received only their own
+   account and can sign in on their phone.
+2. **Pastor setup check — 5–10 minutes.** The Pastor confirms the fictional
+   church/event/roster and that the prepared Person can be edited by the Pastor.
+3. **Check-in flow — 10–15 minutes.** The check-in worker completes the prepared
+   preregistration, existing-person and new-visitor paths on the dedicated
+   check-in page, then verifies the Leader cannot edit People.
+4. **Pastor assignment — 5 minutes.** The Pastor confirms the new visitor's
+   first-visit follow-up, assigns it to the follow-up worker, and records the
+   supplied fictional due date and next action.
+5. **Follow-up flow — 10–15 minutes.** The follow-up worker confirms the task is
+   scoped to them, checks the fictional WhatsApp/WeChat handoff without sending a
+   real message, records the supplied fictional interaction and closes it with
+   the supplied fictional outcome.
+6. **Feedback and sign-out — 10 minutes.** Ask the five common questions, record
+   only workflow themes/device/browser/duration, and confirm all workers sign
+   out. Do not clean or disable anything until the separate post-session scope
+   and authorization are recorded.
 
 ## Team Lead preparation
 
@@ -43,6 +74,9 @@ participant data and that they must stop rather than enter any.
   only—no participant, pastoral, care or credential content.
 - Name the person who will stop the session if a worker sees the wrong church,
   confidential data or an unexpected edit capability.
+- Read `docs/current-event-registration-review-2026-08.md`. Use the current
+  Google Form only as workflow context; never copy its responses or real attendee
+  details into the demo.
 
 Do not use QR check-in, AI features, care/prayer data, production backup
 credentials or real personal data in this session.
@@ -108,12 +142,15 @@ copy affected record contents into the report.
 
 ## Feedback and evidence
 
-Ask each worker the same four questions:
+Ask each worker the same five questions:
 
 1. Could you complete the task without coaching?
 2. Where did you hesitate or lose context?
 3. Did you see too much or too little information for your role?
 4. What single change would most improve the next session?
+5. For student/worker status, study area, industry, future-event notices and
+   WhatsApp groups, which answer would cause a real operational action rather
+   than merely being interesting to collect?
 
 Record completion/failure, phone/browser, approximate duration and themes in
 `docs/pilot-review-2026-07.md`. Do not record names, contact details, message

@@ -42,6 +42,20 @@ Record themes without personal or pastoral content.
 | | | | |
 | | | | |
 
+## Registration-form hypotheses
+
+Use the comparison in `docs/current-event-registration-review-2026-08.md`.
+Record only whether a field caused a concrete worker action; do not record an
+attendee's answer.
+
+| Hypothesis | Observed worker action | Repeated across roles/events? | Decision |
+|---|---|---|---|
+| Separate WhatsApp group consent is needed | | | Pending |
+| Student/worker context changes event work | | | Pending |
+| Course or industry changes event work | | | Pending |
+| Future-event subscription has a named owner/workflow | | | Pending |
+| Religious background is necessary at registration | | | Do not collect by default |
+
 ## What worked
 
 - Pending controlled activity.

@@ -35,14 +35,14 @@ ethnicity/race collection, and in-app payment processing. See
 
 Verified on 2026-08-21:
 
-- Local and remote `codex/mvp-next` are aligned. The latest application-code
-  commit is `e204ee1 Separate check-in access from directory writes`; the later
-  commits are docs-only operating-guide updates, so deployed application code
-  behavior is unchanged.
+- Remote and deployed `codex/mvp-next` are at `cdfbcd8`; the local branch contains
+  one additional unpushed docs-only commit from the current documentation update.
+  The latest application-code commit remains `e204ee1 Separate check-in access
+  from directory writes`, so deployed application behavior is unchanged.
 - `main` remains protected at `a2ba850`; `codex/mvp-next` remains ahead of it.
 - There is no authorization to merge or open a PR into `main`.
-- GitHub CI for `e204ee1` passed:
-  <https://github.com/jerex763/unity/actions/runs/32339216386>.
+- GitHub CI for deployed HEAD `cdfbcd8` passed:
+  <https://github.com/jerex763/unity/actions/runs/32380557178>.
 - Render health check returned `200 {"status": "ok"}`.
 - The new authenticated check-in-person route is deployed; an unauthenticated
   request returns the expected `403`, confirming the new route is live.
@@ -131,6 +131,20 @@ Verification evidence for #109:
 - UI changes with meaningful workflow/design judgment should be shown for user
   approval before implementation. Small explicitly approved fixes can be made
   directly.
+- The current real-event Google Form is workflow evidence, not authorization to
+  import its responses into the fictional demo. Unity should keep affirmative
+  registration plus separate cancellation rather than copy ambiguous
+  attending/cannot-attend/maybe checkboxes.
+- WhatsApp channel availability or preference is not consent to add someone to a
+  WhatsApp group. Any future group-addition workflow requires separate specific
+  consent and disclosure of member number visibility.
+- Student/worker, course and industry questions remain pilot hypotheses. Do not
+  build a general form builder or write event answers into permanent profiles
+  without repeated operational evidence. Do not add religious background to
+  public event registration by default.
+
+See
+[`docs/current-event-registration-review-2026-08.md`](docs/current-event-registration-review-2026-08.md).
 
 ## 4. Authorization contract
 
@@ -167,9 +181,11 @@ Three human testers have been identified:
 - one test check-in worker;
 - one test follow-up worker.
 
-The Team Lead must provide each tester with a separate temporary account, only
-fictional test records, and a role-specific step-by-step checklist. Disable or
-remove temporary access and clean fictional test data after the authorized run.
+The three role-specific 10–15 minute phone checklists are prepared in
+[`docs/pilot-runbook.md`](docs/pilot-runbook.md). The Team Lead must deliver each
+tester's separate temporary account privately, keep all test records fictional,
+and disable/remove access and clean fictional data after the separately
+authorized run.
 
 Still required before claiming the pilot gate is complete:
 
@@ -183,13 +199,23 @@ Still required before claiming the pilot gate is complete:
 6. Complete [`docs/pilot-review-2026-07.md`](docs/pilot-review-2026-07.md).
 7. Choose the next product work from observed evidence rather than assumptions.
 
+The highest-priority next action is the three-worker phone session, not another
+feature. It is to be completed by **Friday 2026-08-28 (Australia/Sydney)**. The
+user will deliver each worker's distinct temporary account through a direct
+one-to-one WhatsApp conversation. Before the session, revalidate the already
+prepared temporary accounts and RUN_ID-tagged fictional dataset read-only.
+Obtain fresh authorization before creating/replacing accounts or data. A
+successful check-in worker run supplies the remaining product-acceptance
+evidence for #109; record that evidence before closing the Issue. Data/account
+cleanup remains a separate post-session authorization.
+
 When real worker participation is needed, tell the user exactly who is needed,
 what each person tests, estimated time, account delivery method, fictional data
 rules, and cleanup plan. Do not merely say “manual testing required.”
 
 ## 6. Open work and priority
 
-GitHub open Issues verified on 2026-08-20:
+GitHub open Issues verified on 2026-08-21:
 
 ### Immediate release work
 
@@ -347,6 +373,8 @@ must verify teardown.
 - Backup/restore: [`docs/backup-restore-runbook.md`](docs/backup-restore-runbook.md).
 - Person lifecycle: [`docs/person-data-lifecycle.md`](docs/person-data-lifecycle.md).
 - Public registration: [`docs/public-event-registration-pilot.md`](docs/public-event-registration-pilot.md).
+- Current real-event form comparison:
+  [`docs/current-event-registration-review-2026-08.md`](docs/current-event-registration-review-2026-08.md).
 - Contact/email decision: [`docs/outbound-email-pilot.md`](docs/outbound-email-pilot.md).
 - Visual language: [`docs/design.md`](docs/design.md).
 
@@ -362,6 +390,11 @@ Update this document in the same change whenever any of these changes:
 - prioritized open Issues;
 - test/deployment workflow;
 - subagent routing policy.
+
+At the end of material project work, reconcile the resulting Git/GitHub,
+CI/deployment, acceptance, product decision, risk, blocker, and next-priority
+state here. Do not update it merely to change a timestamp when nothing durable
+changed.
 
 Keep it concise enough to read at session start, but complete enough that a new
 Team Lead does not need prior chat history.
