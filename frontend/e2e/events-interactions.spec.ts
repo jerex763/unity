@@ -273,7 +273,7 @@ test('event organizer interactions remain usable at the configured viewport', as
   }
 
   const registrationToggle = page.getByRole('button', {
-    name: 'Show registration list',
+    name: 'Show registrations (12)',
   })
   await expect(registrationToggle).toHaveAttribute('aria-expanded', 'false')
   await expect(registrationToggle).toHaveAttribute(
@@ -282,7 +282,7 @@ test('event organizer interactions remain usable at the configured viewport', as
   )
   await registrationToggle.click()
   await expect(
-    page.getByRole('button', { name: 'Hide registration list' }),
+    page.getByRole('button', { name: 'Hide registrations (12)' }),
   ).toHaveAttribute('aria-expanded', 'true')
   await expect(page.locator('#event-21-registrations')).toBeVisible()
   await expectNoHorizontalOverflow(page)
@@ -373,7 +373,10 @@ test('follow-up attention and postponement stay usable at the configured viewpor
 
   await page.goto('/follow-ups')
   await expect(
-    page.getByText('Fictional Attention Visitor', { exact: true }),
+    page.getByRole('heading', {
+      name: 'Fictional Attention Visitor',
+      level: 2,
+    }),
   ).toBeVisible()
   await expect(page.getByText('Escalated')).toBeVisible()
   await expect(page.getByText('Stale')).toBeVisible()
@@ -382,7 +385,28 @@ test('follow-up attention and postponement stay usable at the configured viewpor
   ).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
-  await page.getByRole('button', { name: 'Update' }).click()
+  const updateButton = page.getByRole('button', { name: 'Update' })
+  await updateButton.click()
+  const updateDialog = page.getByRole('dialog', {
+    name: 'Update Fictional Attention Visitor',
+  })
+  await expect(updateDialog).toBeVisible()
+  await expect(page.getByLabel('Stage')).toBeFocused()
+  await expect(page.locator('.topbar')).toHaveAttribute('inert', '')
+  const updateClose = updateDialog.locator('.dialog-close')
+  const updateSubmit = updateDialog.getByRole('button', {
+    name: 'Save update',
+  })
+  await updateClose.focus()
+  await page.keyboard.press('Shift+Tab')
+  await expect(updateSubmit).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(updateClose).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(updateDialog).toBeHidden()
+  await expect(updateButton).toBeFocused()
+  await updateButton.click()
+  await expect(page.getByLabel('Stage')).toBeFocused()
   await page.getByLabel('Due').fill('2026-08-14')
   await expect(
     page.getByRole('group', { name: 'Why is this moving later?' }),
@@ -414,13 +438,40 @@ test('event-day check-in is separate, searchable, and supports walk-ins', async 
   await expect(
     page.getByText('Fictional Registered Visitor', { exact: true }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'To check in' }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'All' })).toBeVisible()
   await page.getByLabel('Find attendee').fill('nobody')
+  await expect(page.getByRole('button', { name: 'All' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
   await expect(page.getByText('No attendees match this view.')).toBeVisible()
   await page.getByLabel('Find attendee').fill('')
-  await page.getByRole('button', { name: 'Check in' }).click()
+  await page.getByRole('button', { name: 'To check in' }).click()
+  const registeredVisitor = page
+    .getByRole('region', { name: 'Attendees' })
+    .locator('article')
+    .filter({ hasText: 'Fictional Registered Visitor' })
+  await expect(registeredVisitor).toContainText('Registered · Not checked in')
+  await registeredVisitor.getByRole('button', { name: 'Check in' }).click()
   await expect(
     page.getByText('Fictional Registered Visitor is checked in.'),
   ).toBeVisible()
+  await expect(registeredVisitor).toHaveCount(0)
+  await page.getByLabel('Find attendee').fill('Fictional Registered Visitor')
+  await expect(page.getByRole('button', { name: 'All' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(
+    page
+      .getByRole('region', { name: 'Attendees' })
+      .locator('article')
+      .filter({ hasText: 'Fictional Registered Visitor' }),
+  ).toContainText('Registered · Checked in')
+  await page.getByLabel('Find attendee').fill('')
   await page.getByRole('button', { name: 'Checked in' }).click()
   await expect(
     page.getByText('Fictional Registered Visitor', { exact: true }),

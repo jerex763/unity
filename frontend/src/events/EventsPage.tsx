@@ -776,14 +776,24 @@ export function EventsPage() {
                     aria-expanded={activeRoster === event.id}
                     aria-label={
                       activeRoster === event.id
-                        ? t('events.registrations.hide')
-                        : t('events.registrations.show')
+                        ? t('events.registrations.hideCount', {
+                            count:
+                              event.registered_count + event.waitlisted_count,
+                          })
+                        : t('events.registrations.showCount', {
+                            count:
+                              event.registered_count + event.waitlisted_count,
+                          })
                     }
                     className="secondary-button registration-toggle"
                     onClick={() => void openRegistrations(event)}
                     type="button"
                   >
-                    <span>{t('events.registrations.manage')}</span>
+                    <span>
+                      {t('events.registrations.manageCount', {
+                        count: event.registered_count + event.waitlisted_count,
+                      })}
+                    </span>
                     <span
                       className="registration-toggle-icon"
                       aria-hidden="true"

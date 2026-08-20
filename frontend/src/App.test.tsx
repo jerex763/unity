@@ -594,7 +594,7 @@ describe('Events', () => {
     const editButton = screen.getByRole('button', { name: 'Edit' })
     const duplicateButton = screen.getByRole('button', { name: 'Duplicate' })
     const registrationButton = screen.getByRole('button', {
-      name: 'Show registration list',
+      name: 'Show registrations (12)',
     })
     expect(editButton).toHaveClass('primary-button')
     expect(duplicateButton).toHaveClass('secondary-button')
@@ -614,7 +614,7 @@ describe('Events', () => {
 
     await user.click(registrationButton)
     const collapseRegistrationButton = screen.getByRole('button', {
-      name: 'Hide registration list',
+      name: 'Hide registrations (12)',
     })
     expect(collapseRegistrationButton).toHaveAttribute('aria-expanded', 'true')
     expect(await screen.findByLabelText('Registrations')).toHaveAttribute(
@@ -628,10 +628,10 @@ describe('Events', () => {
       '/events/21/check-in',
     )
     await user.click(
-      screen.getByRole('button', { name: 'Hide registration list' }),
+      screen.getByRole('button', { name: 'Hide registrations (12)' }),
     )
     expect(
-      screen.getByRole('button', { name: 'Show registration list' }),
+      screen.getByRole('button', { name: 'Show registrations (12)' }),
     ).toHaveAttribute('aria-expanded', 'false')
 
     await user.click(screen.getByRole('button', { name: 'Duplicate' }))
@@ -786,7 +786,19 @@ describe('Follow-up queue', () => {
     expect(
       screen.getAllByText(/Complete or reschedule the overdue action/)[0],
     ).toBeVisible()
-    await user.click(await screen.findByRole('button', { name: 'Update' }))
+    const updateButton = await screen.findByRole('button', { name: 'Update' })
+    await user.click(updateButton)
+    const updateDialog = screen.getByRole('dialog', {
+      name: 'Update Mia Chen',
+    })
+    expect(updateDialog).toBeVisible()
+    expect(screen.getByLabelText('Stage')).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(
+      screen.queryByRole('dialog', { name: 'Update Mia Chen' }),
+    ).not.toBeInTheDocument()
+    expect(updateButton).toHaveFocus()
+    await user.click(updateButton)
     expect(await screen.findByText('Fictional welcome call')).toBeVisible()
     await user.selectOptions(screen.getByLabelText('Stage'), 'connected')
     await user.selectOptions(screen.getByLabelText('Engagement'), 'likely')
@@ -794,6 +806,10 @@ describe('Follow-up queue', () => {
     await user.click(screen.getByRole('button', { name: 'Save update' }))
 
     expect(await screen.findByText('Likely')).toBeVisible()
+    expect(
+      screen.queryByRole('dialog', { name: 'Update Mia Chen' }),
+    ).not.toBeInTheDocument()
+    expect(updateButton).toHaveFocus()
     expect(fetchMock.mock.calls[4]?.[0]).toBe('/api/follow-ups/71/')
     expect(fetchMock.mock.calls[4]?.[1]).toMatchObject({ method: 'PATCH' })
   })
@@ -1053,7 +1069,7 @@ describe('Follow-up queue', () => {
     await screen.findByText('Mia Chen')
     await user.click(screen.getByRole('button', { name: /Noah Park/ }))
     expect(
-      await screen.findByRole('heading', { name: 'Update Noah Park' }),
+      await screen.findByRole('heading', { name: 'Noah Park', level: 2 }),
     ).toBeVisible()
 
     await act(async () => {
@@ -1066,7 +1082,7 @@ describe('Follow-up queue', () => {
       screen.queryByText('We could not load the interaction history.'),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'Update Noah Park' }),
+      screen.getByRole('heading', { name: 'Noah Park', level: 2 }),
     ).toBeVisible()
   })
 
@@ -1260,7 +1276,8 @@ describe('Follow-up queue', () => {
     await user.click(screen.getByRole('button', { name: 'My follow-ups' }))
     expect(
       await screen.findByRole('heading', {
-        name: 'Update My Visible Follow-up',
+        name: 'My Visible Follow-up',
+        level: 2,
       }),
     ).toBeVisible()
 
@@ -1271,7 +1288,8 @@ describe('Follow-up queue', () => {
     ).toBeVisible()
     expect(
       screen.queryByRole('heading', {
-        name: 'Update My Visible Follow-up',
+        name: 'My Visible Follow-up',
+        level: 2,
       }),
     ).not.toBeInTheDocument()
   })

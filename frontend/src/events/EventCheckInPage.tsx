@@ -7,7 +7,7 @@ import { useModalDialog } from '../accessibility/useModalDialog'
 import { useAuth } from '../auth/useAuth'
 import type { CheckInPerson, ChurchEvent, EventRegistration } from './types'
 
-type RosterFilter = 'registered' | 'checked_in' | 'walk_ins'
+type RosterFilter = 'to_check_in' | 'all' | 'checked_in' | 'walk_ins'
 type WalkInMode = 'existing' | 'new'
 
 export function EventCheckInPage() {
@@ -16,7 +16,7 @@ export function EventCheckInPage() {
   const { session } = useAuth()
   const [event, setEvent] = useState<ChurchEvent | null>(null)
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
-  const [filter, setFilter] = useState<RosterFilter>('registered')
+  const [filter, setFilter] = useState<RosterFilter>('to_check_in')
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -119,11 +119,13 @@ export function EventCheckInPage() {
         .toLocaleLowerCase()
         .includes(query)
       const matchesFilter =
-        filter === 'checked_in'
-          ? Boolean(registration.checked_in_at)
-          : filter === 'walk_ins'
-            ? registration.status === 'walk_in'
-            : registration.status !== 'walk_in' && !registration.checked_in_at
+        filter === 'all'
+          ? true
+          : filter === 'checked_in'
+            ? Boolean(registration.checked_in_at)
+            : filter === 'walk_ins'
+              ? registration.status === 'walk_in'
+              : !registration.checked_in_at
       return matchesSearch && matchesFilter
     })
   }, [filter, registrations, search])
@@ -261,7 +263,10 @@ export function EventCheckInPage() {
       <label className="roster-search">
         <span>Find attendee</span>
         <input
-          onChange={(changeEvent) => setSearch(changeEvent.target.value)}
+          onChange={(changeEvent) => {
+            setSearch(changeEvent.target.value)
+            if (changeEvent.target.value.trim()) setFilter('all')
+          }}
           placeholder="Search the registration list…"
           type="search"
           value={search}
@@ -274,7 +279,8 @@ export function EventCheckInPage() {
       >
         {(
           [
-            ['registered', 'Registered'],
+            ['to_check_in', 'To check in'],
+            ['all', 'All'],
             ['checked_in', 'Checked in'],
             ['walk_ins', 'Walk-ins'],
           ] as const
@@ -309,7 +315,13 @@ export function EventCheckInPage() {
               <div>
                 <strong>{registration.person.full_name}</strong>
                 <span>
-                  {registration.status === 'walk_in' ? 'Walk-in' : 'Registered'}
+                  {registration.status === 'walk_in'
+                    ? 'Walk-in'
+                    : registration.status === 'waitlisted'
+                      ? 'Waitlisted'
+                      : 'Registered'}{' '}
+                  ·{' '}
+                  {registration.checked_in_at ? 'Checked in' : 'Not checked in'}
                 </span>
               </div>
               <button

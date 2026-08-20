@@ -35,10 +35,10 @@ ethnicity/race collection, and in-app payment processing. See
 
 Verified on 2026-08-21:
 
-- Local and remote `codex/mvp-next` are aligned. The latest application-code
-  commit remains `e204ee1 Separate check-in access from directory writes`; later
-  commits are docs-only operating-guide updates, so deployed application
-  behavior is unchanged.
+- Remote `codex/mvp-next` remains at `f3fb613`. The local branch contains one
+  not-yet-pushed pre-pilot workflow-polish commit on top of it. The latest
+  deployed application-code commit remains `e204ee1 Separate check-in access
+  from directory writes`; the local workflow polish is not deployed.
 - `main` remains protected at `a2ba850`; `codex/mvp-next` remains ahead of it.
 - There is no authorization to merge or open a PR into `main`.
 - GitHub CI and the linked Render deployment are green for the current branch.
@@ -68,6 +68,28 @@ It may cold-start after inactivity.
 - WhatsApp- and WeChat-first contact actions, with phone and email fallbacks.
 - Responsive/modal UI fixes from the August fictional worker rehearsal.
 - Render/Neon fictional-data demo and guarded fictional-data cleanup tooling.
+
+### Latest local implementation: pre-pilot workflow polish
+
+The user approved three small workflow fixes after reviewing the prepared phone
+test screens. They are implemented and tested locally, but are not pushed or
+deployed:
+
+- Event-day check-in defaults to **To check in**, adds **All**, retains
+  **Checked in** and **Walk-ins**, and makes a typed attendee search global
+  across all non-cancelled registrations. Each result now states both its
+  registration source/status and current check-in state.
+- The organizer event card shows the combined active registration and waitlist
+  count on the control that opens the registration roster, making public-link
+  submissions discoverable without changing the underlying data model.
+- Follow-up **Update** opens a real accessible modal, consistent with event
+  editing. It traps focus, closes with Escape, restores focus to the trigger,
+  and uses the existing full-screen mobile treatment.
+
+This is frontend-only polish: there are no backend, permission, tenancy, data,
+or migration changes. Verification passed: Prettier, ESLint, all 109 Vitest
+tests, the production build, and all 24 Playwright checks across 320, 375, 430,
+and desktop viewports.
 
 ### Latest completed implementation: Issue #109
 
