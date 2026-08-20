@@ -35,10 +35,10 @@ ethnicity/race collection, and in-app payment processing. See
 
 Verified on 2026-08-21:
 
-- Remote `codex/mvp-next` remains at `f3fb613`. The local branch contains one
-  not-yet-pushed pre-pilot workflow-polish commit on top of it. The latest
-  deployed application-code commit remains `e204ee1 Separate check-in access
-  from directory writes`; the local workflow polish is not deployed.
+- Local and remote `codex/mvp-next` are aligned. The latest deployed
+  application-code commit is `3e7faf7 Improve pilot check-in and follow-up
+  workflows`; any later handoff-only commit does not change application
+  behavior.
 - `main` remains protected at `a2ba850`; `codex/mvp-next` remains ahead of it.
 - There is no authorization to merge or open a PR into `main`.
 - GitHub CI and the linked Render deployment are green for the current branch.
@@ -69,11 +69,10 @@ It may cold-start after inactivity.
 - Responsive/modal UI fixes from the August fictional worker rehearsal.
 - Render/Neon fictional-data demo and guarded fictional-data cleanup tooling.
 
-### Latest local implementation: pre-pilot workflow polish
+### Latest deployed implementation: pre-pilot workflow polish
 
 The user approved three small workflow fixes after reviewing the prepared phone
-test screens. They are implemented and tested locally, but are not pushed or
-deployed:
+test screens. They are implemented, pushed, and deployed at `3e7faf7`:
 
 - Event-day check-in defaults to **To check in**, adds **All**, retains
   **Checked in** and **Walk-ins**, and makes a typed attendee search global
@@ -89,7 +88,10 @@ deployed:
 This is frontend-only polish: there are no backend, permission, tenancy, data,
 or migration changes. Verification passed: Prettier, ESLint, all 109 Vitest
 tests, the production build, and all 24 Playwright checks across 320, 375, 430,
-and desktop viewports.
+and desktop viewports. GitHub CI run `32385692091` passed all frontend, backend,
+deployment-image, and backup-restore jobs. Render returned a healthy response
+and served the new `index-DUmJuRx3.js` bundle containing the new check-in and
+registration controls.
 
 ### Latest completed implementation: Issue #109
 
