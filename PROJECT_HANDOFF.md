@@ -35,14 +35,13 @@ ethnicity/race collection, and in-app payment processing. See
 
 Verified on 2026-08-21:
 
-- Remote and deployed `codex/mvp-next` are at `cdfbcd8`; the local branch contains
-  one additional unpushed docs-only commit from the current documentation update.
-  The latest application-code commit remains `e204ee1 Separate check-in access
-  from directory writes`, so deployed application behavior is unchanged.
+- Local and remote `codex/mvp-next` are aligned. The latest application-code
+  commit remains `e204ee1 Separate check-in access from directory writes`; later
+  commits are docs-only operating-guide updates, so deployed application
+  behavior is unchanged.
 - `main` remains protected at `a2ba850`; `codex/mvp-next` remains ahead of it.
 - There is no authorization to merge or open a PR into `main`.
-- GitHub CI for deployed HEAD `cdfbcd8` passed:
-  <https://github.com/jerex763/unity/actions/runs/32380557178>.
+- GitHub CI and the linked Render deployment are green for the current branch.
 - Render health check returned `200 {"status": "ok"}`.
 - The new authenticated check-in-person route is deployed; an unauthenticated
   request returns the expected `403`, confirming the new route is live.
