@@ -8,11 +8,14 @@ church returns `404`.
 | Resource or action | Admin | Pastor | Leader | Member |
 |---|---|---|---|---|
 | People directory API | All people in active church | All people in active church | Active members of groups led/co-led by self | Own linked Person only |
+| Create/edit Person and relationships | Allow | Allow | Deny | Deny |
 | Person CSV export | Allow | Deny | Deny | Deny |
 | Consent read/write | Allow | Allow | Deny | Deny |
-| Deactivate Person | Allow | Allow | Allow | Deny |
+| Deactivate Person | Allow | Allow | Allow only within the existing Leader scope | Deny |
 | Anonymize Person | Allow | Deny | Deny | Deny |
 | Hard-delete Person | Allow with approved reason | Deny | Deny | Deny |
+| Event create/edit/duplicate | Allow | Allow | Allow | Deny |
+| Event check-in, walk-in and check-in search | Allow | Allow | Allow | Deny |
 | Groups | All in active church | All in active church | Joined groups only | Joined groups only |
 | Follow-ups | All in active church | All in active church | Assigned to self only | None |
 | Non-confidential care | All in active church | All in active church | Assigned to self only | None |
@@ -31,6 +34,14 @@ Confidential care cases are excluded from unauthorized querysets entirely.
 Their title, details and existence must therefore be absent from API responses,
 not returned with fields masked by the frontend. The same rule applies to
 cross-church records.
+
+Event-day check-in is deliberately separate from directory writing. Leaders can
+search for an existing person for check-in, but the search response contains
+only the minimum identity, membership/registration status, and one masked
+contact hint needed to disambiguate duplicate names. It excludes anonymized,
+deactivated and inactive people. Selecting an existing person for check-in must
+not mutate that Person's profile. Creating or editing a Person or relationship
+requires the Admin/Pastor directory-write capability.
 
 CSV is a separate, higher-risk permission boundary from an ordinary API
 response. Only church admins may export person data. Every export records the

@@ -2,6 +2,11 @@
 
 Church membership + discipleship management app, built by and for our church community. Internal tool first; possible productization later.
 
+> **Starting a new work session?** Read
+> **[PROJECT_HANDOFF.md](PROJECT_HANDOFF.md)** first. It records the current
+> branch, deployed version, product decisions, open release work, safety rules,
+> Team Lead process, and subagent model-routing policy.
+
 **What it does:** a people directory, a newcomer follow-up pipeline, and event signup/check-in that replaces editing numbered lists in WhatsApp group chats.
 
 **What it deliberately does NOT do:** payments (use Tithe.ly/Pushpay links), facial recognition, message sentiment analysis, ethnicity data collection. See [docs/db-model.md](docs/db-model.md) for rationale.
