@@ -205,10 +205,12 @@ Three human testers have been identified:
 - one test follow-up worker.
 
 The three role-specific 10–15 minute phone checklists are prepared in
-[`docs/pilot-runbook.md`](docs/pilot-runbook.md). The Team Lead must deliver each
-tester's separate temporary account privately, keep all test records fictional,
-and disable/remove access and clean fictional data after the separately
-authorized run.
+[`docs/pilot-runbook.md`](docs/pilot-runbook.md), with a directly shareable
+bilingual text version in
+[`docs/pilot-phone-test-steps-2026-08-28.txt`](docs/pilot-phone-test-steps-2026-08-28.txt).
+The Team Lead must deliver each tester's separate temporary account privately,
+keep all test records fictional, and disable/remove access and clean fictional
+data after the separately authorized run.
 
 Still required before claiming the pilot gate is complete:
 
@@ -391,6 +393,8 @@ must verify teardown.
 - Feature ledger: [`docs/features.md`](docs/features.md).
 - Authorization contract: [`docs/permission-matrix.md`](docs/permission-matrix.md).
 - Pilot checklist: [`docs/pilot-runbook.md`](docs/pilot-runbook.md).
+- Shareable phone-test steps:
+  [`docs/pilot-phone-test-steps-2026-08-28.txt`](docs/pilot-phone-test-steps-2026-08-28.txt).
 - Pilot findings template: [`docs/pilot-review-2026-07.md`](docs/pilot-review-2026-07.md).
 - Demo deployment: [`docs/demo-deployment.md`](docs/demo-deployment.md).
 - Backup/restore: [`docs/backup-restore-runbook.md`](docs/backup-restore-runbook.md).

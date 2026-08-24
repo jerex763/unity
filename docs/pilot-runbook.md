@@ -12,6 +12,12 @@ temporary credentials through a direct one-to-one WhatsApp conversation. Do not
 use a WhatsApp group, forward credentials, or include credentials in the feedback
 record.
 
+A bilingual plain-text checklist that can be copied into three private tester
+messages is available at
+[`pilot-phone-test-steps-2026-08-28.txt`](pilot-phone-test-steps-2026-08-28.txt).
+Fill only its fictional test-data blanks before sharing it; never add credentials
+to the file.
+
 ## Session shape
 
 Use three separate temporary accounts and ask each worker to test on their own
