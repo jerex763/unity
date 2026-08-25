@@ -93,8 +93,10 @@ credentials or real personal data in this session.
 
 1. Sign in on the phone and confirm the active church is the fictional pilot
    church.
-2. Open the prepared event and confirm its date, registration state and roster
-   are the expected fictional records.
+2. On the prepared event card, confirm its date and registration state, then
+   tap **Registrations (number)**. Confirm the inline **Registrations** section
+   expands on the same card and contains the expected fictional records; there
+   is no separate roster page.
 3. Open People and confirm the Pastor can view and edit the prepared fictional
    Person. Do not add unplanned data.
 4. After the check-in worker completes the new-visitor path, open Follow-ups and
