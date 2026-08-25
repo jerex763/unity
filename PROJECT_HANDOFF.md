@@ -1,6 +1,6 @@
 # Unity project handoff and operating guide
 
-Last verified: **2026-08-21 (Australia/Sydney)**
+Last verified: **2026-08-25 (Australia/Sydney)**
 
 This is the first document to read when starting a new Unity chat or work
 session. It records the current state and operating rules so the team does not
@@ -33,12 +33,12 @@ ethnicity/race collection, and in-app payment processing. See
 
 ## 2. Current technical state
 
-Verified on 2026-08-21:
+Verified on 2026-08-25:
 
-- Local and remote `codex/mvp-next` are aligned. The latest deployed
-  application-code commit is `3e7faf7 Improve pilot check-in and follow-up
-  workflows`; any later handoff-only commit does not change application
-  behavior.
+- Local `codex/mvp-next` contains unpushed documentation commits on top of the
+  remote/deployed branch head `60f5bf4`. The latest deployed application-code
+  commit remains `3e7faf7 Improve pilot check-in and follow-up workflows`; the
+  later commits do not change application behavior.
 - `main` remains protected at `a2ba850`; `codex/mvp-next` remains ahead of it.
 - There is no authorization to merge or open a PR into `main`.
 - GitHub CI and the linked Render deployment are green for the current branch.
@@ -233,6 +233,15 @@ Obtain fresh authorization before creating/replacing accounts or data. A
 successful check-in worker run supplies the remaining product-acceptance
 evidence for #109; record that evidence before closing the Issue. Data/account
 cleanup remains a separate post-session authorization.
+
+The `20260814-0005` demo baseline was restored and verified on 2026-08-25 after
+separately authorized cleanup. The event-day **To check in** view contains the
+prepared registered visitor and follow-up worker, both not checked in; the
+follow-up queue is empty; the People directory contains only the registered
+visitor and three linked worker people (four total). The three temporary worker
+accounts and their role/membership links remain active. Existing audit evidence
+was preserved. Treat any changes made during the phone session as test output;
+do not reset or clean them without a new cleanup authorization.
 
 When real worker participation is needed, tell the user exactly who is needed,
 what each person tests, estimated time, account delivery method, fictional data
