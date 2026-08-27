@@ -33,15 +33,18 @@ ethnicity/race collection, and in-app payment processing. See
 
 ## 2. Current technical state
 
-Verified on 2026-08-25:
+Verified on 2026-08-27:
 
-- Local `codex/mvp-next` contains unpushed documentation commits on top of the
-  remote/deployed branch head `60f5bf4`. The latest deployed application-code
-  commit remains `3e7faf7 Improve pilot check-in and follow-up workflows`; the
-  later commits do not change application behavior.
+- Local and remote `codex/mvp-next` are synchronized. Commit `48c1705 Configure
+  Spark worker agent` added the project-scoped `spark_worker` configuration;
+  the latest application-code commit remains `3e7faf7 Improve pilot check-in
+  and follow-up workflows`, and the later commits do not change application
+  behavior.
 - `main` remains protected at `a2ba850`; `codex/mvp-next` remains ahead of it.
 - There is no authorization to merge or open a PR into `main`.
-- GitHub CI and the linked Render deployment are green for the current branch.
+- GitHub CI run `33039492213` passed all frontend, backend, deployment-image,
+  and backup-restore jobs for the Spark configuration push. The linked Render
+  deployment remains healthy.
 - Render health check returned `200 {"status": "ok"}`.
 - The new authenticated check-in-person route is deployed; an unauthenticated
   request returns the expected `403`, confirming the new route is live.
