@@ -42,6 +42,14 @@ must be corrected.
 
 ## Subagent model routing
 
+- `gpt-5.3-codex-spark`: use only when the current runtime explicitly exposes
+  it, for near-instant, low-risk, tightly scoped execution such as one granular
+  UI adjustment, a mechanical edit, or a straightforward local regression test.
+  The objective, affected scope, and cheap verification must already be clear;
+  the change must be easy to reverse and must not alter product, API, data, or
+  authorization contracts. Do not spawn a subagent when delegation overhead is
+  likely to exceed the work, and never claim Spark was used when it was not
+  available.
 - `gpt-5.6-luna`: documentation research, mechanical edits, test additions, log
   summaries, code mapping, and simple bounded checks.
 - `gpt-5.6-terra`: ordinary feature implementation and medium-complexity work.
@@ -50,4 +58,5 @@ must be corrected.
 
 Use the lowest-cost model that is appropriate for the risk. A task involving
 tenant isolation, lifecycle state, sensitive data, concurrency, or migrations is
-not a Luna task even if the patch appears small.
+not a Spark or Luna task even if the patch appears small. The main agent retains
+requirements, routing, risk judgment, diff/test review, and final delivery.

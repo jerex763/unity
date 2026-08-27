@@ -1,6 +1,6 @@
 # Unity project handoff and operating guide
 
-Last verified: **2026-08-25 (Australia/Sydney)**
+Last verified: **2026-08-27 (Australia/Sydney)**
 
 This is the first document to read when starting a new Unity chat or work
 session. It records the current state and operating rules so the team does not
@@ -319,11 +319,27 @@ Use subagents only when the current runtime permits it and the user/project
 instructions call for delegation. Keep tasks bounded and avoid simultaneous
 write-heavy agents in the shared worktree.
 
+- **Spark (optional fast lane):** use `gpt-5.3-codex-spark` only when the
+  runtime explicitly offers it. It is for near-instant execution of a fully
+  specified, low-risk, easily reversible task with cheap local verification,
+  such as one granular UI adjustment, a mechanical edit, or a straightforward
+  regression test. Do not use it for ambiguous requirements, product or
+  architecture choices, API/data/permission contracts, cross-module changes,
+  unknown-cause bugs, security, migrations, concurrency, live data, deployment,
+  destructive work, or final review. Never claim a Spark handoff if the runtime
+  could not select that model.
 - **Luna:** documentation research, code mapping, mechanical edits, test
   additions, log summarization, and simple checks.
 - **Terra:** normal feature implementation and medium-complexity changes.
 - **Sol:** architecture, permissions/privacy, concurrency, migrations, complex
   debugging, and final independent review.
+
+Do not create a Spark subagent solely because a task is small; for a five-minute
+change, delegation overhead may exceed the work. When delegation is worthwhile,
+the main agent defines acceptance criteria first. Only one agent may write to an
+overlapping file/scope at a time; independent writers require isolated scopes or
+worktrees. The main agent inspects the diff, targeted verification, and residual
+risk before delivery.
 
 For business-code changes, prefer an implementation agent plus a different
 independent reviewer. The Team Lead owns requirements, scope, evidence, Git,
