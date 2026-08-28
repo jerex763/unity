@@ -32,6 +32,12 @@ must be corrected.
   gate defined here or in the handoff.
 - Keep each task to the smallest reliable change. Record adjacent ideas instead
   of silently expanding scope.
+- Before implementing a meaningful UI redesign, create a reviewable visual mock
+  at the target viewport sizes (Figma or a local equivalent) and obtain explicit
+  user approval. Include the primary interaction states when layout changes
+  after selection, editing, saving, loading, or errors; a text-only plan is not
+  sufficient. Only a truly granular mechanical style fix may skip the mock, and
+  the reason must be stated before editing.
 - When multi-agent work is allowed, keep implementation and final review
   independent. The implementing agent must not be the only reviewer.
 - After feature, release, deployment, acceptance, permission, architecture, or

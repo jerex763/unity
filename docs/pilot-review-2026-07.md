@@ -111,9 +111,9 @@ new modules. Keep QR check-in and Groups & Care in the later backlog. Any AI
 proposal requires a separate evaluation set, human-review workflow, permission
 analysis, and safe fallback.
 
-Issue #110 now tracks that UI work. Its approved Batch 1 is implemented locally
-and covers mobile church/role context, dashboard touch targets, person-row and
-profile-edit discoverability, post-save feedback/focus, Follow-up dialog entry
-focus, saved Outcome visibility and `DD/MM/YYYY` display dates. Public-link
-discoverability, full-screen registration/follow-up mobile flows and search
-clarity remain later scope. The local batch is not yet pushed or deployed.
+Issue #110 now tracks that UI work. Its approved Batch 1 is reviewed, tested and
+deployed at `2dc7d20`; it covers mobile church/role context, dashboard touch
+targets, person-row and profile-edit discoverability, post-save feedback/focus,
+Follow-up dialog entry focus, saved Outcome visibility and `DD/MM/YYYY` display
+dates. Public-link discoverability, full-screen registration/follow-up mobile
+flows and search clarity remain later scope.

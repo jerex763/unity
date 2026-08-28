@@ -35,22 +35,20 @@ ethnicity/race collection, and in-app payment processing. See
 
 Verified on 2026-08-28:
 
-- Local `HEAD` and remote `codex/mvp-next` are synchronized at `d797b4b
-  Reconcile handoff after Spark agent push`; the working tree contains the
-  reviewed-in-progress Issue #110 Batch 1 UI changes and documentation but has
-  not been committed or pushed. Commit `48c1705 Configure Spark worker agent`
-  added the project-scoped `spark_worker` configuration;
-  the latest application-code commit remains `3e7faf7 Improve pilot check-in
-  and follow-up workflows`, and the later commits do not change application
-  behavior.
+- The latest application-behavior commit on `codex/mvp-next` is `2dc7d20
+  Improve mobile role workflows`. The subsequent documentation-only
+  reconciliation records deployment evidence and the mandatory visual-mock
+  approval gate; it does not change application behavior. The only expected
+  untracked path is `output/`.
 - `main` remains protected at `a2ba850`; `codex/mvp-next` remains ahead of it.
 - There is no authorization to merge or open a PR into `main`.
-- GitHub CI run `33039492213` passed all frontend, backend, deployment-image,
-  and backup-restore jobs for the Spark configuration push. The linked Render
-  deployment remains healthy.
+- GitHub CI run `33147843372` passed frontend, backend, deployment-image and
+  backup-restore jobs for Issue #110 Batch 1.
 - Render health check returned `200 {"status": "ok"}`.
-- The new authenticated check-in-person route is deployed; an unauthenticated
-  request returns the expected `403`, confirming the new route is live.
+- Render deployment `dep-da8ikdm417fc73ddk0vg` succeeded. Health returned
+  `200 {"status":"ok"}` and the demo serves `index-Dzur2OWn.js` plus
+  `index-Bl8U4DgH.css`; the deployed JavaScript contains the new profile,
+  Engagement and save-confirmation signals.
 - The only expected untracked path is `output/`. It belongs to the user and must
   remain untouched.
 - Project-scoped skill `.codex/skills/redesign-existing-projects/SKILL.md` is
@@ -62,8 +60,7 @@ Verified on 2026-08-28:
   [`docs/ui-audit-2026-08-28.md`](docs/ui-audit-2026-08-28.md). It recommends a
   three-batch, dependency-free redesign beginning with mobile church context,
   explicit task actions and visible post-save outcomes. The user approved Batch
-  1 and it is implemented locally under Issue #110; it is not yet committed,
-  pushed, deployed, or accepted on the live demo.
+  1; it is reviewed, tested, pushed and deployed under Issue #110.
 
 The Render service automatically deploys `codex/mvp-next` after linked GitHub
 checks pass. The demo is temporary evaluation infrastructure, not production.
@@ -110,7 +107,7 @@ deployment-image, and backup-restore jobs. Render returned a healthy response
 and served the new `index-DUmJuRx3.js` bundle containing the new check-in and
 registration controls.
 
-### Current local implementation: Issue #110 Batch 1
+### Latest deployed implementation: Issue #110 Batch 1
 
 Issue: <https://github.com/jerex763/unity/issues/110>
 
@@ -126,13 +123,15 @@ The first evidence-backed mobile UI batch is implemented in the working tree:
 - Follow-up Update initially focuses its heading instead of Stage, explains
   Engagement and Outcome, and displays a saved Outcome in task detail.
 
-This is a frontend-only change with no API, permission, tenancy, token, data, or
-migration changes. Local verification passed Prettier, ESLint, all 109 Vitest
-tests, the production build, and all 35 Playwright checks across 320, 375, 390,
-430 and desktop. The browser suite includes visible long-context and
-edit-entry/post-save sticky-header boundary assertions. Independent final review
-returned **ACCEPT** after three passes and two rounds of viewport-boundary fixes.
-Commit, push, CI and live-demo acceptance remain pending.
+This is a frontend-only change at `2dc7d20` with no API, permission, tenancy,
+token, data, or migration changes. Prettier, ESLint, all 109 Vitest tests, the
+production build, and all 35 Playwright checks across 320, 375, 390, 430 and
+desktop passed locally and in CI. The browser suite includes visible
+long-context and edit-entry/post-save sticky-header boundary assertions.
+Independent final review returned **ACCEPT** after three passes and two rounds
+of viewport-boundary fixes. CI run `33147843372` and Render deployment
+`dep-da8ikdm417fc73ddk0vg` passed; feature-specific bundle signals were verified
+on the live demo.
 
 ### Latest completed implementation: Issue #109
 
@@ -355,7 +354,12 @@ The user expects a Team Lead, not an order-taking code generator.
 3. Reject or reshape proposals that create ambiguity, duplicate concepts, unsafe
    identity matching, or disproportionate scope.
 4. Define acceptance criteria and out-of-scope items before implementation.
-5. For meaningful UI redesign, show the intended UI/flow for approval first.
+5. For meaningful UI redesign, create a reviewable visual mock before editing
+   code. Use Figma when available or a local equivalent, show the actual target
+   mobile/desktop widths and the primary interaction states, and obtain explicit
+   user approval. A text-only description is not sufficient. Only a truly
+   granular mechanical style fix may skip this gate, with the reason stated
+   before implementation.
 
 ### Multi-agent routing
 
