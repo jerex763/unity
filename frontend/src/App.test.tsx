@@ -156,7 +156,7 @@ describe('App authentication flow', () => {
         status: 'in_progress',
         assigned_to: 1,
         assigned_to_name: 'alex',
-        due_at: null,
+        due_at: '2026-07-20',
         closed_at: null,
         outcome: null,
         created_at: '2026-07-17T02:00:00Z',
@@ -176,7 +176,7 @@ describe('App authentication flow', () => {
     ).toBeVisible()
     expect(await screen.findByText('Noah Park')).toBeVisible()
     expect(screen.getByText('Ava Singh')).toBeVisible()
-    expect(screen.getByText('No due date')).toBeVisible()
+    expect(screen.getByText('Due 20/07/2026')).toBeVisible()
     expect(screen.getAllByText('Due today')).toHaveLength(2)
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/follow-ups/mine/')
   })
@@ -430,13 +430,21 @@ describe('Person profile', () => {
     expect(screen.getByText('Connected with Friday Community.')).toBeVisible()
 
     await user.click(screen.getByRole('tab', { name: 'Overview' }))
-    await user.click(screen.getByRole('button', { name: 'Edit overview' }))
+    await user.click(screen.getByRole('button', { name: 'Edit person' }))
     const preferredName = screen.getByLabelText('Preferred name')
     await user.clear(preferredName)
     await user.type(preferredName, 'Mia')
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
     expect(await screen.findByText('Preferred name: Mia')).toBeVisible()
+    const saveNotice = screen.getByText('Person updated.')
+    expect(saveNotice).toBeVisible()
+    expect(saveNotice.closest('.profile-identity')).not.toBeNull()
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Mia Chen', level: 1 }),
+      ).toHaveFocus(),
+    )
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/people/1/')
     expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({ method: 'PATCH' })
@@ -459,7 +467,7 @@ describe('Person profile', () => {
       await screen.findByRole('heading', { name: 'Mia Chen', level: 1 }),
     ).toBeVisible()
     expect(
-      screen.queryByRole('button', { name: 'Edit overview' }),
+      screen.queryByRole('button', { name: 'Edit person' }),
     ).not.toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'Relationships' }))
     expect(screen.queryByText('Add relationship')).not.toBeInTheDocument()
@@ -748,6 +756,7 @@ describe('Follow-up queue', () => {
       engagement: 'likely',
       assigned_to: 1,
       assigned_to_name: 'alex',
+      outcome: 'Connected with the Friday group.',
     }
     const fetchMock = vi
       .fn()
@@ -792,7 +801,9 @@ describe('Follow-up queue', () => {
       name: 'Update Mia Chen',
     })
     expect(updateDialog).toBeVisible()
-    expect(screen.getByLabelText('Stage')).toHaveFocus()
+    expect(
+      screen.getByRole('heading', { name: 'Update Mia Chen', level: 2 }),
+    ).toHaveFocus()
     await user.keyboard('{Escape}')
     expect(
       screen.queryByRole('dialog', { name: 'Update Mia Chen' }),
@@ -806,10 +817,16 @@ describe('Follow-up queue', () => {
     await user.click(screen.getByRole('button', { name: 'Save update' }))
 
     expect(await screen.findByText('Likely')).toBeVisible()
+    expect(screen.getByText('Follow-up updated.')).toBeVisible()
+    expect(screen.getByText('Connected with the Friday group.')).toBeVisible()
     expect(
       screen.queryByRole('dialog', { name: 'Update Mia Chen' }),
     ).not.toBeInTheDocument()
-    expect(updateButton).toHaveFocus()
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Mia Chen', level: 2 }),
+      ).toHaveFocus(),
+    )
     expect(fetchMock.mock.calls[4]?.[0]).toBe('/api/follow-ups/71/')
     expect(fetchMock.mock.calls[4]?.[1]).toMatchObject({ method: 'PATCH' })
   })

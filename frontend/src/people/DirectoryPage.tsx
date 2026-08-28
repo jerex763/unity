@@ -251,54 +251,55 @@ export function DirectoryPage() {
         <section className="directory-list" aria-label={t('directory.results')}>
           {visiblePeople.map((person) => (
             <article className="person-row" key={person.id}>
-              <div className="person-avatar" aria-hidden="true">
-                {person.photo_url ? (
-                  <img alt="" src={person.photo_url} />
-                ) : (
-                  initials(person)
-                )}
-              </div>
-              <div className="person-summary">
-                <div className="person-name-line">
-                  <h2>
-                    <Link
-                      aria-label={t('directory.viewProfile', {
-                        name: person.full_name,
-                      })}
-                      className="person-profile-link"
-                      to={`/people/${person.id}`}
+              <Link
+                aria-label={t('directory.viewProfile', {
+                  name: person.full_name,
+                })}
+                className="person-card-link"
+                to={`/people/${person.id}`}
+              >
+                <div className="person-avatar" aria-hidden="true">
+                  {person.photo_url ? (
+                    <img alt="" src={person.photo_url} />
+                  ) : (
+                    initials(person)
+                  )}
+                </div>
+                <div className="person-summary">
+                  <div className="person-name-line">
+                    <h2>{person.full_name}</h2>
+                    <span
+                      className={`status-chip status-${person.membership_status}`}
                     >
-                      {person.full_name}
-                    </Link>
-                  </h2>
-                  <span
-                    className={`status-chip status-${person.membership_status}`}
-                  >
-                    {t(`directory.statuses.${person.membership_status}`)}
+                      {t(`directory.statuses.${person.membership_status}`)}
+                    </span>
+                  </div>
+                  {person.preferred_name ? (
+                    <p className="person-preferred-name">
+                      {t('directory.preferredName', {
+                        name: person.preferred_name,
+                      })}
+                    </p>
+                  ) : null}
+                  <p>
+                    {[person.university, person.suburb]
+                      .filter(Boolean)
+                      .join(' · ') || t('directory.noContext')}
+                  </p>
+                  {person.groups.length > 0 ? (
+                    <div className="person-groups">
+                      {person.groups.slice(0, 2).map((group) => (
+                        <span className="group-chip" key={group.id}>
+                          {group.name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  <span className="person-view-hint">
+                    {t('directory.viewProfileAction')} →
                   </span>
                 </div>
-                {person.preferred_name ? (
-                  <p className="person-preferred-name">
-                    {t('directory.preferredName', {
-                      name: person.preferred_name,
-                    })}
-                  </p>
-                ) : null}
-                <p>
-                  {[person.university, person.suburb]
-                    .filter(Boolean)
-                    .join(' · ') || t('directory.noContext')}
-                </p>
-                {person.groups.length > 0 ? (
-                  <div className="person-groups">
-                    {person.groups.slice(0, 2).map((group) => (
-                      <span className="group-chip" key={group.id}>
-                        {group.name}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+              </Link>
               <div className="person-actions">
                 <ContactActions
                   email={person.email}

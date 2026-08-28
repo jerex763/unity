@@ -1,6 +1,6 @@
 # Unity project handoff and operating guide
 
-Last verified: **2026-08-27 (Australia/Sydney)**
+Last verified: **2026-08-28 (Australia/Sydney)**
 
 This is the first document to read when starting a new Unity chat or work
 session. It records the current state and operating rules so the team does not
@@ -33,10 +33,13 @@ ethnicity/race collection, and in-app payment processing. See
 
 ## 2. Current technical state
 
-Verified on 2026-08-27:
+Verified on 2026-08-28:
 
-- Local and remote `codex/mvp-next` are synchronized. Commit `48c1705 Configure
-  Spark worker agent` added the project-scoped `spark_worker` configuration;
+- Local `HEAD` and remote `codex/mvp-next` are synchronized at `d797b4b
+  Reconcile handoff after Spark agent push`; the working tree contains the
+  reviewed-in-progress Issue #110 Batch 1 UI changes and documentation but has
+  not been committed or pushed. Commit `48c1705 Configure Spark worker agent`
+  added the project-scoped `spark_worker` configuration;
   the latest application-code commit remains `3e7faf7 Improve pilot check-in
   and follow-up workflows`, and the later commits do not change application
   behavior.
@@ -50,6 +53,17 @@ Verified on 2026-08-27:
   request returns the expected `403`, confirming the new route is live.
 - The only expected untracked path is `output/`. It belongs to the user and must
   remain untouched.
+- Project-scoped skill `.codex/skills/redesign-existing-projects/SKILL.md` is
+  installed for the next UI audit. Use its scan/diagnose/focused-fix workflow
+  selectively; Unity is an operational mobile web app, so marketing-page motion,
+  decorative imagery and framework/library changes are out of scope unless the
+  user separately approves them.
+- The resulting read-only audit is recorded in
+  [`docs/ui-audit-2026-08-28.md`](docs/ui-audit-2026-08-28.md). It recommends a
+  three-batch, dependency-free redesign beginning with mobile church context,
+  explicit task actions and visible post-save outcomes. The user approved Batch
+  1 and it is implemented locally under Issue #110; it is not yet committed,
+  pushed, deployed, or accepted on the live demo.
 
 The Render service automatically deploys `codex/mvp-next` after linked GitHub
 checks pass. The demo is temporary evaluation infrastructure, not production.
@@ -95,6 +109,30 @@ and desktop viewports. GitHub CI run `32385692091` passed all frontend, backend,
 deployment-image, and backup-restore jobs. Render returned a healthy response
 and served the new `index-DUmJuRx3.js` bundle containing the new check-in and
 registration controls.
+
+### Current local implementation: Issue #110 Batch 1
+
+Issue: <https://github.com/jerex763/unity/issues/110>
+
+The first evidence-backed mobile UI batch is implemented in the working tree:
+
+- every mobile route shows active church and role in the sticky shell;
+- dashboard follow-up actions are 44px button targets and due dates are more
+  prominent with consistent `DD/MM/YYYY` summaries;
+- a person's full summary row opens the profile, `Edit person` is in the profile
+  header, and read-only contact values no longer look like form inputs;
+- profile and follow-up saves show confirmation, return the viewport to the
+  updated summary, and move keyboard focus to the relevant heading;
+- Follow-up Update initially focuses its heading instead of Stage, explains
+  Engagement and Outcome, and displays a saved Outcome in task detail.
+
+This is a frontend-only change with no API, permission, tenancy, token, data, or
+migration changes. Local verification passed Prettier, ESLint, all 109 Vitest
+tests, the production build, and all 35 Playwright checks across 320, 375, 390,
+430 and desktop. The browser suite includes visible long-context and
+edit-entry/post-save sticky-header boundary assertions. Independent final review
+returned **ACCEPT** after three passes and two rounds of viewport-boundary fixes.
+Commit, push, CI and live-demo acceptance remain pending.
 
 ### Latest completed implementation: Issue #109
 
@@ -201,41 +239,44 @@ or review task and explicit regression tests.
 The MVP code is substantial, but Unity is **not production-ready**. Issue #32,
 the controlled pilot release gate, is still open.
 
-Three human testers have been identified:
+Three human testers completed the controlled phone session:
 
 - one test Pastor;
 - one test check-in worker;
 - one test follow-up worker.
 
-The three role-specific 10–15 minute phone checklists are prepared in
+The three role-specific 10–15 minute phone checklists are recorded in
 [`docs/pilot-runbook.md`](docs/pilot-runbook.md), with a directly shareable
 bilingual text version in
 [`docs/pilot-phone-test-steps-2026-08-28.txt`](docs/pilot-phone-test-steps-2026-08-28.txt).
-The Team Lead must deliver each tester's separate temporary account privately,
-keep all test records fictional, and disable/remove access and clean fictional
-data after the separately authorized run.
+All three workers reported independent completion with fictional data. Their
+de-identified usability findings and the Team Lead's isolated supplemental
+public-registration review are recorded in
+[`docs/pilot-review-2026-07.md`](docs/pilot-review-2026-07.md). The live public
+link was not rotated because doing so would invalidate its existing URL.
 
 Still required before claiming the pilot gate is complete:
 
-1. Run a controlled end-to-end activity with the three workers on their phones.
-2. Use fictional/minimum-necessary participant data unless a later privacy gate
-   explicitly authorizes real data.
-3. Capture workflow feedback without personal or pastoral content.
-4. Recheck role boundaries and cross-church/confidential visibility.
-5. Restore an encrypted backup into an isolated non-production database and
+1. Record device/browser and approximate-duration details if the workers can
+   provide them without including personal or pastoral content.
+2. Recheck role boundaries and cross-church/confidential visibility against the
+   completed session evidence.
+3. Disable/remove temporary test access and clean fictional session data only
+   after separate authorization.
+4. Restore an encrypted backup into an isolated non-production database and
    verify aggregate counts and Django checks.
-6. Complete [`docs/pilot-review-2026-07.md`](docs/pilot-review-2026-07.md).
-7. Choose the next product work from observed evidence rather than assumptions.
+5. Complete the remaining controlled-activity fields in
+   [`docs/pilot-review-2026-07.md`](docs/pilot-review-2026-07.md).
+6. Create a scoped mobile-usability issue from the repeated findings before
+   implementing fixes.
 
-The highest-priority next action is the three-worker phone session, not another
-feature. It is to be completed by **Friday 2026-08-28 (Australia/Sydney)**. The
-user will deliver each worker's distinct temporary account through a direct
-one-to-one WhatsApp conversation. Before the session, revalidate the already
-prepared temporary accounts and RUN_ID-tagged fictional dataset read-only.
-Obtain fresh authorization before creating/replacing accounts or data. A
-successful check-in worker run supplies the remaining product-acceptance
-evidence for #109; record that evidence before closing the Issue. Data/account
-cleanup remains a separate post-session authorization.
+The highest-priority product action is now a tightly scoped mobile-usability
+batch based on repeated evidence, not additional registration fields or a new
+module. Account deactivation, fictional-data cleanup, public-link rotation and
+backup restore remain separate operational actions requiring their documented
+authorization. The completed check-in worker run supplies the remaining
+product-acceptance evidence for #109; record that evidence before closing the
+Issue. Data/account cleanup remains a separate post-session authorization.
 
 The `20260814-0005` demo baseline was restored and verified on 2026-08-25 after
 separately authorized cleanup. The event-day **To check in** view contains the

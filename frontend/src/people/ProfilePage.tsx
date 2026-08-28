@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 
@@ -79,6 +79,7 @@ export function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [fields, setFields] = useState<EditFields | null>(null)
   const [saveError, setSaveError] = useState('')
+  const [saveNotice, setSaveNotice] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [people, setPeople] = useState<DirectoryPerson[]>([])
   const [relationshipPerson, setRelationshipPerson] = useState('')
@@ -86,6 +87,18 @@ export function ProfilePage() {
     useState<PersonRelationship['kind']>('friend')
   const [relationshipError, setRelationshipError] = useState('')
   const [isSavingRelationship, setIsSavingRelationship] = useState(false)
+  const profileHeadingRef = useRef<HTMLHeadingElement>(null)
+
+  function beginEdit() {
+    setActiveTab('overview')
+    setSaveNotice('')
+    setIsEditing(true)
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById('profile-edit-form')
+        ?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   useEffect(() => {
     let active = true
@@ -109,6 +122,15 @@ export function ProfilePage() {
       active = false
     }
   }, [personId])
+
+  useEffect(() => {
+    if (!saveNotice) return
+    profileHeadingRef.current?.scrollIntoView?.({
+      behavior: 'smooth',
+      block: 'start',
+    })
+    profileHeadingRef.current?.focus()
+  }, [saveNotice])
 
   const person = state.person
   const canEdit = ['admin', 'pastor'].includes(session?.membership.role ?? '')
@@ -153,6 +175,7 @@ export function ProfilePage() {
       setState({ status: 'ready', person: updated })
       setFields(editFields(updated))
       setIsEditing(false)
+      setSaveNotice(t('profile.saved'))
     } catch {
       setSaveError(t('profile.saveError'))
     } finally {
@@ -300,7 +323,14 @@ export function ProfilePage() {
         </div>
         <div className="profile-identity">
           <p className="eyebrow">{t('profile.eyebrow')}</p>
-          <h1>{person.full_name}</h1>
+          <h1 ref={profileHeadingRef} tabIndex={-1}>
+            {person.full_name}
+          </h1>
+          {saveNotice ? (
+            <p className="form-success profile-save-notice" role="status">
+              {saveNotice}
+            </p>
+          ) : null}
           {person.preferred_name ? (
             <p className="profile-preferred-name">
               {t('profile.preferredName', { name: person.preferred_name })}
@@ -311,6 +341,15 @@ export function ProfilePage() {
               {t(`directory.statuses.${person.membership_status}`)}
             </span>
           </div>
+          {canEdit && !isEditing ? (
+            <button
+              className="secondary-button profile-edit-button"
+              onClick={beginEdit}
+              type="button"
+            >
+              {t('profile.edit')}
+            </button>
+          ) : null}
         </div>
         <div className="profile-contact-actions">
           <ContactActions
@@ -349,19 +388,14 @@ export function ProfilePage() {
               <p className="eyebrow">{t('profile.overviewEyebrow')}</p>
               <h2 id="profile-overview">{t('profile.overviewTitle')}</h2>
             </div>
-            {canEdit && !isEditing ? (
-              <button
-                className="secondary-button"
-                onClick={() => setIsEditing(true)}
-                type="button"
-              >
-                {t('profile.edit')}
-              </button>
-            ) : null}
           </div>
 
           {isEditing ? (
-            <form className="profile-form" onSubmit={save}>
+            <form
+              className="profile-form"
+              id="profile-edit-form"
+              onSubmit={save}
+            >
               <label>
                 <span>{t('profile.fields.fullName')}</span>
                 <input

@@ -189,3 +189,55 @@ test('contact handoffs remain ordered and usable across all surfaces at the conf
   ).toBeVisible()
   await expectContactOrderAndTargets(page)
 })
+
+test('profile save returns to a visible updated summary at the configured viewport', async ({
+  page,
+}) => {
+  await page.route('**/api/auth/session/', (route) =>
+    route.fulfill({
+      json: {
+        ...session,
+        membership: { ...session.membership, role: 'pastor' },
+      },
+    }),
+  )
+
+  await page.goto('/people/1')
+  await page.getByRole('button', { name: 'Edit person' }).click()
+  const fullNameInput = page.getByLabel('Full name')
+  await expect(fullNameInput).toBeVisible()
+  await expect
+    .poll(async () => {
+      const [inputBox, topbarBox] = await Promise.all([
+        fullNameInput.boundingBox(),
+        page.locator('.topbar').boundingBox(),
+      ])
+      return Boolean(
+        inputBox && topbarBox && inputBox.y >= topbarBox.y + topbarBox.height,
+      )
+    })
+    .toBe(true)
+  await page.getByRole('button', { name: 'Save changes' }).click()
+
+  const heading = page.getByRole('heading', {
+    name: 'Fictional Mia Chen',
+    level: 1,
+  })
+  const notice = page.getByRole('status')
+  await expect(heading).toBeFocused()
+  await expect(notice).toHaveText('Person updated.')
+
+  const [headingBox, noticeBox, topbarBox] = await Promise.all([
+    heading.boundingBox(),
+    notice.boundingBox(),
+    page.locator('.topbar').boundingBox(),
+  ])
+  expect(headingBox).not.toBeNull()
+  expect(noticeBox).not.toBeNull()
+  expect(topbarBox).not.toBeNull()
+  expect(headingBox!.y).toBeGreaterThanOrEqual(topbarBox!.y + topbarBox!.height)
+  expect(noticeBox!.y + noticeBox!.height).toBeLessThanOrEqual(
+    page.viewportSize()!.height,
+  )
+  await expectNoHorizontalOverflow(page)
+})

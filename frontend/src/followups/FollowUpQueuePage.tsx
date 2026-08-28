@@ -57,6 +57,16 @@ function editFields(item: FollowUp): EditFields {
   }
 }
 
+function formatDisplayDate(value: string | null) {
+  if (!value) return null
+  return new Intl.DateTimeFormat('en-AU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T00:00:00Z`))
+}
+
 export function FollowUpQueuePage() {
   const { t } = useTranslation()
   const { session } = useAuth()
@@ -72,6 +82,7 @@ export function FollowUpQueuePage() {
   const [fields, setFields] = useState<EditFields | null>(null)
   const [fieldErrors, setFieldErrors] = useState<EditFieldErrors>({})
   const [saveError, setSaveError] = useState('')
+  const [saveNotice, setSaveNotice] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [interactionKind, setInteractionKind] =
@@ -82,11 +93,12 @@ export function FollowUpQueuePage() {
   const [interactionError, setInteractionError] = useState('')
   const selectionGeneration = useRef(0)
   const interactionRequestGeneration = useRef(0)
-  const statusInputRef = useRef<HTMLSelectElement>(null)
+  const updateTitleRef = useRef<HTMLHeadingElement>(null)
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null)
   const updateDialogRef = useModalDialog<HTMLElement>(
     isEditing,
     closeEdit,
-    statusInputRef,
+    updateTitleRef,
   )
 
   function openEdit() {
@@ -94,6 +106,7 @@ export function FollowUpQueuePage() {
     setFields(editFields(editing))
     setFieldErrors({})
     setSaveError('')
+    setSaveNotice('')
     setIsEditing(true)
   }
 
@@ -131,6 +144,7 @@ export function FollowUpQueuePage() {
       setIsSaving(false)
       setFieldErrors({})
       setSaveError('')
+      setSaveNotice('')
       if (!item) {
         interactionRequestGeneration.current += 1
         setEditing(null)
@@ -169,6 +183,15 @@ export function FollowUpQueuePage() {
       active = false
     }
   }, [t])
+
+  useEffect(() => {
+    if (!saveNotice) return
+    detailHeadingRef.current?.scrollIntoView?.({
+      behavior: 'smooth',
+      block: 'start',
+    })
+    detailHeadingRef.current?.focus()
+  }, [saveNotice])
 
   function beginEdit(item: FollowUp) {
     selectFollowUp(item)
@@ -271,6 +294,7 @@ export function FollowUpQueuePage() {
         setEditing(updated)
         setFields(editFields(updated))
         setIsEditing(false)
+        setSaveNotice(t('followUps.saved'))
       }
     } catch (error) {
       if (!isCurrentSelection()) return
@@ -402,7 +426,7 @@ export function FollowUpQueuePage() {
                 <p>
                   {t(`followUps.statuses.${item.status}`)} ·{' '}
                   {item.assigned_to_name ?? t('followUps.unassigned')} ·{' '}
-                  {item.due_at ?? t('followUps.notSet')}
+                  {formatDisplayDate(item.due_at) ?? t('followUps.notSet')}
                 </p>
                 <div
                   className="follow-up-attention"
@@ -453,7 +477,9 @@ export function FollowUpQueuePage() {
             <div className="profile-panel-heading">
               <div>
                 <p className="eyebrow">{t('followUps.editorEyebrow')}</p>
-                <h2 id="follow-up-editor">{editing.person.full_name}</h2>
+                <h2 id="follow-up-editor" ref={detailHeadingRef} tabIndex={-1}>
+                  {editing.person.full_name}
+                </h2>
               </div>
               <button className="text-button" onClick={openEdit} type="button">
                 {t('followUps.update')}
@@ -466,6 +492,11 @@ export function FollowUpQueuePage() {
                   t('followUps.attention.defaultAction')}
               </strong>
             </p>
+            {saveNotice ? (
+              <p className="form-success follow-up-save-notice" role="status">
+                {saveNotice}
+              </p>
+            ) : null}
             <dl className="follow-up-detail-summary">
               <div>
                 <dt>{t('followUps.status')}</dt>
@@ -477,8 +508,16 @@ export function FollowUpQueuePage() {
               </div>
               <div>
                 <dt>{t('followUps.due')}</dt>
-                <dd>{editing.due_at ?? t('followUps.notSet')}</dd>
+                <dd>
+                  {formatDisplayDate(editing.due_at) ?? t('followUps.notSet')}
+                </dd>
               </div>
+              {editing.outcome ? (
+                <div className="follow-up-outcome-summary">
+                  <dt>{t('followUps.outcome')}</dt>
+                  <dd>{editing.outcome}</dd>
+                </div>
+              ) : null}
             </dl>
             <ContactActions
               email={editing.person.email}
@@ -502,7 +541,11 @@ export function FollowUpQueuePage() {
                   <div className="profile-panel-heading">
                     <div>
                       <p className="eyebrow">{t('followUps.editorEyebrow')}</p>
-                      <h2 id="follow-up-update-title">
+                      <h2
+                        id="follow-up-update-title"
+                        ref={updateTitleRef}
+                        tabIndex={-1}
+                      >
                         {t('followUps.editorTitle', {
                           name: editing.person.full_name,
                         })}
@@ -525,7 +568,6 @@ export function FollowUpQueuePage() {
                         onChange={(event) =>
                           update('status', event.target.value as FollowUpStatus)
                         }
-                        ref={statusInputRef}
                         value={fields.status}
                       >
                         {statuses.map((status) => (
@@ -537,7 +579,11 @@ export function FollowUpQueuePage() {
                     </label>
                     <label>
                       <span>{t('followUps.engagementLabel')}</span>
+                      <small className="field-help">
+                        {t('followUps.engagementHelp')}
+                      </small>
                       <select
+                        aria-label={t('followUps.engagementLabel')}
                         onChange={(event) =>
                           update(
                             'engagement',
@@ -706,6 +752,9 @@ export function FollowUpQueuePage() {
                     ) : null}
                     <label className="wide-field">
                       <span>{t('followUps.outcome')}</span>
+                      <small className="field-help">
+                        {t('followUps.outcomeHelp')}
+                      </small>
                       <textarea
                         aria-label={t('followUps.outcome')}
                         aria-describedby={

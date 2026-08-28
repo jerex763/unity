@@ -248,6 +248,35 @@ a {
   min-width: 0;
 }
 
+.brand-context {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.mobile-account-context {
+  display: flex;
+  max-width: min(60vw, 18rem);
+  align-items: baseline;
+  gap: 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.mobile-account-church {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-account-role {
+  flex: 0 0 auto;
+}
+
 .account-block {
   display: flex;
   align-items: center;
@@ -360,12 +389,13 @@ a {
 
 .due-chip {
   width: fit-content;
-  padding: 0.3rem 0.6rem;
+  padding: 0.5rem 0.7rem;
   border-radius: var(--radius-chip);
   color: var(--color-primary-strong);
   background: var(--color-primary-soft);
-  font-size: 0.75rem;
-  font-weight: 750;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
 }
 
 .due-chip.overdue {
@@ -376,8 +406,20 @@ a {
 .my-follow-up-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.85rem;
+  gap: 0.5rem;
   font-weight: 700;
+}
+
+.dashboard-follow-up-action {
+  display: inline-flex;
+  width: auto;
+  min-height: 2.75rem;
+  flex: 1 1 9rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  text-decoration: none;
 }
 
 .dashboard-card {
@@ -612,6 +654,7 @@ a {
 }
 
 .person-row {
+  position: relative;
   display: grid;
   min-width: 0;
   align-items: center;
@@ -622,6 +665,30 @@ a {
   background: var(--color-card);
   box-shadow: var(--shadow-card);
   grid-template-columns: auto minmax(0, 1fr);
+}
+
+.person-card-link {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  gap: 0.85rem;
+  border-radius: 0.85rem;
+  color: inherit;
+  grid-column: 1 / -1;
+  grid-template-columns: auto minmax(0, 1fr);
+  text-decoration: none;
+}
+
+.person-card-link:hover {
+  background: var(--color-primary-soft);
+}
+
+.person-view-hint {
+  display: inline-block;
+  margin-top: 0.65rem;
+  color: var(--color-primary-strong);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .person-avatar {
@@ -814,15 +881,19 @@ button.contact-link.secondary {
   width: 100%;
   min-width: 0;
   padding: 0.45rem 0.55rem;
-  border: 1px solid var(--color-border);
+  border: 0;
   border-radius: 0.55rem;
   color: var(--color-text-muted);
-  background: var(--color-surface);
+  background: transparent;
   font: inherit;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   grid-column: 2;
   line-height: 1.35;
   resize: none;
+}
+
+.contact-value-copy:focus {
+  background: var(--color-primary-soft);
 }
 
 .contact-copy-feedback {
@@ -1000,6 +1071,24 @@ button.contact-link.secondary {
   font-weight: 800;
 }
 
+.profile-edit-button {
+  width: 100%;
+  margin-top: 0.9rem;
+}
+
+.profile-save-notice,
+.follow-up-save-notice {
+  margin-bottom: 1rem;
+}
+
+.profile-identity h1 {
+  scroll-margin-top: 6rem;
+}
+
+.profile-save-notice {
+  margin: 0.65rem 0 0;
+}
+
 .profile-contact-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1117,6 +1206,7 @@ button.contact-link.secondary {
 .profile-form {
   display: grid;
   gap: 1rem;
+  scroll-margin-top: 6rem;
 }
 
 .profile-form label {
@@ -2209,6 +2299,24 @@ button.contact-link.secondary {
   overflow-wrap: anywhere;
 }
 
+.follow-up-outcome-summary {
+  grid-column: 1 / -1;
+}
+
+.follow-up-outcome-summary dd {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.field-help {
+  display: block;
+  margin: 0.25rem 0 0.45rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 .follow-up-form {
   display: grid;
   gap: 1rem;
@@ -2538,6 +2646,10 @@ button.contact-link.secondary {
     display: inline;
   }
 
+  .mobile-account-context {
+    display: none;
+  }
+
   .sidebar {
     display: block;
     padding: 1.5rem 1rem;
@@ -2681,6 +2793,10 @@ button.contact-link.secondary {
 
   .profile-contact-actions {
     grid-column: 1 / -1;
+  }
+
+  .profile-edit-button {
+    width: auto;
   }
 
   .profile-panel {

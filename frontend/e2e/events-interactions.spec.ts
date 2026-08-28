@@ -380,6 +380,7 @@ test('follow-up attention and postponement stay usable at the configured viewpor
   ).toBeVisible()
   await expect(page.getByText('Escalated')).toBeVisible()
   await expect(page.getByText('Stale')).toBeVisible()
+  await expect(page.getByText('10/08/2026').first()).toBeVisible()
   await expect(
     page.getByText(/Escalate and agree the next action/).first(),
   ).toBeVisible()
@@ -391,7 +392,11 @@ test('follow-up attention and postponement stay usable at the configured viewpor
     name: 'Update Fictional Attention Visitor',
   })
   await expect(updateDialog).toBeVisible()
-  await expect(page.getByLabel('Stage')).toBeFocused()
+  const updateHeading = updateDialog.getByRole('heading', {
+    name: 'Update Fictional Attention Visitor',
+    level: 2,
+  })
+  await expect(updateHeading).toBeFocused()
   await expect(page.locator('.topbar')).toHaveAttribute('inert', '')
   const updateClose = updateDialog.locator('.dialog-close')
   const updateSubmit = updateDialog.getByRole('button', {
@@ -406,7 +411,7 @@ test('follow-up attention and postponement stay usable at the configured viewpor
   await expect(updateDialog).toBeHidden()
   await expect(updateButton).toBeFocused()
   await updateButton.click()
-  await expect(page.getByLabel('Stage')).toBeFocused()
+  await expect(updateHeading).toBeFocused()
   await page.getByLabel('Due').fill('2026-08-14')
   await expect(
     page.getByRole('group', { name: 'Why is this moving later?' }),
@@ -420,6 +425,13 @@ test('follow-up attention and postponement stay usable at the configured viewpor
   await expect
     .poll(() => patchBody?.postpone_reason)
     .toBe('worker_availability')
+  await expect(page.getByText('Follow-up updated.')).toBeVisible()
+  await expect(
+    page.getByRole('heading', {
+      name: 'Fictional Attention Visitor',
+      level: 2,
+    }),
+  ).toBeFocused()
 })
 
 test('event-day check-in is separate, searchable, and supports walk-ins', async ({
@@ -581,5 +593,26 @@ test('shell contains SVG navigation and handles missing names without username l
   ).toBeVisible()
   await expect(page.getByText(/technical-account-name/)).toHaveCount(0)
   await expect(page.locator('.bottom-nav svg')).toHaveCount(4)
+  const isMobile = (page.viewportSize()?.width ?? 0) < 768
+  const visibleContext = page.locator(
+    isMobile ? '.mobile-account-context' : '.account-context',
+  )
+  await expect(visibleContext).toContainText(
+    'A very long fictional church name used to verify shell wrapping behaviour',
+  )
+  await expect(visibleContext).toContainText('leader')
+  if (isMobile) {
+    const role = page.locator('.mobile-account-role')
+    await expect(role).toBeVisible()
+    const [roleBox, topbarBox] = await Promise.all([
+      role.boundingBox(),
+      page.locator('.topbar').boundingBox(),
+    ])
+    expect(roleBox).not.toBeNull()
+    expect(topbarBox).not.toBeNull()
+    expect(roleBox!.x + roleBox!.width).toBeLessThanOrEqual(
+      topbarBox!.x + topbarBox!.width,
+    )
+  }
   await expectNoHorizontalOverflow(page)
 })

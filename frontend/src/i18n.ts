@@ -48,6 +48,7 @@ const resources = {
         followUps: 'Follow-ups',
       },
       shell: {
+        churchAndRole: '{{church}} · {{role}}',
         menu: 'Open navigation',
         roleAtChurch: '{{role}} at {{church}}',
         signOut: 'Sign out',
@@ -271,6 +272,7 @@ const resources = {
         tryAgain: 'Try again',
         university: 'University',
         viewProfile: 'View {{name}} profile',
+        viewProfileAction: 'View profile',
       },
       followUps: {
         attention: {
@@ -301,6 +303,8 @@ const resources = {
           probable: 'Probable',
         },
         engagementLabel: 'Engagement',
+        engagementHelp:
+          'How likely is this person to continue engaging after this contact?',
         eyebrow: 'Newcomer care',
         intro:
           'Move each conversation toward a clear, personal next connection.',
@@ -330,6 +334,7 @@ const resources = {
         loading: 'Loading follow-ups…',
         notSet: 'Not set',
         outcome: 'Outcome',
+        outcomeHelp: 'Record the result of the contact, not just the attempt.',
         postpone: {
           chooseInteraction: 'Or choose a recent interaction',
           chooseReason: 'Choose a reason',
@@ -345,6 +350,7 @@ const resources = {
           },
         },
         save: 'Save update',
+        saved: 'Follow-up updated.',
         saveError: 'We could not save this follow-up. Retry.',
         saving: 'Saving…',
         sources: {
@@ -370,7 +376,7 @@ const resources = {
         assignedTo: 'Assigned to {{name}}',
         backToDirectory: 'Back to directory',
         cancel: 'Cancel',
-        edit: 'Edit overview',
+        edit: 'Edit person',
         errorBody: 'This person may be outside your access or unavailable.',
         errorEyebrow: 'Directory',
         errorTitle: 'Profile not available',
@@ -446,6 +452,7 @@ const resources = {
           title: 'Relationships and invitations',
         },
         save: 'Save changes',
+        saved: 'Person updated.',
         saveError:
           'We could not save these changes. Check the fields and retry.',
         saving: 'Saving…',

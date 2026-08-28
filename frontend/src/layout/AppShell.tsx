@@ -60,12 +60,29 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <NavLink className="brand" to="/">
-          <span className="brand-mark small" aria-hidden="true">
-            U
+        <div className="brand-context">
+          <NavLink className="brand" to="/">
+            <span className="brand-mark small" aria-hidden="true">
+              U
+            </span>
+            <span>{t('appName')}</span>
+          </NavLink>
+          <span
+            aria-label={t('shell.churchAndRole', {
+              role: session.membership.role,
+              church: session.membership.church_name,
+            })}
+            className="mobile-account-context"
+          >
+            <span aria-hidden="true" className="mobile-account-church">
+              {session.membership.church_name}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span aria-hidden="true" className="mobile-account-role">
+              {session.membership.role}
+            </span>
           </span>
-          <span>{t('appName')}</span>
-        </NavLink>
+        </div>
         <div className="account-block">
           <span className="account-context">
             {t('shell.roleAtChurch', {

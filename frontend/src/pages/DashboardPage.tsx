@@ -59,9 +59,10 @@ export function DashboardPage() {
     if (item.attention?.overdue) return t('dashboard.overdue')
     if (item.attention?.due_today) return t('dashboard.dueToday')
     return t('dashboard.dueDate', {
-      date: new Intl.DateTimeFormat(undefined, {
-        day: 'numeric',
-        month: 'short',
+      date: new Intl.DateTimeFormat('en-AU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
         timeZone: 'UTC',
       }).format(new Date(`${item.due_at}T00:00:00Z`)),
     })
@@ -156,11 +157,17 @@ export function DashboardPage() {
                     </span>
                     <div className="my-follow-up-actions">
                       {item.person.phone ? (
-                        <a href={`tel:${item.person.phone}`}>
+                        <a
+                          className="secondary-button dashboard-follow-up-action"
+                          href={`tel:${item.person.phone}`}
+                        >
                           {t('followUps.call')}
                         </a>
                       ) : null}
-                      <Link to="/follow-ups">
+                      <Link
+                        className="primary-button dashboard-follow-up-action"
+                        to="/follow-ups"
+                      >
                         {t('dashboard.openFollowUp', {
                           name: item.person.full_name,
                         })}
