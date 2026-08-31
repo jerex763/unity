@@ -83,6 +83,15 @@ QR check-in stays in the backlog until the manual flow has been used successfull
 - Perform a backup restore
 - Write a short pilot review: what worked, what failed, what should be next
 
+**Current pilot status (2026-09-01):** the Pastor, check-in worker, and follow-up
+worker phone sessions were completed independently with fictional data. Issue
+[#110](https://github.com/jerex763/unity/issues/110) Batch 1 usability fixes are
+deployed; a further People/Profile redesign remains a visual proposal awaiting
+approval. The pilot gate is still open for evidence reconciliation, temporary
+access/data cleanup under separate authorization, and an isolated encrypted
+backup restore. Do not start a new module merely because the human workflow was
+completed.
+
 ### Next / later
 
 Choose after the pilot rather than by guesswork:

@@ -1,6 +1,6 @@
 # Unity project handoff and operating guide
 
-Last verified: **2026-08-28 (Australia/Sydney)**
+Last verified: **2026-09-01 (Australia/Sydney)**
 
 This is the first document to read when starting a new Unity chat or work
 session. It records the current state and operating rules so the team does not
@@ -33,14 +33,14 @@ ethnicity/race collection, and in-app payment processing. See
 
 ## 2. Current technical state
 
-Verified on 2026-08-28:
+Verified on 2026-09-01:
 
 - The latest application-behavior commit on `codex/mvp-next` is `2dc7d20
   Improve mobile role workflows`. The subsequent documentation-only
-  reconciliation records deployment evidence and the mandatory visual-mock
-  approval gate; it does not change application behavior. The only expected
-  untracked path is `output/`.
-- `main` remains protected at `a2ba850`; `codex/mvp-next` remains ahead of it.
+  reconciliation at `758f7ec` records deployment evidence and the mandatory
+  visual-mock approval gate; it does not change application behavior. Local
+  `HEAD` and `origin/codex/mvp-next` both resolve to `758f7ec`.
+- `main` remains at `a2ba850`; `codex/mvp-next` is 35 commits ahead and 0 behind.
 - There is no authorization to merge or open a PR into `main`.
 - GitHub CI run `33147843372` passed frontend, backend, deployment-image and
   backup-restore jobs for Issue #110 Batch 1.
@@ -49,8 +49,11 @@ Verified on 2026-08-28:
   `200 {"status":"ok"}` and the demo serves `index-Dzur2OWn.js` plus
   `index-Bl8U4DgH.css`; the deployed JavaScript contains the new profile,
   Engagement and save-confirmation signals.
-- The only expected untracked path is `output/`. It belongs to the user and must
-  remain untouched.
+- `output/` is untracked user-owned output and must remain untouched. The other
+  current untracked paths—`.agents/`, `skills-lock.json`, and
+  `docs/ui-mockups/`—are intentional local design-skill and People/Profile mock
+  artifacts. Review their exact contents before any future commit; do not stage
+  them merely because they are present.
 - Project-scoped skill `.codex/skills/redesign-existing-projects/SKILL.md` is
   installed for the next UI audit. Use its scan/diagnose/focused-fix workflow
   selectively; Unity is an operational mobile web app, so marketing-page motion,
@@ -111,7 +114,7 @@ registration controls.
 
 Issue: <https://github.com/jerex763/unity/issues/110>
 
-The first evidence-backed mobile UI batch is implemented in the working tree:
+The first evidence-backed mobile UI batch is deployed:
 
 - every mobile route shows active church and role in the sticky shell;
 - dashboard follow-up actions are 44px button targets and due dates are more
@@ -132,6 +135,19 @@ Independent final review returned **ACCEPT** after three passes and two rounds
 of viewport-boundary fixes. CI run `33147843372` and Render deployment
 `dep-da8ikdm417fc73ddk0vg` passed; feature-specific bundle signals were verified
 on the live demo.
+
+### Current design proposal: People/Profile follow-up
+
+The next People/Profile change is design-only and has not been implemented in
+the application. Review artifacts are stored locally under
+[`docs/ui-mockups/`](docs/ui-mockups/), with the rationale in
+[`people-profile-redesign-2026-08-29.md`](docs/ui-mockups/people-profile-redesign-2026-08-29.md).
+The proposal makes the People directory selection-focused, removes duplicate
+contact information from Profile Overview, and uses section-level in-place edit
+actions. After save, the intended behavior is to leave edit mode, show a clear
+confirmation, and return focus/viewport to the section just edited—not
+unconditionally to the top of the Profile. Obtain explicit visual approval
+before production implementation.
 
 ### Latest completed implementation: Issue #109
 
@@ -190,7 +206,7 @@ Verification evidence for #109:
 - Edit, duplicate, and follow-up update forms use clear modal/context behavior;
   do not reveal an editor far below the clicked item.
 - Mobile layouts must not require horizontal page scrolling. Validate at 320,
-  375, and 430 px as well as desktop.
+  375, 390, and 430 px as well as desktop.
 - UI changes with meaningful workflow/design judgment should be shown for user
   approval before implementation. Small explicitly approved fixes can be made
   directly.
@@ -266,16 +282,17 @@ Still required before claiming the pilot gate is complete:
    verify aggregate counts and Django checks.
 5. Complete the remaining controlled-activity fields in
    [`docs/pilot-review-2026-07.md`](docs/pilot-review-2026-07.md).
-6. Create a scoped mobile-usability issue from the repeated findings before
-   implementing fixes.
+6. Record Batch 1 acceptance on #110 and decide whether the People/Profile visual
+   proposal is approved before implementing that follow-up scope.
 
-The highest-priority product action is now a tightly scoped mobile-usability
-batch based on repeated evidence, not additional registration fields or a new
-module. Account deactivation, fictional-data cleanup, public-link rotation and
-backup restore remain separate operational actions requiring their documented
-authorization. The completed check-in worker run supplies the remaining
-product-acceptance evidence for #109; record that evidence before closing the
-Issue. Data/account cleanup remains a separate post-session authorization.
+The highest-priority product decision is whether to approve the scoped
+People/Profile visual proposal. If approved, implement only that reviewed scope
+under #110 and verify it at the standard responsive widths. Account
+deactivation, fictional-data cleanup, public-link rotation and backup restore
+remain separate operational actions requiring their documented authorization.
+The completed check-in worker run supplies the remaining product-acceptance
+evidence for #109; record that evidence before closing the Issue. Data/account
+cleanup remains a separate post-session authorization.
 
 The `20260814-0005` demo baseline was restored and verified on 2026-08-25 after
 separately authorized cleanup. The event-day **To check in** view contains the
@@ -292,12 +309,14 @@ rules, and cleanup plan. Do not merely say “manual testing required.”
 
 ## 6. Open work and priority
 
-GitHub open Issues verified on 2026-08-21:
+GitHub open Issues verified on 2026-09-01:
 
 ### Immediate release work
 
 - **#109** — implementation deployed; record acceptance and close/update the
   Issue when appropriate.
+- **#110** — Batch 1 is deployed; record its acceptance and keep later
+  People/Profile implementation behind the visual-approval gate.
 - **#32** — run the controlled human pilot and complete the release review.
 - **#99** — configure and verify production-grade backups before re-enabling the
   daily schedule. Manual workflow remains the safer fallback until verified.
@@ -477,6 +496,10 @@ must verify teardown.
   [`docs/current-event-registration-review-2026-08.md`](docs/current-event-registration-review-2026-08.md).
 - Contact/email decision: [`docs/outbound-email-pilot.md`](docs/outbound-email-pilot.md).
 - Visual language: [`docs/design.md`](docs/design.md).
+- Latest read-only UI audit:
+  [`docs/ui-audit-2026-08-28.md`](docs/ui-audit-2026-08-28.md).
+- Pending People/Profile visual proposal:
+  [`docs/ui-mockups/people-profile-redesign-2026-08-29.md`](docs/ui-mockups/people-profile-redesign-2026-08-29.md).
 
 ## 11. Handoff maintenance rule
 

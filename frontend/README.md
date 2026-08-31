@@ -20,11 +20,16 @@ local Django server. Set `VITE_API_BASE_URL` when the API is hosted elsewhere.
 ## Quality checks
 
 ```bash
-npm run lint
 npm run format:check
-npm test
+npm run lint
+npm test -- --run
 npm run build
+npx playwright install chromium  # first browser-test run only
+npm run test:e2e
 ```
+
+Playwright starts its own Vite server, mocks the API, and checks the primary
+responsive workflows at 320, 375, 390, 430, and desktop widths.
 
 Visible copy belongs in `src/i18n.ts`; English is the initial language and further
 translations can be added without changing components.

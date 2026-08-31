@@ -57,6 +57,10 @@ Status: ⬜ not started · 🔨 in progress · ✅ done
 | # | Feature | Issue | Status | Owner | Completed |
 |---|---|---|---|---|---|
 | 32 | End-to-end pilot + next-step review | [#32](https://github.com/jerex763/unity/issues/32) | ⬜ | | |
+| 110 | Mobile role-workflow usability | [#110](https://github.com/jerex763/unity/issues/110) | 🔨 | jerex763 | |
+
+Issue #110 Batch 1 is deployed; its People/Profile follow-up is still a visual
+proposal awaiting approval, so the overall issue remains in progress.
 
 ## M4 Groups & Care (preserved post-pilot backlog)
 

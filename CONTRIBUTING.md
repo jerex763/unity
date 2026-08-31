@@ -1,5 +1,10 @@
 # Contributing to Unity
 
+> Codex-managed Team Lead work on `codex/mvp-next` follows
+> [AGENTS.md](AGENTS.md) and [PROJECT_HANDOFF.md](PROJECT_HANDOFF.md), including
+> their authorization and deployment rules. The PR workflow below is for
+> external and multi-contributor changes.
+
 ## Workflow
 
 1. **Claim an issue.** Pick an unassigned one from [Issues](https://github.com/jerex763/unity/issues), assign yourself, move it along. Don't start work without an issue — if something's missing, open one first.
@@ -34,6 +39,8 @@ Example: `feat: person search endpoint with role-gated fields`
 - [ ] Cross-church access is denied even when an object ID is known
 - [ ] Sensitive or destructive actions are included in the audit design
 - [ ] Screenshots, fixtures and tests use fictional or safely anonymized data only
+- [ ] Meaningful UI redesigns have an approved visual mock before implementation
+- [ ] Responsive UI changes include appropriate Playwright coverage
 - [ ] features.md row updated
 - [ ] No secrets/credentials in code — use `.env`
 

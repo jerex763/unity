@@ -2,7 +2,7 @@ from django.http import HttpRequest
 
 
 class SuperuserOnlyAdminMixin:
-    """Restrict sensitive admin models until role permissions land in #4."""
+    """Restrict project admin models to active superusers."""
 
     def has_module_permission(self, request: HttpRequest) -> bool:
         return request.user.is_active and request.user.is_superuser

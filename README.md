@@ -2,6 +2,19 @@
 
 Church membership + discipleship management app, built by and for our church community. Internal tool first; possible productization later.
 
+## Try the demo
+
+**Open the hosted demo:** <https://unity-fictional-demo.onrender.com>
+
+You do not need to install Docker, Python, Node.js, or PostgreSQL to view the
+demo. Ask the project owner for a test account if one has been assigned to you.
+The demo is for evaluation with fictional test data only—do not enter real
+member, visitor, contact, pastoral, or church information. Because it uses
+Render's free service, the first page load may take a short time after inactivity.
+
+The installation instructions later in this README are only for developers who
+want to run or change Unity on their own computer.
+
 > **Starting a new work session?** Read
 > **[PROJECT_HANDOFF.md](PROJECT_HANDOFF.md)** first. It records the current
 > branch, deployed version, product decisions, open release work, safety rules,
@@ -10,6 +23,22 @@ Church membership + discipleship management app, built by and for our church com
 **What it does:** a people directory, a newcomer follow-up pipeline, and event signup/check-in that replaces editing numbered lists in WhatsApp group chats.
 
 **What it deliberately does NOT do:** payments (use Tithe.ly/Pushpay links), facial recognition, message sentiment analysis, ethnicity data collection. See [docs/db-model.md](docs/db-model.md) for rationale.
+
+## Current status
+
+- The [fictional-data-only Render demo](https://unity-fictional-demo.onrender.com)
+  is deployed from `codex/mvp-next`. The
+  latest application change is `2dc7d20`; the current branch head is the
+  documentation reconciliation at `758f7ec`.
+- Pastor, check-in worker, and follow-up worker phone sessions were completed
+  independently. Their findings are recorded in
+  [docs/pilot-review-2026-07.md](docs/pilot-review-2026-07.md).
+- [Issue #110](https://github.com/jerex763/unity/issues/110) Batch 1 mobile
+  workflow fixes are deployed. The further People/Profile redesign is currently
+  a visual proposal awaiting approval; it has not changed production behavior.
+- The controlled pilot remains open until its operational evidence, access
+  cleanup, and isolated backup-restore checks are complete. See
+  [PROJECT_HANDOFF.md](PROJECT_HANDOFF.md) for the exact next actions.
 
 ## Progress
 
@@ -48,7 +77,9 @@ frontend/      # React + TypeScript responsive PWA
 
 ## Getting started
 
-The backend requires Python 3.12+ and Postgres. From the repository root:
+Prerequisites are Python 3.12+, Node.js 22+, and either Docker Desktop/Engine
+with Docker Compose or access to a PostgreSQL 16 database. From the repository
+root, start the included local database and backend:
 
 ```bash
 docker compose up -d db
@@ -64,6 +95,8 @@ python manage.py runserver
 ```
 
 The API health check is available at <http://localhost:8000/api/health/>.
+If PostgreSQL is provided separately, skip `docker compose up -d db` and set
+`DATABASE_URL` in `backend/.env`.
 
 In a second terminal, start the frontend with Node.js 22+:
 
@@ -78,6 +111,35 @@ The app is available at <http://localhost:5173>; development `/api` requests are
 proxied to Django. See [frontend/README.md](frontend/README.md) for quality checks
 and production builds.
 
+For local administrative access, create a superuser in the activated backend
+environment, then open <http://localhost:8000/admin/>:
+
+```bash
+python manage.py createsuperuser
+```
+
+An account used in the Unity app also needs an active `ChurchMembership`. Use
+the local admin to create fictional Church, Person, and ChurchMembership records;
+never enter real pastoral or member data in a development or demo environment.
+
+Before submitting a change, run the checks that match CI:
+
+```bash
+cd backend
+.venv/bin/black --check .
+.venv/bin/ruff check .
+.venv/bin/pytest -q
+.venv/bin/python manage.py makemigrations --check --dry-run
+
+cd ../frontend
+npm run format:check
+npm run lint
+npm test -- --run
+npm run build
+npx playwright install chromium  # first browser-test run only
+npm run test:e2e
+```
+
 The authentication foundation uses a custom `User` from its first migration and
 stores church-specific roles in `ChurchMembership`. See
 [ADR 0001](docs/adr/0001-authentication-and-church-membership.md) before adding
@@ -91,7 +153,13 @@ defined in the [permission and privacy matrix](docs/permission-matrix.md).
 
 ## How we work
 
-Read **[CONTRIBUTING.md](CONTRIBUTING.md)** before your first PR. Short version:
+Codex-managed Team Lead sessions follow **[AGENTS.md](AGENTS.md)** and
+**[PROJECT_HANDOFF.md](PROJECT_HANDOFF.md)**, including the active
+`codex/mvp-next` branch, approval boundaries, and visual-approval gate for
+meaningful UI redesigns.
+
+External contributors should read **[CONTRIBUTING.md](CONTRIBUTING.md)** before
+their first PR. Short version:
 
 1. Pick an unassigned [issue](https://github.com/jerex763/unity/issues), assign yourself
 2. Branch `feat/<issue#>-short-slug` off `main`

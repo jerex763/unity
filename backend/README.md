@@ -71,10 +71,16 @@ Create the first local administrator, then open <http://localhost:8000/admin/>:
 python manage.py createsuperuser
 ```
 
-All project models are registered with search and filters. Until the role-based
-permissions and church scoping in #4 and #5 land, project admin pages are
-superuser-only. As a second layer of protection, non-superuser Person forms omit
-`faith_background` and `discipleship_stage` when access is relaxed later.
+All project models are registered with search and filters. Project admin pages
+deliberately remain restricted to active superusers; ordinary role capabilities
+are enforced through the Unity application and API, not Django Admin. As a
+second layer of protection, the Person admin form is also prepared to omit
+`faith_background` and `discipleship_stage` if limited staff access is designed
+and approved later.
+
+To sign in through the Unity application, a local user must also have an active
+`ChurchMembership`. Create only fictional Church, Person, and membership data in
+local and demo environments.
 
 ## Authentication foundation
 
@@ -132,10 +138,11 @@ DJANGO_SETTINGS_MODULE=config.settings.prod python manage.py check --deploy
 ## Quality checks
 
 ```bash
-ruff check .
-black --check .
-pytest
-python manage.py check
+.venv/bin/black --check .
+.venv/bin/ruff check .
+.venv/bin/pytest -q
+.venv/bin/python manage.py check
+.venv/bin/python manage.py makemigrations --check --dry-run
 ```
 
 A plain local `pytest` run uses in-memory SQLite. CI and explicit
