@@ -67,12 +67,18 @@ claim of production readiness should be made from this delivery alone.
 
 ## Delivery evidence
 
-Completed locally on `codex/mvp-next`; the user subsequently authorized a local
-Git commit of this delivery. No push,
-deployment, GitHub issue update, live account/data write, or cleanup was performed.
-The commit is based on `fd7a6fd`; the fetched remote remains at that baseline.
-Latest remote CI remains
-successful run `33404876657` for that earlier commit, not this working tree.
+Completed, committed at `47fcdcc`, and pushed/deployed after the user's separate
+explicit authorizations. No PR, GitHub issue update, live account/data write or
+cleanup was performed.
+
+- CI run `34114621918` passed all four jobs for `47fcdcc`.
+- Render deployment `dep-daf9kr95efls73aja2o0` / GitHub deployment `6307308121`
+  succeeded at `2026-09-07T11:06:34Z`.
+- Live health returned 200/ok; home, People and task deep-link SPA routes and
+  admin CSS returned 200, while an unknown API path returned 404.
+- Live JS/CSS bytes match the tested local build, including Back controls,
+  directory contact disclosure and focused mobile-detail feature signals.
+  These are unauthenticated delivery probes, not a new worker acceptance run.
 
 - Formatting, ESLint, 9 Vitest files / 121 tests, TypeScript and production build
   passed after the final code correction.
@@ -110,9 +116,8 @@ contact people directly from the directory, reconsider the collapsed default.
 If desktop usage dominates, prioritize its task density over further phone
 layout work. Do not infer either usage pattern from this synthetic test run.
 
-No new human session is requested now. Next technical delivery step is push and deployment verification once
-push/deploy is authorized; the
-controlled-pilot gate #32 remains open. A future real-device check should focus
+No new human session is requested now. Push, CI and deployment verification are complete; the controlled-pilot
+gate #32 remains open. A future real-device check should focus
 on Safari, mobile keyboard behavior and actual contact/return task completion.
 Optional deferred accessibility work: complete the pre-existing Profile tablist,
 tabpanel associations and arrow-key behavior. Section-level profile editing and

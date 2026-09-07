@@ -35,23 +35,21 @@ ethnicity/race collection, and in-app payment processing. See
 
 Verified on 2026-09-07:
 
-- The latest application-behavior commit on `codex/mvp-next` is `2dc7d20
-  Improve mobile role workflows`. The subsequent documentation-only
-  reconciliation at `758f7ec` records deployment evidence and the mandatory
-  visual-mock approval gate. The latest commit, `fd7a6fd`, refreshes project/demo
-  documentation and an admin mixin docstring; neither commit changes application
-  behavior. After fetching origin, local `HEAD` and `origin/codex/mvp-next` both
-  resolve to `fd7a6fd`, with no divergence or tracked working-tree changes at
-  session entry.
-- `main` remains at `a2ba850`; `codex/mvp-next` is 36 commits ahead and 0 behind.
-  GitHub has no open pull requests.
-- There is no authorization to merge or open a PR into `main`.
-- Latest GitHub CI run `33404876657` passed frontend, backend, deployment-image
-  and backup-restore jobs for `fd7a6fd`. Batch 1 run `33147843372` also passed.
-- On 2026-09-07 the live health endpoint returned `{"status": "ok"}` and
-  the home page referenced `index-Dzur2OWn.js` and `index-Bl8U4DgH.css`. These
-  match the recorded Batch 1 assets; they do not identify the latest backend
-  deployment commit.
+- Latest application delivery is `47fcdcc` on `codex/mvp-next`, pushed and
+  deployed with explicit user authorization. A documentation-only follow-up
+  records this deployment; use Git for its exact HEAD. `main` remains `a2ba850`.
+  No PR or merge to main was requested or performed.
+- CI run `34114621918` passed Frontend, Backend, Deployment image and Backup
+  restore for `47fcdcc`.
+- Render deployment `dep-daf9kr95efls73aja2o0` (GitHub deployment `6307308121`)
+  reported success at `2026-09-07T11:06:34Z` for `47fcdcc`.
+- Live verification returned health `200 {"status":"ok"}`; `/`, `/people/123`
+  and `/follow-ups?task=71` serve the SPA, admin CSS returns 200, and an unknown
+  API endpoint returns 404. These route probes do not assert authenticated
+  access to a real person or task.
+- Live `index-B-FR7G0t.js` and `index-C-EEBaEX.css` exactly match the tested local
+  build bytes. The JavaScript contains the new Back controls, contact disclosure
+  and mobile-detail signals. No live business data was written during checks.
 - Historical Batch 1 Render deployment `dep-da8ikdm417fc73ddk0vg` succeeded. Health returned
   `200 {"status":"ok"}` and the demo serves `index-Dzur2OWn.js` plus
   `index-Bl8U4DgH.css`; the deployed JavaScript contains the new profile,
@@ -166,11 +164,12 @@ Final local checks: Prettier, ESLint, 121 Vitest tests, production build, and
 65/65 Playwright tests across 320/375/390/430/desktop passed. Independent review
 returned **ACCEPT**, including re-review of event-route races and sticky-header
 Back visibility. Actual fictional screenshots/layout evidence are in
-`docs/ui-delivery-2026-09-07/`. The user subsequently authorized a local commit of this code and documentation
-on `codex/mvp-next`, based on `fd7a6fd`; the fetched remote remains at that
-baseline. The local delivery is not deployed and has no new remote CI run. `output/` remains untouched. The next delivery step is
-push/deployment verification after push/deploy authorization;
-no human test session is requested now and #32 remains open.
+`docs/ui-delivery-2026-09-07/`. The delivery was committed at `47fcdcc`, then explicitly authorized for push and
+deployment. It is now live; CI, Render and feature-specific verification evidence
+are recorded in section 2. `output/` remains untouched. No new human acceptance,
+account/data changes or cleanup is claimed; #32 remains open. Next priority is
+remaining pilot/release evidence, not another speculative redesign. Human testing
+is deferred at the user's request.
 
 ### Current read-only reassessment — 2026-09-07
 
@@ -350,9 +349,8 @@ Still required before claiming the pilot gate is complete:
 6. Record Batch 1 acceptance on #110 and decide whether the People/Profile visual
    proposal is approved before implementing that follow-up scope.
 
-The confirmed reliability/navigation defects have been repaired and validated
-locally under the delegated scope above. Publishing this local delivery requires
-push/deploy authorization. The larger People/Profile editing proposal remains
+The confirmed reliability/navigation defects have been repaired, validated and deployed
+under the explicitly authorized scope above. The larger People/Profile editing proposal remains
 a separate future decision; automated evidence does not close the pilot gate. Account
 deactivation, fictional-data cleanup, public-link rotation and backup restore
 remain separate operational actions requiring their documented authorization.
@@ -381,9 +379,8 @@ GitHub open Issues verified on 2026-09-07:
 
 - **Local 2026-09-07 frontend delivery** — scoped reliability, task navigation
   and visual convergence are implemented, tested and independently accepted in
-  the locally committed delivery. Publish only when
-  push/deploy is authorized; then verify CI and feature-specific live signals.
-  No issue update or human acceptance is claimed. The larger People/Profile
+  deployed commit `47fcdcc`; CI and feature-specific live verification passed.
+  No issue update or new human acceptance is claimed. The larger People/Profile
   editing proposal remains separate.
 
 - **#109** — implementation deployed; record acceptance and close/update the
