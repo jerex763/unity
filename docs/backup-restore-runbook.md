@@ -2,6 +2,12 @@
 
 ## Policy
 
+As of 2026-09-08, the user has deferred new paid services and AWS setup. The
+cloud configuration steps below are a future runbook, not the current next
+action. No operational backup has been verified. A local encrypted drill is an
+optional separately scoped alternative for fictional data; it does not provide
+off-device disaster recovery. Keep the schedule paused and the demo fictional-only.
+
 Unity is designed to create one encrypted PostgreSQL backup every day. The daily
 schedule is paused under Issue #99 until the production database, private object
 storage, encryption recipient and failure alert are configured and a manual

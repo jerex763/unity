@@ -33,6 +33,10 @@ must not be marked complete until the remaining gates have recorded evidence.
 - Fictional dataset RUN_ID (no credentials):
 - Account cleanup outcome:
 
+The blank activity fields are retained as unknown; they must not be filled with
+the September agent-run public-link test or treated as a real-attendee activity.
+See the 2026-09-08 reconciliation below for the current delivery state.
+
 ## Worker feedback
 
 Record themes without personal or pastoral content.
@@ -115,5 +119,27 @@ Issue #110 now tracks that UI work. Its approved Batch 1 is reviewed, tested and
 deployed at `2dc7d20`; it covers mobile church/role context, dashboard touch
 targets, person-row and profile-edit discoverability, post-save feedback/focus,
 Follow-up dialog entry focus, saved Outcome visibility and `DD/MM/YYYY` display
-dates. Public-link discoverability, full-screen registration/follow-up mobile
-flows and search clarity remain later scope.
+dates. These were the remaining items at the time of that review; the subsequent
+delivery update below supersedes their status.
+
+## Delivery and release reconciliation — 2026-09-08
+
+- `47fcdcc` subsequently delivered focused phone roster/follow-up views, explicit
+  return navigation, directory context preservation and failure/pending recovery.
+  Recorded validation is 121 unit tests, 65 browser checks and independent ACCEPT;
+  this is automated evidence, not another worker session.
+- `09c2a41` delivered encrypted recovery for newly created public links. The
+  separately authorized live event #9 check on 2026-09-07 verified identical
+  copied URLs after reload and a correctly displayed registration form. No
+  registration was submitted or existing pilot link replaced. Older digest-only
+  links remain unrecoverable; the historical finding above remains valid for them.
+- Search typo tolerance and wider People/Profile redesign are not established as
+  delivered by these records. Keep them deferred pending specific evidence/value.
+- The user deferred paid cloud backup setup. CI's fictional probe restore remains
+  valid but does not satisfy the selected-demo-backup restore gate. No local
+  operational restore is claimed.
+- #32 remains open. Three-worker feedback exists, while device/browser/duration,
+  activity-specific audit, selected-backup restore and cleanup remain incomplete.
+  A real-attendee activity is neither authorized nor completed in this demo.
+
+Detailed issue mapping: `docs/pilot-status-reconciliation-2026-09-08.md`.

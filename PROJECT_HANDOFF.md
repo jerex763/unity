@@ -43,9 +43,15 @@ Verified on 2026-09-07:
   Anonymous public-link recovery is 403 with no-store. Live
   `index-BwfoW3yg.js` / `index-De9yAWE-.css` match tested local build bytes,
   including the new result region and legacy-link wording.
-- No live links were created/replaced, no secret values were read, and actual
-  production key decryptability/custody was not independently verified. The user
-  reported key configuration and showed its masked variable name. Production
+- After separate explicit user authorization, live fictional event #9 was created
+  and its new public link copied successfully, then copied again after a full
+  Events reload with exact URL equality. Its public registration form displayed
+  the correct event. No registration was submitted; existing event #8 and its
+  link were not modified. Current key encryption/recovery is verified for this
+  new link; key custody and rotation remain unverified. The test event is retained
+  pending separate cleanup authorization. See
+  [`docs/public-link-live-verification-2026-09-07.md`](docs/public-link-live-verification-2026-09-07.md).
+  No encryption key value was read or public URL recorded in evidence. Production
   backup cron remains paused; #99's prerequisite repair is deployed, not a
   completed operational backup setup.
 
@@ -413,6 +419,34 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+**2026-09-08 no-new-paid-services decision:** the user has no AWS setup and
+explicitly deferred paid backup infrastructure. Pause #99 cloud setup; keep the
+schedule disabled. Do not ask for AWS signup as the immediate next step. A local
+encrypted backup/isolated restore is an optional later drill, not an existing
+backup and not authorized by this documentation reconciliation. The demo remains
+fictional-only; real participant data stays in the existing Google workflow.
+Reliable recovery remains a gate before real-data adoption.
+
+Current issue evidence was reconciled in
+[`docs/pilot-status-reconciliation-2026-09-08.md`](docs/pilot-status-reconciliation-2026-09-08.md).
+#109 needs evidence publication rather than reimplementation; #110 must distinguish
+delivered task flows from deferred design ideas; #32 remains open with real-activity,
+session audit and selected-backup restore evidence outstanding. GitHub issues
+were read only and remain open. Do not repeat the completed worker session merely
+to fill stale issue text.
+
+Read-only backup setup audit on 2026-09-08 confirmed the GitHub
+`production-backup` environment exists, with empty protection rules and no
+deployment branch policy. After the user logged in, authenticated GitHub settings
+confirmed both environment secrets and repository Actions secrets are empty.
+All seven required backup secrets are therefore absent from those scopes; CLI
+metadata still returns 403. Storage configuration and key custody remain unknown.
+No workflow was dispatched.
+The S3 lifecycle template expires current objects after 30 days but lacks
+noncurrent-version expiry despite the runbook requiring versioning; resolve this
+retention gap before any future schedule enablement. Cloud setup is now deferred
+under the no-new-paid-services decision above.
+
 The 2026-09-07 read-only release-gap check is recorded in
 [`docs/release-gap-review-2026-09-07.md`](docs/release-gap-review-2026-09-07.md).
 The reviewed baseline is `327d3d5`; CI `34114978337` and GitHub deployment `6307378878`
@@ -429,8 +463,8 @@ CI now includes these tests; the production cron remains paused. These changes
 passed CI `34125318906`; the production backup workflow itself was not run. Next operational
 step remains verifying configured infrastructure and a specifically authorized
 backup/restore drill, not automatically enabling the schedule. Latest backup run `29694284982` failed installation
-and alerting, with no newer run found. Current Secret metadata is inaccessible
-(403), so configuration is unknown rather than confirmed missing. CI's temporary
+and alerting, with no newer run found. Authenticated browser review subsequently
+confirmed empty environment and repository secret scopes. CI's temporary
 probe restore does not prove an operational backup is available. Infrastructure
 setup, actual backup/restore and alert delivery remain separately scoped work.
 
@@ -446,8 +480,9 @@ setup, actual backup/restore and alert delivery remain separately scoped work.
   People/Profile implementation behind the visual-approval gate.
 - **#32** — reconcile the completed fictional worker session and remaining
   permission/restore/release evidence; new human testing is currently deferred.
-- **#99** — configure and verify production-grade backups before re-enabling the
-  daily schedule. Manual workflow remains the safer fallback until verified.
+- **#99** — cloud configuration deferred for cost; schedule remains disabled.
+  Do not dispatch the unconfigured manual workflow. Revisit recovery before
+  real-data use; a separately scoped local drill adds no cloud-service charge.
 
 ### Deliberately later
 
