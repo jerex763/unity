@@ -13,6 +13,8 @@ import {
 } from './eventFormValidation'
 import type { ChurchEvent, EventGroupChoice, EventRegistration } from './types'
 import '../styles/task-navigation.css'
+import { usePublicLinks } from './usePublicLinks'
+import { PublicLinkResult } from './PublicLinkResult'
 
 type EventForm = {
   id: number | null
@@ -121,6 +123,15 @@ function usePhoneLayout() {
 }
 
 export function EventsPage() {
+  const { session } = useAuth()
+  return (
+    <EventsPageContent
+      key={`${session?.user.id}:${session?.membership.church_id}:${session?.membership.role}`}
+    />
+  )
+}
+
+function EventsPageContent() {
   const { t } = useTranslation()
   const { session } = useAuth()
   const isPhone = usePhoneLayout()
@@ -145,15 +156,15 @@ export function EventsPage() {
   const [registrationNote, setRegistrationNote] = useState('')
   const [registrationError, setRegistrationError] = useState('')
   const [isSavingRegistration, setIsSavingRegistration] = useState(false)
-  const [publicLinks, setPublicLinks] = useState<Record<number, string>>({})
-  const [visiblePublicLinks, setVisiblePublicLinks] = useState<Set<number>>(
-    new Set(),
+  const publicLinks = usePublicLinks((id, enabled) =>
+    setEvents((current) =>
+      current.map((item) =>
+        item.id === id
+          ? { ...item, public_registration_enabled: enabled }
+          : item,
+      ),
+    ),
   )
-  const [publicLinkNotice, setPublicLinkNotice] = useState('')
-  const [publicLinkError, setPublicLinkError] = useState('')
-  const [publicLinkFeedbackEvent, setPublicLinkFeedbackEvent] = useState<
-    number | null
-  >(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const rosterTitleRef = useRef<HTMLHeadingElement>(null)
   const rosterRequestGeneration = useRef(0)
@@ -221,6 +232,7 @@ export function EventsPage() {
   }, [editorRef, formOpenRequest, formMode])
 
   function openForm(nextForm: EventForm, mode: EventFormMode) {
+    if (nextForm.id) publicLinks.hide(nextForm.id)
     setSaveError('')
     setFieldErrors({})
     setFormMode(mode)
@@ -415,81 +427,6 @@ export function EventsPage() {
       setEvents(await apiRequest<ChurchEvent[]>('/events/'))
     } catch {
       setRegistrationError(t('events.registrations.cancelError'))
-    }
-  }
-
-  async function generatePublicLink(churchEvent: ChurchEvent) {
-    if (
-      churchEvent.public_registration_enabled &&
-      !window.confirm(t('events.publicLink.replaceConfirm'))
-    ) {
-      return
-    }
-    setPublicLinkFeedbackEvent(churchEvent.id)
-    setPublicLinkError('')
-    setPublicLinkNotice('')
-    try {
-      const result = await apiRequest<{ url: string }>(
-        `/events/${churchEvent.id}/public-link/`,
-        { method: 'POST' },
-      )
-      setPublicLinks((current) => ({
-        ...current,
-        [churchEvent.id]: result.url,
-      }))
-      setVisiblePublicLinks((current) => {
-        const next = new Set(current)
-        next.delete(churchEvent.id)
-        return next
-      })
-      setEvents((current) =>
-        current.map((item) =>
-          item.id === churchEvent.id
-            ? { ...item, public_registration_enabled: true }
-            : item,
-        ),
-      )
-      setPublicLinkNotice(t('events.publicLink.ready'))
-    } catch {
-      setPublicLinkError(t('events.publicLink.error'))
-    }
-  }
-
-  async function copyPublicLink(churchEvent: ChurchEvent) {
-    setPublicLinkFeedbackEvent(churchEvent.id)
-    const value = publicLinks[churchEvent.id]
-    if (!value) return
-    try {
-      await navigator.clipboard.writeText(value)
-      setPublicLinkNotice(t('events.publicLink.copied'))
-      setPublicLinkError('')
-    } catch {
-      setPublicLinkError(t('events.publicLink.copyError'))
-    }
-  }
-
-  async function revokePublicLink(churchEvent: ChurchEvent) {
-    setPublicLinkFeedbackEvent(churchEvent.id)
-    setPublicLinkError('')
-    try {
-      await apiRequest(`/events/${churchEvent.id}/public-link/`, {
-        method: 'DELETE',
-      })
-      setPublicLinks((current) => {
-        const next = { ...current }
-        delete next[churchEvent.id]
-        return next
-      })
-      setEvents((current) =>
-        current.map((item) =>
-          item.id === churchEvent.id
-            ? { ...item, public_registration_enabled: false }
-            : item,
-        ),
-      )
-      setPublicLinkNotice(t('events.publicLink.revoked'))
-    } catch {
-      setPublicLinkError(t('events.publicLink.error'))
     }
   }
 
@@ -800,6 +737,7 @@ export function EventsPage() {
                 <div className="event-actions">
                   <button
                     className="primary-button event-action-primary"
+                    disabled={publicLinks.pending.has(event.id)}
                     onClick={() => openForm(formFromEvent(event), 'edit')}
                     type="button"
                   >
@@ -854,8 +792,11 @@ export function EventsPage() {
                   </button>
                   <button
                     className="secondary-button"
-                    disabled={!event.registration_open}
-                    onClick={() => void generatePublicLink(event)}
+                    disabled={
+                      !event.registration_open ||
+                      publicLinks.pending.has(event.id)
+                    }
+                    onClick={() => void publicLinks.act(event, 'create')}
                     type="button"
                   >
                     {event.public_registration_enabled
@@ -893,47 +834,54 @@ export function EventsPage() {
                 </div>
               )}
 
-              {canEdit && publicLinks[event.id] ? (
+              {canCheckIn && event.public_registration_enabled ? (
                 <section
                   className="public-link-panel"
                   aria-label={t('events.publicLink.title')}
+                  aria-busy={publicLinks.pending.has(event.id)}
                 >
-                  <p>{t('events.publicLink.privateHint')}</p>
-                  {visiblePublicLinks.has(event.id) ? (
-                    <input
-                      aria-label={t('events.publicLink.url')}
-                      readOnly
-                      type="url"
-                      value={publicLinks[event.id]}
-                    />
-                  ) : null}
+                  <p>
+                    {t(
+                      event.registration_open
+                        ? 'events.publicLink.privateHint'
+                        : 'events.publicLink.closed',
+                    )}
+                  </p>
                   <div>
                     <button
                       className="secondary-button"
+                      disabled={
+                        !event.registration_open ||
+                        publicLinks.pending.has(event.id)
+                      }
                       onClick={() =>
-                        setVisiblePublicLinks((current) => {
-                          const next = new Set(current)
-                          if (next.has(event.id)) next.delete(event.id)
-                          else next.add(event.id)
-                          return next
-                        })
+                        publicLinks.urls[event.id]
+                          ? publicLinks.hide(event.id)
+                          : void publicLinks.act(event, 'show')
                       }
                       type="button"
                     >
-                      {visiblePublicLinks.has(event.id)
-                        ? t('events.publicLink.hide')
-                        : t('events.publicLink.show')}
+                      {t(
+                        publicLinks.urls[event.id]
+                          ? 'events.publicLink.hide'
+                          : 'events.publicLink.show',
+                      )}
                     </button>
                     <button
                       className="secondary-button"
-                      onClick={() => void copyPublicLink(event)}
+                      disabled={
+                        !event.registration_open ||
+                        publicLinks.pending.has(event.id)
+                      }
+                      onClick={() => void publicLinks.act(event, 'copy')}
                       type="button"
                     >
                       {t('events.publicLink.copy')}
                     </button>
                     <button
                       className="text-button"
-                      onClick={() => void revokePublicLink(event)}
+                      disabled={publicLinks.pending.has(event.id)}
+                      onClick={() => void publicLinks.act(event, 'revoke')}
                       type="button"
                     >
                       {t('events.publicLink.revoke')}
@@ -941,22 +889,28 @@ export function EventsPage() {
                   </div>
                 </section>
               ) : null}
-              {canEdit &&
-              event.public_registration_enabled &&
-              !publicLinks[event.id] ? (
-                <p className="public-link-active">
-                  {t('events.publicLink.active')}
-                </p>
+              {publicLinks.pending.has(event.id) ? (
+                <p role="status">{t('events.publicLink.pending')}</p>
               ) : null}
-              {publicLinkFeedbackEvent === event.id && publicLinkError ? (
-                <p className="form-error" role="alert">
-                  {publicLinkError}
-                </p>
-              ) : null}
-              {publicLinkFeedbackEvent === event.id && publicLinkNotice ? (
-                <p className="form-success" role="status">
-                  {publicLinkNotice}
-                </p>
+              {!publicLinks.pending.has(event.id) ? (
+                <PublicLinkResult
+                  url={
+                    event.registration_open
+                      ? publicLinks.urls[event.id]
+                      : undefined
+                  }
+                  error={publicLinks.feedback[event.id]?.error}
+                  notice={publicLinks.feedback[event.id]?.notice}
+                  retry={
+                    publicLinks.feedback[event.id]?.retry
+                      ? () =>
+                          void publicLinks.act(
+                            event,
+                            publicLinks.feedback[event.id].retry!,
+                          )
+                      : undefined
+                  }
+                />
               ) : null}
 
               {activeRoster === event.id ? (

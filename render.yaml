@@ -14,6 +14,8 @@ services:
         value: config.settings.prod
       - key: DJANGO_SECRET_KEY
         generateValue: true
+      - key: PUBLIC_LINK_ENCRYPTION_KEYS
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: MIGRATION_DATABASE_URL

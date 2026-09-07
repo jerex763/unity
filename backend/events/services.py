@@ -13,6 +13,11 @@ from django.utils import timezone
 from people.models import ConsentRecord, Person
 from people.normalization import normalize_email, normalize_phone, normalize_wechat_id
 
+from .link_encryption import (
+    LinkRecoveryError,
+    decrypt_link_token,
+    encrypt_link_token,
+)
 from .models import (
     Event,
     EventRegistration,
@@ -71,11 +76,15 @@ def rotate_public_registration_link(
     if not registration_is_open(locked_event):
         raise ValidationError("Public registration is only available for open events.")
     raw_token = _new_token()
+    ciphertext = encrypt_link_token(
+        raw_token, church_id=locked_event.church_id, event_id=locked_event.pk
+    )
     link, _ = PublicRegistrationLink.objects.update_or_create(
         event=locked_event,
         defaults={
             "church": locked_event.church,
             "token_digest": token_digest(raw_token),
+            "encrypted_token": ciphertext,
             "created_by": created_by,
             "revoked_at": None,
         },
@@ -85,10 +94,29 @@ def rotate_public_registration_link(
 
 @transaction.atomic
 def revoke_public_registration_link(link: PublicRegistrationLink) -> None:
+    # Match rotation/recovery lock ordering; never save the caller's stale object.
+    Event.objects.select_for_update().get(pk=link.event_id)
     locked = PublicRegistrationLink.objects.select_for_update().get(pk=link.pk)
     if locked.revoked_at is None:
         locked.revoked_at = timezone.now()
-        locked.save(update_fields=("revoked_at", "updated_at"))
+        locked.encrypted_token = None
+        locked.save(update_fields=("revoked_at", "encrypted_token", "updated_at"))
+
+
+@transaction.atomic
+def recover_public_registration_link(*, event: Event) -> str:
+    locked_event = Event.objects.select_for_update().get(pk=event.pk)
+    link = PublicRegistrationLink.objects.filter(
+        event=locked_event, church_id=locked_event.church_id, revoked_at__isnull=True
+    ).first()
+    if link is None:
+        raise LinkRecoveryError("not_found", 404)
+    if not registration_is_open(locked_event):
+        raise LinkRecoveryError("registration_closed", 409)
+    if link.encrypted_token is None:
+        raise LinkRecoveryError("legacy_link", 409)
+    # Read-only: key rollover must never write stale ciphertext over a newer link.
+    return decrypt_link_token(link)
 
 
 def public_event_for_token(token: str) -> Event | None:

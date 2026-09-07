@@ -13,13 +13,15 @@ from rest_framework.views import APIView
 
 from accounts.access import groups_visible_to
 from accounts.models import ChurchMembership
+from accounts.permissions import Capability
 from audit.models import AuditEvent
 from audit.services import record_audit_event
 from groups.models import Group
 from people.models import Person, PersonQuerySet
 from people.normalization import normalize_email, normalize_phone, normalize_wechat_id
-from tenancy.permissions import HasActiveChurchMembership
+from tenancy.permissions import HasActiveChurchMembership, HasChurchCapability
 
+from .link_encryption import LinkRecoveryError
 from .models import Event, EventRegistration, PublicRegistrationLink
 from .permissions import HasEventAccess, HasEventCheckIn
 from .serializers import (
@@ -41,6 +43,7 @@ from .services import (
     enforce_valid_public_token_rate_limit,
     public_cancellation_token_is_valid,
     public_event_for_token,
+    recover_public_registration_link,
     register_for_event,
     register_public_visitor,
     registration_is_open,
@@ -435,7 +438,47 @@ class EventRegistrationCheckInView(EventRegistrationListCreateView):
 
 
 class EventPublicLinkView(APIView):
-    permission_classes = (HasActiveChurchMembership, HasEventAccess)
+    permission_classes = (HasActiveChurchMembership, HasChurchCapability)
+    required_capability = Capability.LEAD_MINISTRY
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        response["Cache-Control"] = "no-store"
+        return response
+
+    @staticmethod
+    def _recovery_error(error: LinkRecoveryError) -> Response:
+        messages = {
+            "legacy_link": "This older link cannot be displayed again.",
+            "registration_closed": "Public registration is closed.",
+            "not_found": "Public link not found.",
+        }
+        return Response(
+            {
+                "code": error.code,
+                "detail": messages.get(
+                    error.code,
+                    "Public link is temporarily unavailable. Please try again.",
+                ),
+            },
+            status=error.status_code,
+        )
+
+    @transaction.atomic
+    def get(self, request: Request, event_id: int) -> Response:
+        event = self._event(request, event_id)
+        try:
+            token = recover_public_registration_link(event=event)
+        except LinkRecoveryError as error:
+            return self._recovery_error(error)
+        record_audit_event(
+            action=AuditEvent.Action.PUBLIC_EVENT_LINK_RECOVERED,
+            actor=request.user,
+            church=request.church,
+            target=event,
+            request=request,
+        )
+        return Response({"url": request.build_absolute_uri(f"/register/{token}")})
 
     def _event(self, request: Request, event_id: int) -> Event:
         return generics.get_object_or_404(
@@ -448,6 +491,8 @@ class EventPublicLinkView(APIView):
             link, token = rotate_public_registration_link(
                 event=event, created_by=request.user
             )
+        except LinkRecoveryError as error:
+            return self._recovery_error(error)
         except DjangoValidationError as error:
             raise ValidationError({"detail": error.messages[0]}) from error
         record_audit_event(

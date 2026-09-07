@@ -129,8 +129,18 @@ const resources = {
         open: 'Registration open',
         registrationCount: '{{count}} / {{capacity}} registered',
         publicLink: {
-          active:
-            'A public registration link is active. Rotate it to reveal a new link.',
+          active: 'A public registration link is active.',
+          pending: 'Loading registration link…',
+          retry: 'Retry',
+          legacy:
+            'This older link cannot be displayed again. Find your saved copy or replace it. Replacing it disables the old link.',
+          closed:
+            'Registration is closed. The link cannot accept new registrations.',
+          unavailable:
+            'This public link is no longer available. Refresh the event list to see its current status.',
+          forbidden: 'You no longer have permission to manage this link.',
+          loadError:
+            'We could not load the link. Your existing link has not been replaced.',
           copied: 'Public registration link copied.',
           copy: 'Copy link',
           copyError: 'Copy failed. Select and copy the link manually.',

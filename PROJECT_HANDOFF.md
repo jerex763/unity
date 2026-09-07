@@ -191,6 +191,41 @@ not replace the existing sidebar without evidence. The later Team Lead
 delegation authorized the narrower task-flow delivery above; it did not approve
 the whole earlier People/Profile proposal.
 
+### Public-link recovery — local implementation
+
+User reports the dedicated key has been configured and the service redeployed.
+Read-only verification found GitHub deployment `6309181697` successful at
+`2026-09-07T12:58:53Z`, still for `327d3d5`; health is 200/ok and assets remain
+`index-B-FR7G0t.js` / `index-C-EEBaEX.css`. This confirms the existing release
+was redeployed, not that the new recovery feature is live. Key value,
+format and recovery custody have not been independently inspected or validated;
+no secret was retrieved. The next release step is push of the tested
+recovery implementation followed by new-version verification.
+
+The user approved the concrete design and implementation in
+[`docs/public-link-recovery-design.md`](docs/public-link-recovery-design.md).
+Encrypted storage, explicit same-church Admin/Pastor/Leader recovery permission,
+fresh Copy/Show with pending/retry/manual-copy behavior, no-store responses and
+identifier-only audit are implemented locally. Legacy links remain valid without
+automatic rotation; their missing ciphertext cannot be reconstructed.
+
+Verification: full PostgreSQL 16 suite 305 passed, independent PostgreSQL 32 passed,
+full Playwright 75 passed, frontend 130 unit tests, build/static checks and
+independent review **ACCEPT**. Actual screenshot/layout evidence is in
+`docs/public-link-recovery-evidence/`; response visibility clears mobile navigation. No production key,
+live token, database or account was changed. The local implementation and the
+prior #99 prerequisite repair are included in the user-authorized local commit,
+based on `327d3d5`. They are not pushed or deployed; the remote remains `327d3d5`.
+Pre-existing AGENTS.md/handoff edits are preserved outside this commit.
+
+Before publishing this change, provision `PUBLIC_LINK_ENCRYPTION_KEYS` securely
+with dedicated Fernet key custody and a separate recovery copy (see deployment
+and backup runbooks). Missing keys intentionally block new link creation,
+replacement and recovery; existing public URL validation stays available. Do
+not deploy without handling that configuration. No real key belongs in chat,
+Git, test fixtures or logs. Existing HasEventAccess safe-read permission is not
+used to authorize recovery.
+
 ### Current design proposal: People/Profile follow-up
 
 The next People/Profile change is design-only and has not been implemented in
@@ -377,6 +412,27 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+The 2026-09-07 read-only release-gap check is recorded in
+[`docs/release-gap-review-2026-09-07.md`](docs/release-gap-review-2026-09-07.md).
+The reviewed baseline is `327d3d5`; CI `34114978337` and GitHub deployment `6307378878`
+succeeded. All four issues below remain open. #109 chiefly needs evidence
+reconciliation; #110 does not yet record the later deployed task-flow batch.
+#32 already has worker feedback in the repository, so do not ask for a repeat
+session merely because GitHub's preparation comment is stale.
+
+**#99 prerequisite repair is now implemented locally:** pin the backup runner
+at ubuntu-24.04, verify its AWS CLI v2, install only age/postgresql-client, and
+preflight all seven settings before tools or database access. Nine offline
+regression tests pass and the main agent independently reviewed the implementation.
+CI now includes these tests; the production cron remains paused. These changes
+are locally committed, but not pushed or validated by a new remote CI run. Next operational
+step remains verifying configured infrastructure and a specifically authorized
+backup/restore drill, not automatically enabling the schedule. Latest backup run `29694284982` failed installation
+and alerting, with no newer run found. Current Secret metadata is inaccessible
+(403), so configuration is unknown rather than confirmed missing. CI's temporary
+probe restore does not prove an operational backup is available. Infrastructure
+setup, actual backup/restore and alert delivery remain separately scoped work.
+
 - **Local 2026-09-07 frontend delivery** — scoped reliability, task navigation
   and visual convergence are implemented, tested and independently accepted in
   deployed commit `47fcdcc`; CI and feature-specific live verification passed.
@@ -387,7 +443,8 @@ GitHub open Issues verified on 2026-09-07:
   Issue when appropriate.
 - **#110** — Batch 1 is deployed; record its acceptance and keep later
   People/Profile implementation behind the visual-approval gate.
-- **#32** — run the controlled human pilot and complete the release review.
+- **#32** — reconcile the completed fictional worker session and remaining
+  permission/restore/release evidence; new human testing is currently deferred.
 - **#99** — configure and verify production-grade backups before re-enabling the
   daily schedule. Manual workflow remains the safer fallback until verified.
 

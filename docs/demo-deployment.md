@@ -143,3 +143,37 @@ Official references:
 - [Render outbound bandwidth](https://render.com/docs/outbound-bandwidth)
 - [Render build pipeline limits](https://render.com/docs/build-pipeline)
 - [Neon connection pooling](https://neon.com/docs/connect/connection-pooling)
+
+## Recoverable public-link key setup
+
+Before deploying the public-link recovery change, provision a dedicated
+`PUBLIC_LINK_ENCRYPTION_KEYS` secret in the runtime, as comma-separated Fernet
+keys with the newest first. Do not reuse DJANGO_SECRET_KEY or use a generated
+arbitrary Render string: Fernet requires its specific encoded key format.
+Generate using `Fernet.generate_key()` and place it directly into the approved
+secret manager/private file; do not paste keys into chat, Git or build logs.
+Retain a separate offline recovery copy, independent of database backups.
+
+A fresh test-only key is configured in isolated test settings. Production has no
+fallback key. If keys are missing/invalid, creation, replacement and recovery
+fail with a generic service error; health and digest-based validation of existing
+public links continue. Provision the key before publishing to avoid disabling
+organizers' link-management workflow. No key has been provisioned by the local
+implementation task.
+
+The schema migration adds nullable encrypted storage without changing any legacy
+link digest. Older links therefore continue working but cannot be revealed; no
+migration should rotate them. Revocation clears recoverable ciphertext. Copying
+an existing link does not rotate it.
+
+For key rollover, prepend a new key while retaining keys needed to decrypt
+existing records. This does not re-encrypt old rows automatically. Do not remove
+an old key until all affected live ciphertext and retained backup recovery needs
+have been handled in a separately reviewed rotation operation. Losing a key
+prevents recovery of its ciphertext but does not revoke a public URL already in
+circulation.
+
+Verify new-link recovery across sessions, management-role denials, and legacy
+link preservation with fictional fixtures in isolation before a deployment.
+Live link creation/replacement is a separate data mutation and is not implied
+by a health/resource deployment check.

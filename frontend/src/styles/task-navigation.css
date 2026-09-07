@@ -84,3 +84,13 @@
     color: var(--color-text-muted);
   }
 }
+
+.public-link-result {
+  scroll-margin-block: 6rem;
+}
+
+.public-link-result input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}

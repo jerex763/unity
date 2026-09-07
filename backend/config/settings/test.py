@@ -21,3 +21,6 @@ else:
         }
     }
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# Public, fixed fixture key; never use outside isolated tests.
+PUBLIC_LINK_ENCRYPTION_KEYS = ["MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="]

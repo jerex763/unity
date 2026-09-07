@@ -15,6 +15,7 @@ church returns `404`.
 | Anonymize Person | Allow | Deny | Deny | Deny |
 | Hard-delete Person | Allow with approved reason | Deny | Deny | Deny |
 | Event create/edit/duplicate | Allow | Allow | Allow | Deny |
+| Public registration link create/reveal/replace/revoke | Allow | Allow | Allow | Deny |
 | Event check-in, walk-in and check-in search | Allow | Allow | Allow | Deny |
 | Groups | All in active church | All in active church | Joined groups only | Joined groups only |
 | Follow-ups | All in active church | All in active church | Assigned to self only | None |
@@ -51,3 +52,10 @@ values.
 The executable contract lives in
 `backend/tests/test_permission_matrix.py`. CI runs that suite explicitly and
 also runs the complete backend suite on every pull request.
+
+Public-link recovery is an explicit event-management action, even though its API
+method is GET. Generic event-read permission must not authorize it. Retrieve only
+within the active church, return no-store responses, and never include raw links
+or encrypted tokens in event-list responses or audit metadata. Legacy digest-only
+links remain valid but cannot be revealed. Missing encryption keys must not
+invalidate already-shared URLs.

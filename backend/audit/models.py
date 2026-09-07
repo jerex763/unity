@@ -50,6 +50,10 @@ class AuditEvent(models.Model):
             "event.public_link_created",
             "Public event link created",
         )
+        PUBLIC_EVENT_LINK_RECOVERED = (
+            "event.public_link_recovered",
+            "Public event link recovered",
+        )
         PUBLIC_EVENT_LINK_REVOKED = (
             "event.public_link_revoked",
             "Public event link revoked",

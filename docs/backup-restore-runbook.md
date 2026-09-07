@@ -14,6 +14,22 @@ Backups must contain only fictional data until the M0 exit gate passes. The
 scheduled workflow is not ready for production until every setup check below is
 complete.
 
+## Workflow prerequisite repair (#99)
+
+The bounded prerequisite repair uses the GitHub-hosted `ubuntu-24.04` image's
+preinstalled AWS CLI v2, verifies that it runs, and installs only the remaining
+backup tools through apt. It must fail clearly if the runner no longer provides
+that CLI rather than silently downloading an unverified replacement. GitHub's
+[Ubuntu 24.04 image inventory](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md)
+lists the bundled AWS CLI; the exact patch version follows image updates.
+
+Configuration preflight checks the required database, encryption recipient,
+S3 destination, AWS identity/region and alert settings before tool installation
+or database access. Errors identify missing variable names, never values.
+Passing preflight confirms presence only: it does not establish credential
+validity, bucket privacy/lifecycle, key custody, alert delivery or recoverability.
+The daily schedule stays paused and the operational setup below still applies.
+
 ## One-time production setup
 
 1. Create a dedicated private S3 bucket or prefix. Enable block-public-access,
@@ -93,3 +109,15 @@ fictional probe rows, creates a fresh age key, encrypts a custom-format dump,
 restores it and verifies both rows. It also checks that the encrypted file does
 not expose the fictional plaintext. This runs on every pull request so recovery
 does not silently regress.
+
+## Public-link encryption keys and restoration
+
+Recoverable public links add encrypted token material to the database. Their
+`PUBLIC_LINK_ENCRYPTION_KEYS` belong in a separately protected secret manager
+and offline recovery copy, not the S3 backup objects or repository. A database
+restore alone cannot prove public-link recovery works: a separately authorized
+isolated drill needs the corresponding retained decryption key as well.
+Preserve old keys for retained backups even after a live-key migration. Existing
+public URL validation uses the stored digest independently of decryption.
+Never log recovered links during a restore drill, and never make the restored
+application publicly accessible merely to test decryption.

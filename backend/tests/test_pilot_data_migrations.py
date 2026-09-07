@@ -175,3 +175,48 @@ def test_transport_removal_blocks_true_rows_until_manual_review() -> None:
     assert "needs_transport" not in {
         field.name for field in NewRegistration._meta.get_fields()
     }
+    # This test's target remains the historical transport change, but subsequent
+    # tests use current models and need the latest schema restored.
+    executor = MigrationExecutor(connection)
+    executor.migrate(executor.loader.graph.leaf_nodes())
+
+
+def test_public_link_encryption_migration_preserves_legacy_digest() -> None:
+    old_target = [("events", "0006_remove_transport")]
+    executor = MigrationExecutor(connection)
+    executor.migrate(old_target)
+    try:
+        apps = executor.loader.project_state(old_target).apps
+        church = apps.get_model("tenancy", "Church").objects.create(
+            name="Fictional Legacy Link Church"
+        )
+        user = apps.get_model("accounts", "User").objects.create(
+            username="fictional.legacy.link"
+        )
+        starts_at = timezone.now() + timedelta(days=3)
+        event = apps.get_model("events", "Event").objects.create(
+            church=church,
+            created_by=user,
+            title="Fictional Legacy Event",
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(hours=1),
+        )
+        link = apps.get_model("events", "PublicRegistrationLink").objects.create(
+            church=church,
+            event=event,
+            created_by=user,
+            token_digest="a" * 64,
+        )
+        executor = MigrationExecutor(connection)
+        latest = executor.loader.graph.leaf_nodes()
+        executor.migrate(latest)
+        apps = executor.loader.project_state(latest).apps
+        migrated = apps.get_model("events", "PublicRegistrationLink").objects.get(
+            pk=link.pk
+        )
+        assert migrated.token_digest == "a" * 64
+        assert migrated.encrypted_token is None
+        assert migrated.revoked_at is None
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())

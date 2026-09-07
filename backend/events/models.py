@@ -127,6 +127,7 @@ class PublicRegistrationLink(ChurchScopedModel):
         related_name="public_registration_link",
     )
     token_digest = models.CharField(max_length=64, unique=True)
+    encrypted_token = models.TextField(blank=True, null=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
