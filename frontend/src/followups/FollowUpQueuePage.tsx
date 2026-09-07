@@ -7,6 +7,7 @@ import {
   type FormEvent,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ApiError, apiRequest } from '../api/client'
 import { useModalDialog } from '../accessibility/useModalDialog'
@@ -18,6 +19,7 @@ import type {
   Interaction,
   WorkerChoice,
 } from './types'
+import '../styles/task-navigation.css'
 
 const statuses: FollowUpStatus[] = [
   'new',
@@ -67,9 +69,36 @@ function formatDisplayDate(value: string | null) {
   }).format(new Date(`${value}T00:00:00Z`))
 }
 
+function usePhoneLayout() {
+  const [isPhone, setIsPhone] = useState(() =>
+    typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 47.999rem)').matches
+      : false,
+  )
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia('(max-width: 47.999rem)')
+    const updateLayout = () => setIsPhone(query.matches)
+    if (typeof query.addEventListener !== 'function') return
+    query.addEventListener('change', updateLayout)
+    return () => query.removeEventListener('change', updateLayout)
+  }, [])
+
+  return isPhone
+}
+
 export function FollowUpQueuePage() {
   const { t } = useTranslation()
   const { session } = useAuth()
+  const isPhone = usePhoneLayout()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const taskParam = searchParams.get('task')
+  const requestedTaskId =
+    taskParam && /^\d+$/.test(taskParam) ? Number(taskParam) : null
+  const hasTaskQuery = taskParam !== null
   const [items, setItems] = useState<FollowUp[]>([])
   const [workers, setWorkers] = useState<WorkerChoice[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -93,8 +122,17 @@ export function FollowUpQueuePage() {
   const [interactionError, setInteractionError] = useState('')
   const selectionGeneration = useRef(0)
   const interactionRequestGeneration = useRef(0)
+  const selectedFollowUpIdRef = useRef<number | null>(null)
+  const interactionSummaryRef = useRef('')
+  const interactionDraftsRef = useRef<Record<number, string>>({})
+  const queueReturnRef = useRef<{
+    filter: typeof queueFilter
+    selectedId: number
+    scrollY: number
+  } | null>(null)
   const updateTitleRef = useRef<HTMLHeadingElement>(null)
   const detailHeadingRef = useRef<HTMLHeadingElement>(null)
+  const detailSectionRef = useRef<HTMLElement>(null)
   const updateDialogRef = useModalDialog<HTMLElement>(
     isEditing,
     closeEdit,
@@ -140,12 +178,19 @@ export function FollowUpQueuePage() {
 
   const selectFollowUp = useCallback(
     (item: FollowUp | null) => {
+      const previousId = selectedFollowUpIdRef.current
+      if (previousId !== null) {
+        interactionDraftsRef.current[previousId] = interactionSummaryRef.current
+      }
       selectionGeneration.current += 1
       setIsSaving(false)
       setFieldErrors({})
       setSaveError('')
       setSaveNotice('')
       if (!item) {
+        selectedFollowUpIdRef.current = null
+        interactionSummaryRef.current = ''
+        setInteractionSummary('')
         interactionRequestGeneration.current += 1
         setEditing(null)
         setFields(null)
@@ -154,6 +199,10 @@ export function FollowUpQueuePage() {
         setIsEditing(false)
         return
       }
+      selectedFollowUpIdRef.current = item.id
+      const itemDraft = interactionDraftsRef.current[item.id] ?? ''
+      interactionSummaryRef.current = itemDraft
+      setInteractionSummary(itemDraft)
       setEditing(item)
       setIsEditing(false)
       setFields(editFields(item))
@@ -186,15 +235,56 @@ export function FollowUpQueuePage() {
 
   useEffect(() => {
     if (!saveNotice) return
-    detailHeadingRef.current?.scrollIntoView?.({
+    ;(isPhone
+      ? detailSectionRef.current
+      : detailHeadingRef.current
+    )?.scrollIntoView?.({
       behavior: 'smooth',
       block: 'start',
     })
-    detailHeadingRef.current?.focus()
-  }, [saveNotice])
+    detailHeadingRef.current?.focus({ preventScroll: true })
+  }, [saveNotice, isPhone])
 
   function beginEdit(item: FollowUp) {
     selectFollowUp(item)
+    queueReturnRef.current = {
+      filter: queueFilter,
+      selectedId: item.id,
+      scrollY: window.scrollY,
+    }
+    const next = new URLSearchParams(searchParams)
+    next.set('task', String(item.id))
+    navigate(
+      { pathname: location.pathname, search: `?${next.toString()}` },
+      {
+        state: { fromFollowUpQueue: true },
+      },
+    )
+  }
+
+  function returnToQueue() {
+    if (isSaving) return
+    if (
+      location.state &&
+      typeof location.state === 'object' &&
+      'fromFollowUpQueue' in location.state
+    ) {
+      navigate(-1)
+      return
+    }
+    const next = new URLSearchParams(searchParams)
+    next.delete('task')
+    setSearchParams(next, { replace: true })
+  }
+
+  function changeQueueFilter(
+    filter: 'mine' | 'unassigned' | 'overdue' | 'all',
+  ) {
+    setQueueFilter(filter)
+    if (!hasTaskQuery) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('task')
+    setSearchParams(next, { replace: true })
   }
 
   async function addInteraction(event: FormEvent<HTMLFormElement>) {
@@ -216,6 +306,8 @@ export function FollowUpQueuePage() {
       )
       if (generation === interactionRequestGeneration.current) {
         setInteractions((current) => [interaction, ...current])
+        interactionDraftsRef.current[editing.id] = ''
+        interactionSummaryRef.current = ''
         setInteractionSummary('')
       }
     } catch {
@@ -356,17 +448,90 @@ export function FollowUpQueuePage() {
   }, [items, queueFilter, session?.user.id])
 
   useEffect(() => {
+    if (isLoading || loadError) return
+    if (hasTaskQuery) {
+      const requested =
+        requestedTaskId === null
+          ? null
+          : (items.find((item) => item.id === requestedTaskId) ?? null)
+      if (requested?.id === editing?.id) return
+      selectFollowUp(requested)
+      return
+    }
+    if (isPhone) return
     if (editing && queueItems.some((item) => item.id === editing.id)) return
     selectFollowUp(queueItems[0] ?? null)
-  }, [editing, queueItems, selectFollowUp])
+  }, [
+    editing,
+    hasTaskQuery,
+    isLoading,
+    isPhone,
+    items,
+    loadError,
+    queueItems,
+    requestedTaskId,
+    selectFollowUp,
+  ])
+
+  useEffect(() => {
+    if (hasTaskQuery || !isPhone || !queueReturnRef.current) return
+    const queueReturn = queueReturnRef.current
+    setQueueFilter(queueReturn.filter)
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: queueReturn.scrollY, behavior: 'auto' })
+      window.requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLElement>(
+            `[data-follow-up-id="${queueReturn.selectedId}"]`,
+          )
+          ?.focus({ preventScroll: true })
+      })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [hasTaskQuery, isPhone])
+
+  const taskUnavailable =
+    !isLoading &&
+    !loadError &&
+    hasTaskQuery &&
+    (requestedTaskId === null ||
+      !items.some((item) => item.id === requestedTaskId))
+  const hasVisibleEditing =
+    editing !== null &&
+    fields !== null &&
+    (!hasTaskQuery || editing.id === requestedTaskId)
+
+  useEffect(() => {
+    if (!isPhone || !hasTaskQuery || !hasVisibleEditing) return
+    const frame = window.requestAnimationFrame(() => {
+      detailSectionRef.current?.scrollIntoView({
+        behavior: 'auto',
+        block: 'start',
+      })
+      detailHeadingRef.current?.focus({ preventScroll: true })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [hasTaskQuery, hasVisibleEditing, isPhone, requestedTaskId])
 
   return (
-    <main className="follow-up-page">
+    <main
+      className={`follow-up-page${isPhone && hasTaskQuery ? ' mobile-detail-open' : ''}`}
+    >
       <section className="page-heading">
         <p className="eyebrow">{t('followUps.eyebrow')}</p>
         <h1>{t('followUps.title')}</h1>
         <p>{t('followUps.intro')}</p>
       </section>
+
+      {isPhone && hasTaskQuery && !hasVisibleEditing && !taskUnavailable ? (
+        <button
+          className="text-button follow-up-mobile-back follow-up-query-back"
+          onClick={returnToQueue}
+          type="button"
+        >
+          ← {t('followUps.backToQueue', { defaultValue: 'Back to queue' })}
+        </button>
+      ) : null}
 
       {isLoading ? (
         <p className="events-loading">{t('followUps.loading')}</p>
@@ -387,7 +552,7 @@ export function FollowUpQueuePage() {
             aria-pressed={queueFilter === filter}
             className={queueFilter === filter ? 'active' : undefined}
             key={filter}
-            onClick={() => setQueueFilter(filter)}
+            onClick={() => changeQueueFilter(filter)}
             type="button"
           >
             {filter === 'mine'
@@ -411,6 +576,7 @@ export function FollowUpQueuePage() {
             {queueItems.map((item) => (
               <button
                 className={`follow-up-card${editing?.id === item.id ? ' selected' : ''}`}
+                data-follow-up-id={item.id}
                 key={item.id}
                 onClick={() => beginEdit(item)}
                 type="button"
@@ -469,11 +635,20 @@ export function FollowUpQueuePage() {
           </div>
         </section>
 
-        {editing && fields ? (
+        {hasVisibleEditing && editing && fields ? (
           <section
             className="follow-up-editor"
+            ref={detailSectionRef}
             aria-labelledby="follow-up-editor"
           >
+            <button
+              className="text-button follow-up-mobile-back"
+              disabled={isSaving}
+              onClick={returnToQueue}
+              type="button"
+            >
+              ← {t('followUps.backToQueue', { defaultValue: 'Back to queue' })}
+            </button>
             <div className="profile-panel-heading">
               <div>
                 <p className="eyebrow">{t('followUps.editorEyebrow')}</p>
@@ -876,9 +1051,10 @@ export function FollowUpQueuePage() {
                 <label className="wide-field">
                   <span>{t('followUps.interactions.summary')}</span>
                   <textarea
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      interactionSummaryRef.current = event.target.value
                       setInteractionSummary(event.target.value)
-                    }
+                    }}
                     required
                     rows={2}
                     value={interactionSummary}
@@ -896,7 +1072,32 @@ export function FollowUpQueuePage() {
             </section>
           </section>
         ) : null}
-        {!editing ? (
+        {taskUnavailable ? (
+          <section
+            className="follow-up-editor follow-up-detail-unavailable"
+            role="status"
+          >
+            <button
+              className="text-button follow-up-mobile-back"
+              onClick={returnToQueue}
+              type="button"
+            >
+              ← {t('followUps.backToQueue', { defaultValue: 'Back to queue' })}
+            </button>
+            <h2>
+              {t('followUps.unavailableTitle', {
+                defaultValue: 'Follow-up unavailable',
+              })}
+            </h2>
+            <p>
+              {t('followUps.unavailableBody', {
+                defaultValue:
+                  'This follow-up may have been completed, removed, or may not be available in this church.',
+              })}
+            </p>
+          </section>
+        ) : null}
+        {!hasVisibleEditing && !taskUnavailable ? (
           <section className="follow-up-editor follow-up-detail-empty">
             <h2>Select a follow-up</h2>
             <p>

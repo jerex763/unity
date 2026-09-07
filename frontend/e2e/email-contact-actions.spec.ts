@@ -138,6 +138,7 @@ test('contact handoffs remain ordered and usable across all surfaces at the conf
   page,
 }) => {
   await page.goto('/people')
+  await page.locator('.person-contact-disclosure > summary').click()
   await expectContactOrderAndTargets(page)
 
   const openEmail = page.getByRole('link', {
@@ -187,6 +188,7 @@ test('contact handoffs remain ordered and usable across all surfaces at the conf
   await expect(
     page.getByRole('heading', { name: 'Follow-up queue', level: 1 }),
   ).toBeVisible()
+  await page.locator('.follow-up-card').first().click()
   await expectContactOrderAndTargets(page)
 })
 

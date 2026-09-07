@@ -1,0 +1,125 @@
+{
+  "viewport": "390x844",
+  "fixture": "12 fictional people, 12 follow-ups, 1 event; intercepted API only",
+  "metrics": {
+    "directory": {
+      "scrollHeight": 6432,
+      "overflow": false,
+      "firstPerson": {
+        "top": 372,
+        "height": 486,
+        "width": 358
+      },
+      "tabs": null,
+      "edit": null,
+      "eventActions": null,
+      "filterRow": {
+        "top": 293,
+        "height": 57,
+        "width": 358
+      }
+    },
+    "directoryReturn": {
+      "search": ""
+    },
+    "profile": {
+      "scrollHeight": 1725,
+      "overflow": false,
+      "firstPerson": null,
+      "tabs": {
+        "top": 759,
+        "height": 77,
+        "width": 358
+      },
+      "edit": {
+        "top": 329,
+        "height": 42,
+        "width": 228
+      },
+      "eventActions": null,
+      "filterRow": null
+    },
+    "contactFields": [
+      {
+        "label": "Phone number for Mimi",
+        "width": 72,
+        "clientHeight": 33,
+        "scrollHeight": 51
+      },
+      {
+        "label": "WeChat ID for Mimi",
+        "width": 199,
+        "clientHeight": 33,
+        "scrollHeight": 33
+      },
+      {
+        "label": "Email address for Mimi",
+        "width": 75,
+        "clientHeight": 33,
+        "scrollHeight": 88
+      }
+    ],
+    "events": {
+      "scrollHeight": 857,
+      "overflow": false,
+      "firstPerson": null,
+      "tabs": null,
+      "edit": null,
+      "eventActions": {
+        "top": 484,
+        "height": 252,
+        "width": 252
+      },
+      "filterRow": null
+    },
+    "rosterSelection": {
+      "scrollY": 0,
+      "detailTop": 752,
+      "viewportHeight": 844
+    },
+    "followups": {
+      "scrollHeight": 3689,
+      "overflow": false,
+      "firstPerson": null,
+      "tabs": null,
+      "edit": null,
+      "eventActions": null,
+      "filterRow": null
+    },
+    "followupSelection": {
+      "scrollY": 0,
+      "detailTop": 2587,
+      "viewportHeight": 844
+    },
+    "checkin": {
+      "scrollHeight": 844,
+      "overflow": false,
+      "firstPerson": null,
+      "tabs": null,
+      "edit": null,
+      "eventActions": null,
+      "filterRow": null
+    },
+    "checkInPending": {
+      "requests": 2,
+      "buttonEnabled": true
+    },
+    "home": {
+      "scrollHeight": 4486,
+      "overflow": false,
+      "firstPerson": null,
+      "tabs": null,
+      "edit": null,
+      "eventActions": null,
+      "filterRow": null
+    }
+  },
+  "profileFailure": {
+    "loadingVisible": 1,
+    "errorVisible": 0,
+    "pageErrors": [
+      "Simulated unavailable",
+      "Simulated unavailable"
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type CopyableContactProps = {
@@ -23,6 +23,30 @@ export function CopyableContact({
   const input = useRef<HTMLTextAreaElement>(null)
   const [copyResult, setCopyResult] = useState<CopyResult>(null)
   const copyState = copyResult?.value === value ? copyResult.status : 'idle'
+
+  useLayoutEffect(() => {
+    const element = input.current
+    if (!element) return
+    let previousWidth = -1
+    function fitValue() {
+      if (!element) return
+      element.style.height = 'auto'
+      element.style.height = `${element.scrollHeight}px`
+    }
+    fitValue()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', fitValue)
+      return () => window.removeEventListener('resize', fitValue)
+    }
+    const observer = new ResizeObserver(() => {
+      const width = element.clientWidth
+      if (width === previousWidth) return
+      previousWidth = width
+      fitValue()
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [value])
 
   function selectValue() {
     input.current?.focus()

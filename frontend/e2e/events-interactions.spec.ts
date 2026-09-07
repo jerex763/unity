@@ -281,11 +281,17 @@ test('event organizer interactions remain usable at the configured viewport', as
     'event-21-registrations',
   )
   await registrationToggle.click()
-  await expect(
-    page.getByRole('button', { name: 'Hide registrations (12)' }),
-  ).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('.registration-toggle').first()).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  )
   await expect(page.locator('#event-21-registrations')).toBeVisible()
   await expectNoHorizontalOverflow(page)
+
+  if (testInfo.project.name.startsWith('mobile-')) {
+    await page.getByRole('button', { name: 'Back to events' }).click()
+    await expect(registrationToggle).toBeFocused()
+  }
 
   const editButton = page.getByRole('button', { name: 'Edit' })
   await editButton.click()
@@ -372,17 +378,23 @@ test('follow-up attention and postponement stay usable at the configured viewpor
   })
 
   await page.goto('/follow-ups')
+  await expect(page.getByText('Escalated')).toBeVisible()
+  await expect(page.getByText('Stale')).toBeVisible()
+  await page.locator('.follow-up-card').first().click()
   await expect(
     page.getByRole('heading', {
       name: 'Fictional Attention Visitor',
       level: 2,
     }),
   ).toBeVisible()
-  await expect(page.getByText('Escalated')).toBeVisible()
-  await expect(page.getByText('Stale')).toBeVisible()
-  await expect(page.getByText('10/08/2026').first()).toBeVisible()
   await expect(
-    page.getByText(/Escalate and agree the next action/).first(),
+    page.locator('.follow-up-editor').getByText('10/08/2026').first(),
+  ).toBeVisible()
+  await expect(
+    page
+      .locator('.follow-up-editor')
+      .getByText(/Escalate and agree the next action/)
+      .first(),
   ).toBeVisible()
   await expectNoHorizontalOverflow(page)
 

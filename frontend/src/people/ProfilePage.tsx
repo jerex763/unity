@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 
-import { apiRequest } from '../api/client'
+import { ApiError, apiRequest } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { ContactActions } from './ContactActions'
 import type {
@@ -14,9 +14,14 @@ import type {
 type ProfileTab =
   'overview' | 'relationships' | 'groups' | 'events' | 'followUps'
 type ProfileState =
-  | { status: 'loading'; person: null }
-  | { status: 'ready'; person: ProfilePerson }
-  | { status: 'error'; person: null }
+  | { status: 'loading'; person: null; personId: string | undefined }
+  | { status: 'ready'; person: ProfilePerson; personId: string | undefined }
+  | {
+      status: 'error'
+      person: null
+      personId: string | undefined
+      reason: 'inaccessible' | 'transient'
+    }
 
 type EditFields = {
   full_name: string
@@ -74,7 +79,9 @@ export function ProfilePage() {
   const [state, setState] = useState<ProfileState>({
     status: 'loading',
     person: null,
+    personId,
   })
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview')
   const [isEditing, setIsEditing] = useState(false)
   const [fields, setFields] = useState<EditFields | null>(null)
@@ -88,6 +95,8 @@ export function ProfilePage() {
   const [relationshipError, setRelationshipError] = useState('')
   const [isSavingRelationship, setIsSavingRelationship] = useState(false)
   const profileHeadingRef = useRef<HTMLHeadingElement>(null)
+  const profileLifecycleRef = useRef(0)
+  const saveInFlightRef = useRef(false)
 
   function beginEdit() {
     setActiveTab('overview')
@@ -102,12 +111,52 @@ export function ProfilePage() {
 
   useEffect(() => {
     let active = true
-    void apiRequest<ProfilePerson>(`/people/${personId}/`).then((person) => {
-      if (active) {
-        setState({ status: 'ready', person })
-        setFields(editFields(person))
-      }
-    })
+    const lifecycle = profileLifecycleRef.current + 1
+    profileLifecycleRef.current = lifecycle
+    saveInFlightRef.current = false
+
+    void apiRequest<ProfilePerson>(`/people/${personId}/`)
+      .then((person) => {
+        if (active && profileLifecycleRef.current === lifecycle) {
+          setState({ status: 'ready', person, personId })
+          setFields(editFields(person))
+          setIsEditing(false)
+          setSaveError('')
+          setSaveNotice('')
+          setIsSaving(false)
+          setActiveTab('overview')
+          setRelationshipPerson('')
+          setRelationshipKind('friend')
+          setRelationshipError('')
+          setIsSavingRelationship(false)
+        }
+      })
+      .catch((requestError: unknown) => {
+        if (!active || profileLifecycleRef.current !== lifecycle) return
+        const inaccessible =
+          requestError instanceof ApiError &&
+          [403, 404].includes(requestError.status)
+        setState({
+          status: 'error',
+          person: null,
+          personId,
+          reason: inaccessible ? 'inaccessible' : 'transient',
+        })
+        setFields(null)
+        setIsEditing(false)
+        setSaveError('')
+        setSaveNotice('')
+        setIsSaving(false)
+        setIsSavingRelationship(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [loadAttempt, personId])
+
+  useEffect(() => {
+    let active = true
     void apiRequest<DirectoryPerson[]>('/people/')
       .then((result) => {
         if (active) setPeople(result)
@@ -115,13 +164,10 @@ export function ProfilePage() {
       .catch(() => {
         if (active) setPeople([])
       })
-      .catch(() => {
-        if (active) setState({ status: 'error', person: null })
-      })
     return () => {
       active = false
     }
-  }, [personId])
+  }, [])
 
   useEffect(() => {
     if (!saveNotice) return
@@ -147,7 +193,9 @@ export function ProfilePage() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!fields || !person) return
+    if (!fields || !person || isSaving || saveInFlightRef.current) return
+    const lifecycle = profileLifecycleRef.current
+    saveInFlightRef.current = true
     setSaveError('')
     setIsSaving(true)
     try {
@@ -172,20 +220,27 @@ export function ProfilePage() {
             : {}),
         }),
       })
-      setState({ status: 'ready', person: updated })
+      if (profileLifecycleRef.current !== lifecycle) return
+      setState({ status: 'ready', person: updated, personId })
       setFields(editFields(updated))
       setIsEditing(false)
       setSaveNotice(t('profile.saved'))
     } catch {
-      setSaveError(t('profile.saveError'))
+      if (profileLifecycleRef.current === lifecycle) {
+        setSaveError(t('profile.saveError'))
+      }
     } finally {
-      setIsSaving(false)
+      if (profileLifecycleRef.current === lifecycle) {
+        saveInFlightRef.current = false
+        setIsSaving(false)
+      }
     }
   }
 
   async function addRelationship(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!person || !relationshipPerson) return
+    const lifecycle = profileLifecycleRef.current
     setRelationshipError('')
     setIsSavingRelationship(true)
     try {
@@ -199,8 +254,10 @@ export function ProfilePage() {
           }),
         },
       )
+      if (profileLifecycleRef.current !== lifecycle) return
       setState({
         status: 'ready',
+        personId,
         person: {
           ...person,
           relationships: [...person.relationships, relationship],
@@ -209,22 +266,29 @@ export function ProfilePage() {
       setRelationshipPerson('')
       setRelationshipKind('friend')
     } catch {
-      setRelationshipError(t('profile.relationships.saveError'))
+      if (profileLifecycleRef.current === lifecycle) {
+        setRelationshipError(t('profile.relationships.saveError'))
+      }
     } finally {
-      setIsSavingRelationship(false)
+      if (profileLifecycleRef.current === lifecycle) {
+        setIsSavingRelationship(false)
+      }
     }
   }
 
   async function removeRelationship(relationship: PersonRelationship) {
     if (!person) return
+    const lifecycle = profileLifecycleRef.current
     setRelationshipError('')
     try {
       await apiRequest(
         `/people/${person.id}/relationships/${relationship.id}/`,
         { method: 'DELETE' },
       )
+      if (profileLifecycleRef.current !== lifecycle) return
       setState({
         status: 'ready',
+        personId,
         person: {
           ...person,
           relationships: person.relationships.filter(
@@ -233,15 +297,45 @@ export function ProfilePage() {
         },
       })
     } catch {
-      setRelationshipError(t('profile.relationships.removeError'))
+      if (profileLifecycleRef.current === lifecycle) {
+        setRelationshipError(t('profile.relationships.removeError'))
+      }
     }
   }
 
-  if (state.status === 'loading') {
+  if (state.personId !== personId || state.status === 'loading') {
     return <div className="profile-loading">{t('profile.loading')}</div>
   }
 
-  if (state.status === 'error' || !person || !fields) {
+  if (state.status === 'error') {
+    if (state.reason === 'transient') {
+      return (
+        <main className="profile-error">
+          <p className="eyebrow">{t('profile.errorEyebrow')}</p>
+          <h1>
+            {t('profile.loadErrorTitle', {
+              defaultValue: 'We could not load this profile',
+            })}
+          </h1>
+          <p>
+            {t('profile.loadErrorBody', {
+              defaultValue: 'Check your connection and try again.',
+            })}
+          </p>
+          <button
+            className="primary-button inline"
+            onClick={() => {
+              setState({ status: 'loading', person: null, personId })
+              setFields(null)
+              setLoadAttempt((attempt) => attempt + 1)
+            }}
+            type="button"
+          >
+            {t('profile.retry', { defaultValue: 'Try again' })}
+          </button>
+        </main>
+      )
+    }
     return (
       <main className="profile-error">
         <p className="eyebrow">{t('profile.errorEyebrow')}</p>
@@ -252,6 +346,10 @@ export function ProfilePage() {
         </Link>
       </main>
     )
+  }
+
+  if (!person || !fields) {
+    return <div className="profile-loading">{t('profile.loading')}</div>
   }
 
   const tabs: Array<{ id: ProfileTab; label: string; count?: number }> = [
@@ -563,6 +661,7 @@ export function ProfilePage() {
                     setFields(editFields(person))
                     setIsEditing(false)
                   }}
+                  disabled={isSaving}
                   type="button"
                 >
                   {t('profile.cancel')}

@@ -1,6 +1,6 @@
 # Unity project handoff and operating guide
 
-Last verified: **2026-09-01 (Australia/Sydney)**
+Last verified: **2026-09-07 (Australia/Sydney)**
 
 This is the first document to read when starting a new Unity chat or work
 session. It records the current state and operating rules so the team does not
@@ -33,19 +33,26 @@ ethnicity/race collection, and in-app payment processing. See
 
 ## 2. Current technical state
 
-Verified on 2026-09-01:
+Verified on 2026-09-07:
 
 - The latest application-behavior commit on `codex/mvp-next` is `2dc7d20
   Improve mobile role workflows`. The subsequent documentation-only
   reconciliation at `758f7ec` records deployment evidence and the mandatory
-  visual-mock approval gate; it does not change application behavior. Local
-  `HEAD` and `origin/codex/mvp-next` both resolve to `758f7ec`.
-- `main` remains at `a2ba850`; `codex/mvp-next` is 35 commits ahead and 0 behind.
+  visual-mock approval gate. The latest commit, `fd7a6fd`, refreshes project/demo
+  documentation and an admin mixin docstring; neither commit changes application
+  behavior. After fetching origin, local `HEAD` and `origin/codex/mvp-next` both
+  resolve to `fd7a6fd`, with no divergence or tracked working-tree changes at
+  session entry.
+- `main` remains at `a2ba850`; `codex/mvp-next` is 36 commits ahead and 0 behind.
+  GitHub has no open pull requests.
 - There is no authorization to merge or open a PR into `main`.
-- GitHub CI run `33147843372` passed frontend, backend, deployment-image and
-  backup-restore jobs for Issue #110 Batch 1.
-- Render health check returned `200 {"status": "ok"}`.
-- Render deployment `dep-da8ikdm417fc73ddk0vg` succeeded. Health returned
+- Latest GitHub CI run `33404876657` passed frontend, backend, deployment-image
+  and backup-restore jobs for `fd7a6fd`. Batch 1 run `33147843372` also passed.
+- On 2026-09-07 the live health endpoint returned `{"status": "ok"}` and
+  the home page referenced `index-Dzur2OWn.js` and `index-Bl8U4DgH.css`. These
+  match the recorded Batch 1 assets; they do not identify the latest backend
+  deployment commit.
+- Historical Batch 1 Render deployment `dep-da8ikdm417fc73ddk0vg` succeeded. Health returned
   `200 {"status":"ok"}` and the demo serves `index-Dzur2OWn.js` plus
   `index-Bl8U4DgH.css`; the deployed JavaScript contains the new profile,
   Engagement and save-confirmation signals.
@@ -136,6 +143,55 @@ of viewport-boundary fixes. CI run `33147843372` and Render deployment
 `dep-da8ikdm417fc73ddk0vg` passed; feature-specific bundle signals were verified
 on the live demo.
 
+### Current authorized frontend delivery — 2026-09-07
+
+The user chose reliability → task reorganization → visual convergence and
+explicitly delegated scoped product/design decisions to the Team Lead because
+new human testing is not practical now. The scoped implementation is complete
+and independently reviewed locally, documented in
+[`docs/frontend-delivery-2026-09-07.md`](docs/frontend-delivery-2026-09-07.md).
+The local task-flow mock precedes implementation. Keep the current desktop
+sidebar, API/permissions and whole-profile editor; directory contact disclosure,
+phone task/roster navigation and failure/pending recovery are the selected scope.
+This delegation does not grant push/deploy, account/data or cleanup authorization.
+Automated verification must not be relabelled as human acceptance.
+
+Delivered: recoverable Profile/public-link loads; stale request isolation;
+per-record check-in pending guards and event-route state reset; session-memory
+Directory filters/search/return focus; collapsed contact disclosure with readable
+values; exact task deep links and phone detail/Back; focused phone event rosters;
+operational heading/filter spacing. No backend or permission contract changed.
+
+Final local checks: Prettier, ESLint, 121 Vitest tests, production build, and
+65/65 Playwright tests across 320/375/390/430/desktop passed. Independent review
+returned **ACCEPT**, including re-review of event-route races and sticky-header
+Back visibility. Actual fictional screenshots/layout evidence are in
+`docs/ui-delivery-2026-09-07/`. The user subsequently authorized a local commit of this code and documentation
+on `codex/mvp-next`, based on `fd7a6fd`; the fetched remote remains at that
+baseline. The local delivery is not deployed and has no new remote CI run. `output/` remains untouched. The next delivery step is
+push/deployment verification after push/deploy authorization;
+no human test session is requested now and #32 remains open.
+
+### Current read-only reassessment — 2026-09-07
+
+The user requested a fresh senior frontend review that distinguishes facts,
+assumptions and preferences. See
+[`docs/ui-audit-2026-09-07.md`](docs/ui-audit-2026-09-07.md).
+Local mocked-API Chromium inspection reproduced a stuck Profile loading state
+on a 503 response, clipped contact values, off-screen selected follow-up detail,
+loss of Directory search on browser Back, repeated check-in requests while
+pending, and misleading public-registration failure wording. These are audit
+findings from the original audit, not claims of production incidents. The
+confirmed defects are now repaired locally in the delivery immediately above.
+
+The new recommendation is reliability and task-navigation repairs before
+committing to the People/Profile editing model. The existing mock is a candidate,
+not an approved specification: removing all directory contact actions and
+section-level editing remain hypotheses. Its desktop bottom navigation should
+not replace the existing sidebar without evidence. The later Team Lead
+delegation authorized the narrower task-flow delivery above; it did not approve
+the whole earlier People/Profile proposal.
+
 ### Current design proposal: People/Profile follow-up
 
 The next People/Profile change is design-only and has not been implemented in
@@ -146,8 +202,17 @@ The proposal makes the People directory selection-focused, removes duplicate
 contact information from Profile Overview, and uses section-level in-place edit
 actions. After save, the intended behavior is to leave edit mode, show a clear
 confirmation, and return focus/viewport to the section just edited—not
-unconditionally to the top of the Profile. Obtain explicit visual approval
-before production implementation.
+unconditionally to the top of the Profile. Existing previews cover four states
+at 390 × 844 only. The local
+[`2026-09-07 review supplement`](docs/ui-mockups/people-profile-review-2026-09-07.html)
+adds selectable 320/375/390/430/1440 widths and eight static states: directory,
+Overview, Details edit, Contact edit, saving, save failure, saved Details and
+read-only profile. All 40 state/width combinations passed local static-layout
+checks; this does not replace application interaction tests. Review notes are in
+[`the supplement record`](docs/ui-mockups/people-profile-review-2026-09-07.md).
+Obtain explicit visual approval before production changes. No such approval was found in the current
+handoff or Issue #110. Its existing comment already records Batch 1 technical
+delivery; post-deployment human acceptance remains distinct.
 
 ### Latest completed implementation: Issue #109
 
@@ -285,9 +350,10 @@ Still required before claiming the pilot gate is complete:
 6. Record Batch 1 acceptance on #110 and decide whether the People/Profile visual
    proposal is approved before implementing that follow-up scope.
 
-The highest-priority product decision is whether to approve the scoped
-People/Profile visual proposal. If approved, implement only that reviewed scope
-under #110 and verify it at the standard responsive widths. Account
+The confirmed reliability/navigation defects have been repaired and validated
+locally under the delegated scope above. Publishing this local delivery requires
+push/deploy authorization. The larger People/Profile editing proposal remains
+a separate future decision; automated evidence does not close the pilot gate. Account
 deactivation, fictional-data cleanup, public-link rotation and backup restore
 remain separate operational actions requiring their documented authorization.
 The completed check-in worker run supplies the remaining product-acceptance
@@ -309,9 +375,16 @@ rules, and cleanup plan. Do not merely say “manual testing required.”
 
 ## 6. Open work and priority
 
-GitHub open Issues verified on 2026-09-01:
+GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
+
+- **Local 2026-09-07 frontend delivery** — scoped reliability, task navigation
+  and visual convergence are implemented, tested and independently accepted in
+  the locally committed delivery. Publish only when
+  push/deploy is authorized; then verify CI and feature-specific live signals.
+  No issue update or human acceptance is claimed. The larger People/Profile
+  editing proposal remains separate.
 
 - **#109** — implementation deployed; record acceptance and close/update the
   Issue when appropriate.
@@ -497,6 +570,8 @@ must verify teardown.
 - Contact/email decision: [`docs/outbound-email-pilot.md`](docs/outbound-email-pilot.md).
 - Visual language: [`docs/design.md`](docs/design.md).
 - Latest read-only UI audit:
+  [`docs/ui-audit-2026-09-07.md`](docs/ui-audit-2026-09-07.md).
+- Earlier audit and Batch 1 rationale:
   [`docs/ui-audit-2026-08-28.md`](docs/ui-audit-2026-08-28.md).
 - Pending People/Profile visual proposal:
   [`docs/ui-mockups/people-profile-redesign-2026-08-29.md`](docs/ui-mockups/people-profile-redesign-2026-08-29.md).

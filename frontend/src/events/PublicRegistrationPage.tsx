@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ApiError, apiRequest } from '../api/client'
@@ -22,6 +22,16 @@ type Confirmation = {
   cancellation_url: string
 }
 
+type ConfirmationState = {
+  token: string
+  value: Confirmation
+}
+
+type PublicEventState =
+  | { status: 'loading'; event: null; token: string }
+  | { status: 'ready'; event: PublicEvent; token: string }
+  | { status: 'inaccessible' | 'transient'; event: null; token: string }
+
 function eventDate(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: 'full',
@@ -31,8 +41,14 @@ function eventDate(value: string) {
 
 export function PublicRegistrationPage() {
   const { token = '' } = useParams()
-  const [event, setEvent] = useState<PublicEvent | null>(null)
-  const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  const [eventState, setEventState] = useState<PublicEventState>({
+    status: 'loading',
+    event: null,
+    token,
+  })
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [confirmationState, setConfirmationState] =
+    useState<ConfirmationState | null>(null)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -41,26 +57,61 @@ export function PublicRegistrationPage() {
   const [preferredContact, setPreferredContact] = useState('')
   const [consent, setConsent] = useState(false)
   const [contactError, setContactError] = useState('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorState, setErrorState] = useState<{
+    message: string
+    token: string
+  } | null>(null)
+  const [submittingToken, setSubmittingToken] = useState<string | null>(null)
+  const loadedTokenRef = useRef<string | null>(null)
 
   useEffect(() => {
     let active = true
     void apiRequest<PublicEvent>(`/public/events/${token}/`)
       .then((value) => {
-        if (active) setEvent(value)
+        if (!active) return
+        if (loadedTokenRef.current !== token) {
+          loadedTokenRef.current = token
+          setConfirmationState(null)
+          setFullName('')
+          setEmail('')
+          setPhone('')
+          setHasWhatsapp(false)
+          setWechatId('')
+          setPreferredContact('')
+          setConsent(false)
+          setContactError('')
+          setErrorState(null)
+          setSubmittingToken(null)
+        }
+        setEventState({ status: 'ready', event: value, token })
       })
-      .catch(() => {
-        if (active) setError('This registration link is unavailable.')
-      })
-      .finally(() => {
-        if (active) setIsLoading(false)
+      .catch((requestError: unknown) => {
+        if (!active) return
+        const isNonRetryableClientError =
+          requestError instanceof ApiError &&
+          requestError.status >= 400 &&
+          requestError.status < 500 &&
+          ![408, 429].includes(requestError.status)
+        setEventState({
+          status: isNonRetryableClientError ? 'inaccessible' : 'transient',
+          event: null,
+          token,
+        })
       })
     return () => {
       active = false
     }
-  }, [token])
+  }, [loadAttempt, token])
+
+  const currentEventState =
+    eventState.token === token
+      ? eventState
+      : ({ status: 'loading', event: null, token } satisfies PublicEventState)
+  const event = currentEventState.event
+  const confirmation =
+    confirmationState?.token === token ? confirmationState.value : null
+  const error = errorState?.token === token ? errorState.message : ''
+  const isSubmitting = submittingToken === token
 
   async function submit(formEvent: FormEvent<HTMLFormElement>) {
     formEvent.preventDefault()
@@ -72,8 +123,9 @@ export function PublicRegistrationPage() {
       return
     }
     setContactError('')
-    setError('')
-    setIsSubmitting(true)
+    setErrorState(null)
+    const submissionToken = token
+    setSubmittingToken(submissionToken)
     try {
       const value = await apiRequest<Confirmation>(`/public/events/${token}/`, {
         method: 'POST',
@@ -89,22 +141,46 @@ export function PublicRegistrationPage() {
           website: '',
         }),
       })
-      setConfirmation(value)
+      setConfirmationState({ token: submissionToken, value })
     } catch (requestError) {
-      setError(
-        requestError instanceof ApiError && requestError.status === 429
-          ? 'Too many attempts. Please wait and try again.'
-          : 'We could not process the registration. Check the fields and try again.',
-      )
+      setErrorState({
+        token: submissionToken,
+        message:
+          requestError instanceof ApiError && requestError.status === 429
+            ? 'Too many attempts. Please wait and try again.'
+            : 'We could not process the registration. Check the fields and try again.',
+      })
     } finally {
-      setIsSubmitting(false)
+      setSubmittingToken((current) =>
+        current === submissionToken ? null : current,
+      )
     }
   }
 
-  if (isLoading) {
+  if (currentEventState.status === 'loading') {
     return <main className="public-registration-page">Loading event…</main>
   }
-  if (!event || error === 'This registration link is unavailable.') {
+  if (currentEventState.status === 'transient') {
+    return (
+      <main className="public-registration-page">
+        <section className="public-registration-card">
+          <h1>Registration is temporarily unavailable</h1>
+          <p>Check your connection and try loading this event again.</p>
+          <button
+            className="primary-button"
+            onClick={() => {
+              setEventState({ status: 'loading', event: null, token })
+              setLoadAttempt((attempt) => attempt + 1)
+            }}
+            type="button"
+          >
+            Try again
+          </button>
+        </section>
+      </main>
+    )
+  }
+  if (currentEventState.status === 'inaccessible' || !event) {
     return (
       <main className="public-registration-page">
         <section className="public-registration-card">

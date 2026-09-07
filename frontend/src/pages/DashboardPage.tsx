@@ -166,7 +166,7 @@ export function DashboardPage() {
                       ) : null}
                       <Link
                         className="primary-button dashboard-follow-up-action"
-                        to="/follow-ups"
+                        to={`/follow-ups?task=${item.id}`}
                       >
                         {t('dashboard.openFollowUp', {
                           name: item.person.full_name,

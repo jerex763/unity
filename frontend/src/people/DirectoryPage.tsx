@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import { apiRequest } from '../api/client'
 import { ContactActions } from './ContactActions'
 import type { DirectoryPerson } from './types'
+import { useDirectoryViewState } from './directory-view-state'
 
 type LoadState =
   | { status: 'loading'; people: DirectoryPerson[] }
@@ -27,10 +28,35 @@ export function DirectoryPage() {
     people: [],
   })
   const [reloadKey, setReloadKey] = useState(0)
-  const [search, setSearch] = useState('')
-  const [membershipStatus, setMembershipStatus] = useState('')
-  const [groupId, setGroupId] = useState('')
-  const [university, setUniversity] = useState('')
+  const viewState = useDirectoryViewState()
+  const [search, setSearch] = useState(viewState.current.search)
+  const [membershipStatus, setMembershipStatus] = useState(
+    viewState.current.membershipStatus,
+  )
+  const [groupId, setGroupId] = useState(viewState.current.groupId)
+  const [university, setUniversity] = useState(viewState.current.university)
+  const restored = useRef(false)
+
+  useEffect(() => {
+    Object.assign(viewState.current, {
+      search,
+      membershipStatus,
+      groupId,
+      university,
+    })
+  }, [search, membershipStatus, groupId, university, viewState])
+
+  useLayoutEffect(() => {
+    if (loadState.status !== 'ready' || restored.current) return
+    restored.current = true
+    const { scrollY, focusPersonId } = viewState.current
+    if (focusPersonId !== null) {
+      document
+        .getElementById(`directory-person-${focusPersonId}`)
+        ?.focus({ preventScroll: true })
+    }
+    if (scrollY > 0) window.scrollTo({ top: scrollY, behavior: 'instant' })
+  }, [loadState.status, viewState])
 
   useEffect(() => {
     let active = true
@@ -256,6 +282,11 @@ export function DirectoryPage() {
                   name: person.full_name,
                 })}
                 className="person-card-link"
+                id={`directory-person-${person.id}`}
+                onClick={() => {
+                  viewState.current.scrollY = window.scrollY
+                  viewState.current.focusPersonId = person.id
+                }}
                 to={`/people/${person.id}`}
               >
                 <div className="person-avatar" aria-hidden="true">
@@ -300,17 +331,22 @@ export function DirectoryPage() {
                   </span>
                 </div>
               </Link>
-              <div className="person-actions">
-                <ContactActions
-                  email={person.email}
-                  fullName={person.full_name}
-                  hasWhatsapp={person.has_whatsapp}
-                  phone={person.phone}
-                  preferredContact={person.preferred_contact}
-                  preferredName={person.preferred_name}
-                  wechatId={person.wechat_id}
-                />
-              </div>
+              {person.phone || person.email || person.wechat_id ? (
+                <details className="person-actions person-contact-disclosure">
+                  <summary>
+                    {t('directory.contact', { defaultValue: 'Contact' })}
+                  </summary>
+                  <ContactActions
+                    email={person.email}
+                    fullName={person.full_name}
+                    hasWhatsapp={person.has_whatsapp}
+                    phone={person.phone}
+                    preferredContact={person.preferred_contact}
+                    preferredName={person.preferred_name}
+                    wechatId={person.wechat_id}
+                  />
+                </details>
+              ) : null}
             </article>
           ))}
         </section>

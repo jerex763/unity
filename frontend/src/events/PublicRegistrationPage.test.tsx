@@ -152,3 +152,57 @@ it('clears a preferred channel when its contact method becomes unavailable', asy
   await user.click(whatsapp)
   expect(preference).toHaveValue('')
 })
+
+it('offers retry for a temporary event load failure without calling the link invalid', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse({}, 503))
+    .mockResolvedValueOnce(jsonResponse(publicEvent))
+  vi.stubGlobal('fetch', fetchMock)
+  const user = userEvent.setup()
+
+  render(
+    <MemoryRouter initialEntries={['/register/fictional-token']}>
+      <Routes>
+        <Route path="/register/:token" element={<PublicRegistrationPage />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+
+  expect(
+    await screen.findByRole('heading', {
+      name: 'Registration is temporarily unavailable',
+    }),
+  ).toBeVisible()
+  expect(screen.queryByText(/expired|withdrawn/i)).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Try again' }))
+
+  expect(
+    await screen.findByRole('heading', { name: 'Fictional Community Lunch' }),
+  ).toBeVisible()
+  expect(fetchMock).toHaveBeenCalledTimes(2)
+})
+
+it('keeps an invalid or expired event link in the inaccessible state', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, 404)))
+
+  render(
+    <MemoryRouter initialEntries={['/register/fictional-token']}>
+      <Routes>
+        <Route path="/register/:token" element={<PublicRegistrationPage />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+
+  expect(
+    await screen.findByRole('heading', { name: 'Registration unavailable' }),
+  ).toBeVisible()
+  expect(
+    screen.getByText(
+      'This link may have expired or been withdrawn by the organiser.',
+    ),
+  ).toBeVisible()
+  expect(
+    screen.queryByRole('button', { name: 'Try again' }),
+  ).not.toBeInTheDocument()
+})

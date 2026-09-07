@@ -11,8 +11,12 @@ type RosterFilter = 'to_check_in' | 'all' | 'checked_in' | 'walk_ins'
 type WalkInMode = 'existing' | 'new'
 
 export function EventCheckInPage() {
-  const { t } = useTranslation()
   const { eventId = '' } = useParams()
+  return <EventCheckInContent eventId={eventId} key={eventId} />
+}
+
+function EventCheckInContent({ eventId }: { eventId: string }) {
+  const { t } = useTranslation()
   const { session } = useAuth()
   const [event, setEvent] = useState<ChurchEvent | null>(null)
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
@@ -21,7 +25,14 @@ export function EventCheckInPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [pendingRegistrationIds, setPendingRegistrationIds] = useState<
+    Set<string>
+  >(new Set())
   const [walkInOpen, setWalkInOpen] = useState(false)
+  const [walkInEventId, setWalkInEventId] = useState<string | null>(null)
+  const [addingWalkInEventId, setAddingWalkInEventId] = useState<string | null>(
+    null,
+  )
   const [walkInMode, setWalkInMode] = useState<WalkInMode>('existing')
   const [personSearch, setPersonSearch] = useState('')
   const [personResults, setPersonResults] = useState<CheckInPerson[]>([])
@@ -38,23 +49,41 @@ export function EventCheckInPage() {
   const [contactError, setContactError] = useState('')
   const personSearchInputRef = useRef<HTMLInputElement>(null)
   const personSearchGenerationRef = useRef(0)
+  const checkInRequestsRef = useRef(new Map<string, symbol>())
+  const walkInRequestRef = useRef<symbol | null>(null)
+  const walkInRequestEventIdRef = useRef<string | null>(null)
+  const walkInGenerationRef = useRef(0)
+  const currentEventIdRef = useRef(eventId)
+  const isAddingWalkIn = addingWalkInEventId === eventId
+  const walkInVisible = walkInOpen && walkInEventId === eventId
   const walkInDialogRef = useModalDialog<HTMLElement>(
-    walkInOpen,
+    walkInVisible,
     closeWalkIn,
     personSearchInputRef,
   )
 
   function closeWalkIn() {
+    if (walkInRequestRef.current && walkInRequestEventIdRef.current === eventId)
+      return
+    walkInGenerationRef.current += 1
+    personSearchGenerationRef.current += 1
+    setIsSearchingPeople(false)
     setWalkInOpen(false)
+    setWalkInEventId(null)
   }
 
   function openWalkIn() {
+    if (walkInRequestRef.current && walkInRequestEventIdRef.current === eventId)
+      return
+    walkInGenerationRef.current += 1
     personSearchGenerationRef.current += 1
     setWalkInMode('existing')
     setPersonSearch('')
     setPersonResults([])
     setSelectedPerson(null)
+    setIsSearchingPeople(false)
     setContactError('')
+    setWalkInEventId(eventId)
     setWalkInOpen(true)
   }
 
@@ -79,11 +108,12 @@ export function EventCheckInPage() {
   useEffect(() => {
     const generation = ++personSearchGenerationRef.current
     const query = personSearch.trim()
-    if (!walkInOpen || walkInMode !== 'existing' || query.length < 2) {
+    if (!walkInVisible || walkInMode !== 'existing' || query.length < 2) {
       return
     }
     let active = true
     const timer = window.setTimeout(() => {
+      if (!active || generation !== personSearchGenerationRef.current) return
       setIsSearchingPeople(true)
       void apiRequest<CheckInPerson[]>(
         `/events/${eventId}/check-in/people/?q=${encodeURIComponent(query)}`,
@@ -109,7 +139,7 @@ export function EventCheckInPage() {
       active = false
       window.clearTimeout(timer)
     }
-  }, [eventId, personSearch, t, walkInMode, walkInOpen])
+  }, [eventId, personSearch, t, walkInMode, walkInVisible])
 
   const visible = useMemo(() => {
     const query = search.trim().toLocaleLowerCase()
@@ -140,6 +170,16 @@ export function EventCheckInPage() {
     registration: EventRegistration,
     checkedIn: boolean,
   ) {
+    const registrationKey = `${eventId}:${registration.id}`
+    if (checkInRequestsRef.current.has(registrationKey)) return
+    const request = Symbol()
+    const requestEventId = eventId
+    checkInRequestsRef.current.set(registrationKey, request)
+    setPendingRegistrationIds((current) => {
+      const next = new Set(current)
+      next.add(registrationKey)
+      return next
+    })
     setError('')
     setNotice('')
     try {
@@ -150,6 +190,11 @@ export function EventCheckInPage() {
           body: JSON.stringify({ checked_in: checkedIn }),
         },
       )
+      if (
+        currentEventIdRef.current !== requestEventId ||
+        checkInRequestsRef.current.get(registrationKey) !== request
+      )
+        return
       setRegistrations((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       )
@@ -159,12 +204,28 @@ export function EventCheckInPage() {
           : `${registration.person.full_name}'s check-in was removed.`,
       )
     } catch {
-      setError('We could not update attendance. Retry.')
+      if (
+        currentEventIdRef.current === requestEventId &&
+        checkInRequestsRef.current.get(registrationKey) === request
+      ) {
+        setError('We could not update attendance. Retry.')
+      }
+    } finally {
+      if (checkInRequestsRef.current.get(registrationKey) === request) {
+        checkInRequestsRef.current.delete(registrationKey)
+        setPendingRegistrationIds((current) => {
+          const next = new Set(current)
+          next.delete(registrationKey)
+          return next
+        })
+      }
     }
   }
 
   async function addWalkIn(formEvent: FormEvent<HTMLFormElement>) {
     formEvent.preventDefault()
+    if (walkInRequestRef.current && walkInRequestEventIdRef.current === eventId)
+      return
     setError('')
     setContactError('')
     const selectedPersonIsCurrent =
@@ -183,6 +244,13 @@ export function EventCheckInPage() {
       )
       return
     }
+    const request = Symbol()
+    const requestEventId = eventId
+    const requestGeneration = walkInGenerationRef.current
+    const submittedMode = walkInMode
+    walkInRequestRef.current = request
+    walkInRequestEventIdRef.current = requestEventId
+    setAddingWalkInEventId(requestEventId)
     try {
       const registration = await apiRequest<EventRegistration>(
         `/events/${eventId}/walk-ins/`,
@@ -204,10 +272,19 @@ export function EventCheckInPage() {
           ),
         },
       )
+      if (
+        walkInRequestRef.current !== request ||
+        currentEventIdRef.current !== requestEventId ||
+        walkInGenerationRef.current !== requestGeneration
+      )
+        return
       setRegistrations((current) => [
         ...current.filter((item) => item.id !== registration.id),
         registration,
       ])
+      walkInRequestRef.current = null
+      walkInRequestEventIdRef.current = null
+      setAddingWalkInEventId(null)
       closeWalkIn()
       setFullName('')
       setPreferredName('')
@@ -222,7 +299,7 @@ export function EventCheckInPage() {
       setSelectedPerson(null)
       setFilter(registration.status === 'walk_in' ? 'walk_ins' : 'checked_in')
       setNotice(
-        walkInMode === 'existing'
+        submittedMode === 'existing'
           ? `${registration.person.full_name} was checked in.`
           : `${registration.person.full_name} was added and checked in.`,
       )
@@ -230,13 +307,30 @@ export function EventCheckInPage() {
       const payload =
         requestError instanceof ApiError ? requestError.payload : {}
       const contact = payload.contact ?? payload.detail
-      setError(
-        typeof contact === 'string'
-          ? contact
-          : Array.isArray(contact) && typeof contact[0] === 'string'
-            ? contact[0]
-            : 'We could not add this walk-in. Check the details and retry.',
-      )
+      if (
+        walkInRequestRef.current === request &&
+        currentEventIdRef.current === requestEventId &&
+        walkInGenerationRef.current === requestGeneration
+      ) {
+        setContactError(
+          typeof contact === 'string'
+            ? contact
+            : Array.isArray(contact) && typeof contact[0] === 'string'
+              ? contact[0]
+              : t('events.walkIn.saveError'),
+        )
+      }
+    } finally {
+      if (walkInRequestRef.current === request) {
+        walkInRequestRef.current = null
+        walkInRequestEventIdRef.current = null
+        if (
+          currentEventIdRef.current === requestEventId &&
+          walkInGenerationRef.current === requestGeneration
+        ) {
+          setAddingWalkInEventId(null)
+        }
+      }
     }
   }
 
@@ -310,40 +404,53 @@ export function EventCheckInPage() {
       ) : null}
       {!isLoading ? (
         <section className="check-in-list" aria-label="Attendees">
-          {visible.map((registration) => (
-            <article key={registration.id}>
-              <div>
-                <strong>{registration.person.full_name}</strong>
-                <span>
-                  {registration.status === 'walk_in'
-                    ? 'Walk-in'
-                    : registration.status === 'waitlisted'
-                      ? 'Waitlisted'
-                      : 'Registered'}{' '}
-                  ·{' '}
-                  {registration.checked_in_at ? 'Checked in' : 'Not checked in'}
-                </span>
-              </div>
-              <button
-                className={
-                  registration.checked_in_at
-                    ? 'secondary-button'
-                    : 'primary-button'
-                }
-                onClick={() =>
-                  void setCheckedIn(registration, !registration.checked_in_at)
-                }
-                type="button"
-              >
-                {registration.checked_in_at ? 'Undo check-in' : 'Check in'}
-              </button>
-            </article>
-          ))}
+          {visible.map((registration) => {
+            const registrationKey = `${eventId}:${registration.id}`
+            const isPending = pendingRegistrationIds.has(registrationKey)
+            return (
+              <article key={registration.id}>
+                <div>
+                  <strong>{registration.person.full_name}</strong>
+                  <span>
+                    {registration.status === 'walk_in'
+                      ? 'Walk-in'
+                      : registration.status === 'waitlisted'
+                        ? 'Waitlisted'
+                        : 'Registered'}{' '}
+                    ·{' '}
+                    {registration.checked_in_at
+                      ? 'Checked in'
+                      : 'Not checked in'}
+                  </span>
+                </div>
+                <button
+                  className={
+                    registration.checked_in_at
+                      ? 'secondary-button'
+                      : 'primary-button'
+                  }
+                  onClick={() =>
+                    void setCheckedIn(registration, !registration.checked_in_at)
+                  }
+                  disabled={isPending}
+                  type="button"
+                >
+                  {isPending
+                    ? registration.checked_in_at
+                      ? 'Removing…'
+                      : 'Checking in…'
+                    : registration.checked_in_at
+                      ? 'Undo check-in'
+                      : 'Check in'}
+                </button>
+              </article>
+            )
+          })}
           {!visible.length ? <p>No attendees match this view.</p> : null}
         </section>
       ) : null}
 
-      {walkInOpen ? (
+      {walkInVisible ? (
         <div className="dialog-backdrop">
           <section
             aria-labelledby="walk-in-title"
@@ -361,6 +468,7 @@ export function EventCheckInPage() {
               <button
                 aria-label="Cancel"
                 className="dialog-close"
+                disabled={isAddingWalkIn}
                 onClick={closeWalkIn}
                 type="button"
               >
@@ -371,13 +479,21 @@ export function EventCheckInPage() {
               className="event-form"
               onSubmit={(formEvent) => void addWalkIn(formEvent)}
             >
-              <fieldset className="walk-in-path wide-field">
+              <fieldset
+                className="walk-in-path wide-field"
+                disabled={isAddingWalkIn}
+              >
                 <legend>{t('events.walkIn.choosePath')}</legend>
                 <label>
                   <input
                     checked={walkInMode === 'existing'}
                     name="walk-in-path"
                     onChange={() => {
+                      if (
+                        walkInRequestRef.current &&
+                        walkInRequestEventIdRef.current === eventId
+                      )
+                        return
                       personSearchGenerationRef.current += 1
                       setWalkInMode('existing')
                       setPersonResults([])
@@ -397,6 +513,11 @@ export function EventCheckInPage() {
                     checked={walkInMode === 'new'}
                     name="walk-in-path"
                     onChange={() => {
+                      if (
+                        walkInRequestRef.current &&
+                        walkInRequestEventIdRef.current === eventId
+                      )
+                        return
                       personSearchGenerationRef.current += 1
                       setWalkInMode('new')
                       setPersonResults([])
@@ -418,8 +539,14 @@ export function EventCheckInPage() {
                   <label>
                     <span>{t('events.walkIn.findExisting')}</span>
                     <input
+                      disabled={isAddingWalkIn}
                       ref={personSearchInputRef}
                       onChange={(changeEvent) => {
+                        if (
+                          walkInRequestRef.current &&
+                          walkInRequestEventIdRef.current === eventId
+                        )
+                          return
                         personSearchGenerationRef.current += 1
                         setPersonSearch(changeEvent.target.value)
                         setPersonResults([])
@@ -444,8 +571,14 @@ export function EventCheckInPage() {
                           <label key={person.id}>
                             <input
                               checked={selectedPerson === person.id}
+                              disabled={isAddingWalkIn}
                               name="existing-person"
                               onChange={() => {
+                                if (
+                                  walkInRequestRef.current &&
+                                  walkInRequestEventIdRef.current === eventId
+                                )
+                                  return
                                 setSelectedPerson(person.id)
                                 setContactError('')
                               }}
@@ -486,6 +619,7 @@ export function EventCheckInPage() {
                   <label>
                     <span>Full name (required)</span>
                     <input
+                      disabled={isAddingWalkIn}
                       required
                       value={fullName}
                       onChange={(changeEvent) =>
@@ -496,6 +630,7 @@ export function EventCheckInPage() {
                   <label>
                     <span>Preferred name</span>
                     <input
+                      disabled={isAddingWalkIn}
                       value={preferredName}
                       onChange={(changeEvent) =>
                         setPreferredName(changeEvent.target.value)
@@ -505,6 +640,7 @@ export function EventCheckInPage() {
                   <label>
                     <span>Email</span>
                     <input
+                      disabled={isAddingWalkIn}
                       type="email"
                       value={email}
                       onChange={(changeEvent) => {
@@ -521,6 +657,7 @@ export function EventCheckInPage() {
                   <label>
                     <span>Phone</span>
                     <input
+                      disabled={isAddingWalkIn}
                       type="tel"
                       value={phone}
                       onChange={(changeEvent) => {
@@ -540,7 +677,7 @@ export function EventCheckInPage() {
                   <label className="event-checkbox">
                     <input
                       checked={hasWhatsapp}
-                      disabled={!phone.trim()}
+                      disabled={isAddingWalkIn || !phone.trim()}
                       onChange={(changeEvent) => {
                         setHasWhatsapp(changeEvent.target.checked)
                         if (!changeEvent.target.checked) {
@@ -556,6 +693,7 @@ export function EventCheckInPage() {
                   <label>
                     <span>WeChat ID</span>
                     <input
+                      disabled={isAddingWalkIn}
                       value={wechatId}
                       onChange={(changeEvent) => {
                         setWechatId(changeEvent.target.value)
@@ -571,6 +709,7 @@ export function EventCheckInPage() {
                   <label>
                     <span>Preferred contact</span>
                     <select
+                      disabled={isAddingWalkIn}
                       value={preferredContact}
                       onChange={(changeEvent) =>
                         setPreferredContact(changeEvent.target.value)
@@ -596,6 +735,7 @@ export function EventCheckInPage() {
               <label>
                 <span>Note</span>
                 <input
+                  disabled={isAddingWalkIn}
                   maxLength={200}
                   value={note}
                   onChange={(changeEvent) => setNote(changeEvent.target.value)}
@@ -609,15 +749,22 @@ export function EventCheckInPage() {
               <div className="event-form-actions wide-field">
                 <button
                   className="secondary-button"
+                  disabled={isAddingWalkIn}
                   onClick={closeWalkIn}
                   type="button"
                 >
                   Cancel
                 </button>
-                <button className="primary-button inline" type="submit">
-                  {walkInMode === 'existing'
-                    ? t('events.walkIn.existingConfirm')
-                    : t('events.walkIn.newConfirm')}
+                <button
+                  className="primary-button inline"
+                  disabled={isAddingWalkIn}
+                  type="submit"
+                >
+                  {isAddingWalkIn
+                    ? t('events.walkIn.saving')
+                    : walkInMode === 'existing'
+                      ? t('events.walkIn.existingConfirm')
+                      : t('events.walkIn.newConfirm')}
                 </button>
               </div>
             </form>

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "directory",
+    "width": 320,
+    "pageOverflow": false,
+    "firstRowHeight": 179.984375,
+    "clippedContacts": 0
+  },
+  {
+    "name": "profile",
+    "width": 320,
+    "pageOverflow": false,
+    "clippedContacts": 0
+  },
+  {
+    "name": "task",
+    "width": 320,
+    "pageOverflow": false,
+    "taskHeadingTop": 168.78125,
+    "clippedContacts": 0
+  },
+  {
+    "name": "roster",
+    "width": 320,
+    "pageOverflow": false,
+    "clippedContacts": 0
+  },
+  {
+    "name": "directory",
+    "width": 390,
+    "pageOverflow": false,
+    "firstRowHeight": 179.984375,
+    "clippedContacts": 0
+  },
+  {
+    "name": "profile",
+    "width": 390,
+    "pageOverflow": false,
+    "clippedContacts": 0
+  },
+  {
+    "name": "task",
+    "width": 390,
+    "pageOverflow": false,
+    "taskHeadingTop": 168.78125,
+    "clippedContacts": 0
+  },
+  {
+    "name": "roster",
+    "width": 390,
+    "pageOverflow": false,
+    "clippedContacts": 0
+  },
+  {
+    "name": "directory",
+    "width": 1280,
+    "pageOverflow": false,
+    "firstRowHeight": 182.390625,
+    "clippedContacts": 0
+  },
+  {
+    "name": "profile",
+    "width": 1280,
+    "pageOverflow": false,
+    "clippedContacts": 0
+  },
+  {
+    "name": "task",
+    "width": 1280,
+    "pageOverflow": false,
+    "taskHeadingTop": 357.671875,
+    "clippedContacts": 0
+  },
+  {
+    "name": "roster",
+    "width": 1280,
+    "pageOverflow": false,
+    "clippedContacts": 0
+  }
+]

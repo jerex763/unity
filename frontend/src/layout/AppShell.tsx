@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { useAuth } from '../auth/useAuth'
+import { DirectoryViewStateProvider } from '../people/DirectoryViewStateProvider'
 
 const navItems = [
   { to: '/', label: 'nav.home', icon: 'home', end: true },
@@ -121,7 +122,11 @@ export function AppShell() {
       </aside>
 
       <div className="page-content">
-        <Outlet />
+        <DirectoryViewStateProvider
+          key={`${session.user.id}:${session.membership.church_id}:${session.membership.role}`}
+        >
+          <Outlet />
+        </DirectoryViewStateProvider>
       </div>
 
       <nav className="bottom-nav" aria-label={t('shell.menu')}>

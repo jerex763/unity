@@ -12,6 +12,7 @@ import {
   type EventFormValidationField,
 } from './eventFormValidation'
 import type { ChurchEvent, EventGroupChoice, EventRegistration } from './types'
+import '../styles/task-navigation.css'
 
 type EventForm = {
   id: number | null
@@ -100,9 +101,29 @@ function apiFieldErrors(error: ApiError): EventFormErrors {
   return errors
 }
 
+function usePhoneLayout() {
+  const [isPhone, setIsPhone] = useState(() =>
+    typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 47.999rem)').matches
+      : false,
+  )
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia('(max-width: 47.999rem)')
+    const updateLayout = () => setIsPhone(query.matches)
+    if (typeof query.addEventListener !== 'function') return
+    query.addEventListener('change', updateLayout)
+    return () => query.removeEventListener('change', updateLayout)
+  }, [])
+
+  return isPhone
+}
+
 export function EventsPage() {
   const { t } = useTranslation()
   const { session } = useAuth()
+  const isPhone = usePhoneLayout()
   const [events, setEvents] = useState<ChurchEvent[]>([])
   const [groups, setGroups] = useState<EventGroupChoice[]>([])
   const [people, setPeople] = useState<DirectoryPerson[]>([])
@@ -115,6 +136,8 @@ export function EventsPage() {
   const [saveError, setSaveError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [activeRoster, setActiveRoster] = useState<number | null>(null)
+  const [isRosterLoading, setIsRosterLoading] = useState(false)
+  const [rosterLoadError, setRosterLoadError] = useState('')
   const [rosters, setRosters] = useState<Record<number, EventRegistration[]>>(
     {},
   )
@@ -132,6 +155,8 @@ export function EventsPage() {
     number | null
   >(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const rosterTitleRef = useRef<HTMLHeadingElement>(null)
+  const rosterRequestGeneration = useRef(0)
   const canEdit = session?.membership.role !== 'member'
   const canCheckIn = ['admin', 'pastor', 'leader'].includes(
     session?.membership.role ?? '',
@@ -140,6 +165,11 @@ export function EventsPage() {
     Boolean(formMode),
     closeForm,
     titleInputRef,
+  )
+  const rosterDialogRef = useModalDialog<HTMLElement>(
+    isPhone && activeRoster !== null,
+    closeRoster,
+    rosterTitleRef,
   )
 
   useEffect(() => {
@@ -268,21 +298,42 @@ export function EventsPage() {
     }
   }
 
-  async function openRegistrations(event: ChurchEvent) {
-    if (activeRoster === event.id) {
-      setActiveRoster(null)
-      return
-    }
+  function closeRoster() {
+    rosterRequestGeneration.current += 1
+    setActiveRoster(null)
+    setIsRosterLoading(false)
+    setRosterLoadError('')
     setRegistrationError('')
+  }
+
+  async function loadRegistrations(event: ChurchEvent) {
+    const generation = ++rosterRequestGeneration.current
+    setRegistrationError('')
+    setRosterLoadError('')
+    setIsRosterLoading(true)
     setActiveRoster(event.id)
     try {
       const rows = await apiRequest<EventRegistration[]>(
         `/events/${event.id}/registrations/`,
       )
+      if (generation !== rosterRequestGeneration.current) return
       setRosters((current) => ({ ...current, [event.id]: rows }))
     } catch {
-      setRegistrationError(t('events.registrations.loadError'))
+      if (generation !== rosterRequestGeneration.current) return
+      setRosterLoadError(t('events.registrations.loadError'))
+    } finally {
+      if (generation === rosterRequestGeneration.current) {
+        setIsRosterLoading(false)
+      }
     }
+  }
+
+  async function openRegistrations(event: ChurchEvent) {
+    if (activeRoster === event.id) {
+      closeRoster()
+      return
+    }
+    await loadRegistrations(event)
   }
 
   async function addRegistration(
@@ -909,111 +960,197 @@ export function EventsPage() {
               ) : null}
 
               {activeRoster === event.id ? (
-                <section
-                  className="registration-panel"
-                  id={`event-${event.id}-registrations`}
-                  aria-label={t('events.registrations.title')}
+                <div
+                  className={
+                    isPhone
+                      ? 'dialog-backdrop roster-dialog-backdrop'
+                      : undefined
+                  }
                 >
-                  <h3>{t('events.registrations.title')}</h3>
-                  {(rosters[event.id] ?? []).length ? (
-                    <div className="registration-list">
-                      {(rosters[event.id] ?? []).map((registration) => (
-                        <article key={registration.id}>
-                          <div>
-                            <strong>{registration.person.full_name}</strong>
-                            <span>
-                              {t(
-                                `events.registrations.statuses.${registration.status}`,
-                              )}
-                            </span>
-                            {registration.note ? (
-                              <small>{registration.note}</small>
-                            ) : null}
-                          </div>
-                          <div className="registration-actions">
-                            {registration.status !== 'cancelled' ? (
-                              <button
-                                className="text-button"
-                                onClick={() =>
-                                  void cancelRegistration(event, registration)
-                                }
-                                type="button"
-                              >
-                                {t('events.registrations.cancel')}
-                              </button>
-                            ) : null}
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <p>{t('events.registrations.empty')}</p>
-                  )}
-                  {event.registration_open ? (
-                    <form
-                      className="registration-form"
-                      onSubmit={(formEvent) =>
-                        void addRegistration(formEvent, event)
-                      }
+                  <section
+                    aria-busy={isRosterLoading}
+                    aria-label={
+                      isPhone ? undefined : t('events.registrations.title')
+                    }
+                    aria-labelledby={
+                      isPhone
+                        ? `event-${event.id}-registrations-title`
+                        : undefined
+                    }
+                    aria-modal={isPhone || undefined}
+                    className={`registration-panel${isPhone ? ' event-editor roster-dialog' : ''}`}
+                    id={`event-${event.id}-registrations`}
+                    ref={isPhone ? rosterDialogRef : undefined}
+                    role={isPhone ? 'dialog' : undefined}
+                    tabIndex={isPhone ? -1 : undefined}
+                  >
+                    <button
+                      className="text-button roster-back-button"
+                      onClick={closeRoster}
+                      type="button"
                     >
-                      {canEdit ? (
-                        <>
-                          <p className="form-required-hint">
-                            {t('forms.requiredHint')}
-                          </p>
-                          <label>
-                            <span>
-                              {t('events.registrations.person')}{' '}
-                              <RequiredMarker />
-                            </span>
-                            <select
-                              onChange={(changeEvent) =>
-                                setRegistrationPerson(changeEvent.target.value)
-                              }
-                              required
-                              value={registrationPerson}
-                            >
-                              <option value="">
-                                {t('events.registrations.choosePerson')}
-                              </option>
-                              {people.map((person) => (
-                                <option key={person.id} value={person.id}>
-                                  {person.full_name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        </>
-                      ) : null}
-                      <label>
-                        <span>{t('events.registrations.note')}</span>
-                        <input
-                          maxLength={200}
-                          onChange={(changeEvent) =>
-                            setRegistrationNote(changeEvent.target.value)
-                          }
-                          value={registrationNote}
-                        />
-                      </label>
-                      <button
-                        className="primary-button inline"
-                        disabled={isSavingRegistration}
-                        type="submit"
-                      >
-                        {isSavingRegistration
-                          ? t('events.registrations.saving')
-                          : event.places_available
-                            ? t('events.registrations.confirm')
-                            : t('events.registrations.confirmWaitlist')}
-                      </button>
-                    </form>
-                  ) : null}
-                  {registrationError ? (
-                    <p className="form-error" role="alert">
-                      {registrationError}
+                      ←{' '}
+                      {t('events.registrations.backToEvents', {
+                        defaultValue: 'Back to events',
+                      })}
+                    </button>
+                    <h3
+                      id={`event-${event.id}-registrations-title`}
+                      ref={isPhone ? rosterTitleRef : undefined}
+                      tabIndex={isPhone ? -1 : undefined}
+                    >
+                      {t('events.registrations.titleForEvent', {
+                        defaultValue: 'Registrations — {{eventTitle}}',
+                        eventTitle: event.title,
+                      })}
+                    </h3>
+                    <p className="roster-dialog-context">
+                      {dateLabel(event.starts_at)}
+                      {event.location ? ` · ${event.location}` : ''}
                     </p>
-                  ) : null}
-                </section>
+                    {isRosterLoading ? (
+                      <div className="roster-load-state" role="status">
+                        <p>
+                          {t('events.registrations.loading', {
+                            defaultValue: 'Loading registrations…',
+                          })}
+                        </p>
+                      </div>
+                    ) : null}
+                    {!isRosterLoading && rosterLoadError ? (
+                      <div
+                        className="roster-load-state roster-load-error"
+                        role="alert"
+                      >
+                        <p>{rosterLoadError}</p>
+                        <p>
+                          {t('events.registrations.loadErrorContext', {
+                            defaultValue:
+                              'The event and its registrations are unchanged.',
+                          })}
+                        </p>
+                        <button
+                          className="secondary-button"
+                          onClick={() => void loadRegistrations(event)}
+                          type="button"
+                        >
+                          {t('events.registrations.retry', {
+                            defaultValue: 'Try again',
+                          })}
+                        </button>
+                      </div>
+                    ) : null}
+                    {!isRosterLoading && !rosterLoadError ? (
+                      <>
+                        {(rosters[event.id] ?? []).length ? (
+                          <div className="registration-list">
+                            {(rosters[event.id] ?? []).map((registration) => (
+                              <article key={registration.id}>
+                                <div>
+                                  <strong>
+                                    {registration.person.full_name}
+                                  </strong>
+                                  <span>
+                                    {t(
+                                      `events.registrations.statuses.${registration.status}`,
+                                    )}
+                                  </span>
+                                  {registration.note ? (
+                                    <small>{registration.note}</small>
+                                  ) : null}
+                                </div>
+                                <div className="registration-actions">
+                                  {registration.status !== 'cancelled' ? (
+                                    <button
+                                      className="text-button"
+                                      onClick={() =>
+                                        void cancelRegistration(
+                                          event,
+                                          registration,
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      {t('events.registrations.cancel')}
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <p>{t('events.registrations.empty')}</p>
+                        )}
+                        {event.registration_open ? (
+                          <form
+                            className="registration-form"
+                            onSubmit={(formEvent) =>
+                              void addRegistration(formEvent, event)
+                            }
+                          >
+                            {canEdit ? (
+                              <>
+                                <p className="form-required-hint">
+                                  {t('forms.requiredHint')}
+                                </p>
+                                <label>
+                                  <span>
+                                    {t('events.registrations.person')}{' '}
+                                    <RequiredMarker />
+                                  </span>
+                                  <select
+                                    onChange={(changeEvent) =>
+                                      setRegistrationPerson(
+                                        changeEvent.target.value,
+                                      )
+                                    }
+                                    required
+                                    value={registrationPerson}
+                                  >
+                                    <option value="">
+                                      {t('events.registrations.choosePerson')}
+                                    </option>
+                                    {people.map((person) => (
+                                      <option key={person.id} value={person.id}>
+                                        {person.full_name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </>
+                            ) : null}
+                            <label>
+                              <span>{t('events.registrations.note')}</span>
+                              <input
+                                maxLength={200}
+                                onChange={(changeEvent) =>
+                                  setRegistrationNote(changeEvent.target.value)
+                                }
+                                value={registrationNote}
+                              />
+                            </label>
+                            <button
+                              className="primary-button inline"
+                              disabled={isSavingRegistration}
+                              type="submit"
+                            >
+                              {isSavingRegistration
+                                ? t('events.registrations.saving')
+                                : event.places_available
+                                  ? t('events.registrations.confirm')
+                                  : t('events.registrations.confirmWaitlist')}
+                            </button>
+                          </form>
+                        ) : null}
+                        {registrationError ? (
+                          <p className="form-error" role="alert">
+                            {registrationError}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </section>
+                </div>
               ) : null}
             </div>
           </article>
