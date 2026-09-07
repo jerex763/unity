@@ -35,7 +35,21 @@ ethnicity/race collection, and in-app payment processing. See
 
 Verified on 2026-09-07:
 
-- Latest application delivery is `47fcdcc` on `codex/mvp-next`, pushed and
+- Latest application delivery is now `09c2a41`, pushed with explicit user
+  continuation authorization. CI `34125318906` passed all four jobs; Render
+  `dep-dafbdn942hec73d2vtug` / GitHub deployment `6309329134` succeeded at
+  `2026-09-07T13:07:51Z`. A documentation-only follow-up records this evidence.
+- Live health is 200/ok, home and Events SPA routes return 200, unknown API 404.
+  Anonymous public-link recovery is 403 with no-store. Live
+  `index-BwfoW3yg.js` / `index-De9yAWE-.css` match tested local build bytes,
+  including the new result region and legacy-link wording.
+- No live links were created/replaced, no secret values were read, and actual
+  production key decryptability/custody was not independently verified. The user
+  reported key configuration and showed its masked variable name. Production
+  backup cron remains paused; #99's prerequisite repair is deployed, not a
+  completed operational backup setup.
+
+- Previous application delivery was `47fcdcc` on `codex/mvp-next`, pushed and
   deployed with explicit user authorization. A documentation-only follow-up
   records this deployment; use Git for its exact HEAD. `main` remains `a2ba850`.
   No PR or merge to main was requested or performed.
@@ -191,40 +205,27 @@ not replace the existing sidebar without evidence. The later Team Lead
 delegation authorized the narrower task-flow delivery above; it did not approve
 the whole earlier People/Profile proposal.
 
-### Public-link recovery — local implementation
+### Public-link recovery — deployed
 
-User reports the dedicated key has been configured and the service redeployed.
-Read-only verification found GitHub deployment `6309181697` successful at
-`2026-09-07T12:58:53Z`, still for `327d3d5`; health is 200/ok and assets remain
-`index-B-FR7G0t.js` / `index-C-EEBaEX.css`. This confirms the existing release
-was redeployed, not that the new recovery feature is live. Key value,
-format and recovery custody have not been independently inspected or validated;
-no secret was retrieved. The next release step is push of the tested
-recovery implementation followed by new-version verification.
-
-The user approved the concrete design and implementation in
+The user approved design, implementation, local commit and then continuation to
+push/deploy. Commit `09c2a41` is now deployed; CI/Render/live-version evidence is
+recorded in section 2. Full design and validation:
 [`docs/public-link-recovery-design.md`](docs/public-link-recovery-design.md).
+
 Encrypted storage, explicit same-church Admin/Pastor/Leader recovery permission,
 fresh Copy/Show with pending/retry/manual-copy behavior, no-store responses and
-identifier-only audit are implemented locally. Legacy links remain valid without
+identifier-only audit are implemented. Legacy links remain valid without
 automatic rotation; their missing ciphertext cannot be reconstructed.
 
 Verification: full PostgreSQL 16 suite 305 passed, independent PostgreSQL 32 passed,
-full Playwright 75 passed, frontend 130 unit tests, build/static checks and
-independent review **ACCEPT**. Actual screenshot/layout evidence is in
-`docs/public-link-recovery-evidence/`; response visibility clears mobile navigation. No production key,
-live token, database or account was changed. The local implementation and the
-prior #99 prerequisite repair are included in the user-authorized local commit,
-based on `327d3d5`. They are not pushed or deployed; the remote remains `327d3d5`.
-Pre-existing AGENTS.md/handoff edits are preserved outside this commit.
+frontend 130 unit tests, full Playwright 75 passed, build/static checks and independent
+review ACCEPT. Screenshot/layout evidence: `docs/public-link-recovery-evidence/`.
 
-Before publishing this change, provision `PUBLIC_LINK_ENCRYPTION_KEYS` securely
-with dedicated Fernet key custody and a separate recovery copy (see deployment
-and backup runbooks). Missing keys intentionally block new link creation,
-replacement and recovery; existing public URL validation stays available. Do
-not deploy without handling that configuration. No real key belongs in chat,
-Git, test fixtures or logs. Existing HasEventAccess safe-read permission is not
-used to authorize recovery.
+The user reports PUBLIC_LINK_ENCRYPTION_KEYS configured and backed up; its actual
+format/decryptability was not read or validated in live business operations.
+Missing/invalid keys block new creation/replacement/recovery but do not invalidate
+existing public URLs. No production key belongs in chat/Git/logs. Old keys needed
+for retained backups must remain in separately protected recovery custody.
 
 ### Current design proposal: People/Profile follow-up
 
@@ -420,12 +421,12 @@ reconciliation; #110 does not yet record the later deployed task-flow batch.
 #32 already has worker feedback in the repository, so do not ask for a repeat
 session merely because GitHub's preparation comment is stale.
 
-**#99 prerequisite repair is now implemented locally:** pin the backup runner
+**#99 prerequisite repair is now deployed at `09c2a41`:** pin the backup runner
 at ubuntu-24.04, verify its AWS CLI v2, install only age/postgresql-client, and
 preflight all seven settings before tools or database access. Nine offline
 regression tests pass and the main agent independently reviewed the implementation.
 CI now includes these tests; the production cron remains paused. These changes
-are locally committed, but not pushed or validated by a new remote CI run. Next operational
+passed CI `34125318906`; the production backup workflow itself was not run. Next operational
 step remains verifying configured infrastructure and a specifically authorized
 backup/restore drill, not automatically enabling the schedule. Latest backup run `29694284982` failed installation
 and alerting, with no newer run found. Current Secret metadata is inaccessible

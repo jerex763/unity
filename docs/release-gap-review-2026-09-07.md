@@ -99,3 +99,11 @@ prerequisites and public-link recovery implementation. Earlier no-commit and
 design-only statements above describe those review stages; current local
 implementation/test evidence is in public-link-recovery-design.md and the
 handoff. No new push, deployment or operational backup was performed.
+
+## Deployment reconciliation
+
+The user authorized continuation after local commit. Commit09c2a41 was pushed,
+passed all four jobs in CI34125318906, and deployed successfully. This publishes
+the #99 prerequisite repair; it does not enable cron, run production backup,
+verify S3/key/alert infrastructure, or close #99/#32. Public-link release evidence
+and the remaining key-validation boundary are in public-link-recovery-design.md.

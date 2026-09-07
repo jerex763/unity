@@ -1,10 +1,12 @@
 # Recoverable public registration links — design
 
-Status: user approved implementation after reviewing this proposal. Backend and
-frontend are implemented locally; migrations are tested only in isolation. No
-agent-side production key provisioning, live link rotation, push or deployment
-was performed. The user subsequently authorized a local commit and reported
-configuring the key; its hidden value has not been independently validated. Final verification evidence appears below.
+Status: implemented, tested, committed and deployed at `09c2a41` after user
+authorization. CI `34125318906` passed; Render `dep-dafbdn942hec73d2vtug`
+(GitHub deployment6309329134) succeeded at2026-09-07T13:07:51Z. Live JS/CSS match
+tested assets, health returned200/ok, and anonymous recovery returned403/no-store.
+No live link creation/replacement or production secret read was performed;
+actual production key decryptability and recovery custody remain user-reported.
+The prior redeploy327d3d5 configured environment before this code deployment.
 
 ## Current facts
 
