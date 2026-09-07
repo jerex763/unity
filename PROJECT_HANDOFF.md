@@ -419,6 +419,21 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+**GitHub reconciliation completed with user authorization on 2026-09-08:**
+#109 is CLOSED/completed with [published acceptance evidence](https://github.com/jerex763/unity/issues/109#issuecomment-5573039690).
+#110 remains OPEN with its deployed phone task/roster and reliability scope
+separated from deferred design ideas; public-link backend work is documented as
+separate scope. #32 remains OPEN; worker feedback, fictional-session review and
+no-AI-promotion criteria are checked, while operational restore and activity
+permission/audit gates remain pending. Its real-data activity is explicitly a
+future gate, not authorization. No account/data cleanup or paid service was run.
+Verified documentation deployment is `8515439`; CI `34135993228` passed all four
+jobs after a failed Docker Hub HTTP 500 image fetch was retried successfully.
+GitHub deployment `6311351439` succeeded at `2026-09-07T15:05:57Z`.
+This supersedes earlier read-only/open-issue snapshots below. Current work is
+closed out for fictional-data demonstration; further development should start
+from a concrete observed defect or a separately scoped release-gate task.
+
 Documentation delivery `31a23b6` was committed and pushed with explicit user
 authorization on 2026-09-08; CI run `34135874426` was triggered. Follow-up #109
 review is in [`docs/checkin-acceptance-review-2026-09-08.md`](docs/checkin-acceptance-review-2026-09-08.md):
@@ -483,10 +498,9 @@ setup, actual backup/restore and alert delivery remain separately scoped work.
   No issue update or new human acceptance is claimed. The larger People/Profile
   editing proposal remains separate.
 
-- **#109** — implementation deployed; record acceptance and close/update the
-  Issue when appropriate.
-- **#110** — Batch 1 is deployed; record its acceptance and keep later
-  People/Profile implementation behind the visual-approval gate.
+- **#109** — completed and closed after acceptance evidence publication.
+- **#110** — deployed scope and evidence are updated on GitHub; deferred
+  People/Profile work remains behind the visual-approval gate.
 - **#32** — reconcile the completed fictional worker session and remaining
   permission/restore/release evidence; new human testing is currently deferred.
 - **#99** — cloud configuration deferred for cost; schedule remains disabled.
