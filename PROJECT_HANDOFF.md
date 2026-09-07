@@ -419,6 +419,15 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+Documentation delivery `31a23b6` was committed and pushed with explicit user
+authorization on 2026-09-08; CI run `34135874426` was triggered. Follow-up #109
+review is in [`docs/checkin-acceptance-review-2026-09-08.md`](docs/checkin-acceptance-review-2026-09-08.md):
+98 targeted backend tests (isolated in-memory SQLite) and 6 frontend tests passed.
+No code fix was required. The historical unrelated-person deactivation finding
+is guarded in current code and its regression passed. #109 is ready for evidence
+publication/closure consideration; no GitHub issue write is claimed. Preserve
+the separate #32 restore/activity/audit gates and the paid-services deferral.
+
 **2026-09-08 no-new-paid-services decision:** the user has no AWS setup and
 explicitly deferred paid backup infrastructure. Pause #99 cloud setup; keep the
 schedule disabled. Do not ask for AWS signup as the immediate next step. A local
