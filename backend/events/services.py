@@ -10,6 +10,8 @@ from django.db import DatabaseError, IntegrityError, transaction
 from django.db.models import F
 from django.utils import timezone
 
+from audit.models import AuditEvent
+from audit.services import record_audit_event
 from people.models import ConsentRecord, Person
 from people.normalization import normalize_email, normalize_phone, normalize_wechat_id
 
@@ -547,6 +549,7 @@ def set_manual_check_in(
     checked_in: bool,
 ) -> EventRegistration:
     locked = EventRegistration.objects.select_for_update().get(pk=registration.pk)
+    was_checked_in = locked.checked_in_at is not None
     if locked.status == EventRegistration.Status.CANCELLED and checked_in:
         raise ValidationError("A cancelled registration cannot be checked in.")
     if checked_in:
@@ -567,4 +570,14 @@ def set_manual_check_in(
         locked.checked_in_at = None
         locked.checkin_method = None
         locked.save(update_fields=("checked_in_at", "checkin_method", "updated_at"))
+    if was_checked_in != (locked.checked_in_at is not None):
+        record_audit_event(
+            action=(
+                AuditEvent.Action.EVENT_CHECKED_IN
+                if checked_in
+                else AuditEvent.Action.EVENT_CHECK_IN_REVERSED
+            ),
+            church=locked.church,
+            target=locked,
+        )
     return locked

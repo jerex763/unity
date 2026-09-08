@@ -46,6 +46,11 @@ class AuditEvent(models.Model):
         )
         CSV_EXPORTED = "data.csv_exported", "CSV exported"
         CONSENT_RECORDED = "consent.recorded", "Consent recorded"
+        EVENT_CHECKED_IN = "event.checked_in", "Event attendance checked in"
+        EVENT_CHECK_IN_REVERSED = (
+            "event.check_in_reversed",
+            "Event attendance check-in reversed",
+        )
         PUBLIC_EVENT_LINK_CREATED = (
             "event.public_link_created",
             "Public event link created",

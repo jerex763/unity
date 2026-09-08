@@ -419,6 +419,27 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+**Authorized local attendance-audit implementation — 2026-09-08:** the user
+approved the bounded follow-up below. Manual and existing/new walk-in attendance
+now emit minimal checked-in/reversed audit events only for actual state changes,
+atomically with the operation; internal calls do not invent an actor. Historical
+rows are not backfilled. `audit.0006` updates action choices. Full PostgreSQL suite
+passed 314 tests, followed by 10 targeted tests including a newly added concurrent
+duplicate-request regression. Migration apply/drift, Black and Ruff passed.
+Independent Sol review returned ACCEPT with no blockers. The temporary PostgreSQL
+instance was stopped and removed after verifying its PID. The user authorized
+commit, push and deployment; CI/deployment verification follows this delivery.
+#32's real-activity/restore gates remain open.
+
+**Pre-implementation audit finding, 2026-09-08 (addressed above):**
+[`docs/audit-coverage-review-2026-09-08.md`](docs/audit-coverage-review-2026-09-08.md)
+records 42 passing isolated audit/consent/interaction/public-link tests, with four
+PostgreSQL-only tests skipped. Attendance state has no worker attribution or
+check-in/reversal audit events; current state cannot reconstruct who corrected
+attendance. This limits #32 activity audit, not #109's accepted permission split.
+The subsequent implementation above addresses future manual/walk-in transitions;
+it does not reconstruct past activity or authorize live-data operations.
+
 **GitHub reconciliation completed with user authorization on 2026-09-08:**
 #109 is CLOSED/completed with [published acceptance evidence](https://github.com/jerex763/unity/issues/109#issuecomment-5573039690).
 #110 remains OPEN with its deployed phone task/roster and reliability scope
