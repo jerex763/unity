@@ -419,6 +419,15 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+**Attendance audit deployed — 2026-09-08:** application commit `c82ae86` is
+pushed to `codex/mvp-next`; CI `34187599342` passed. GitHub/Render deployment
+`6320736468` for that exact SHA succeeded at `2026-09-08T04:39:55Z`.
+Post-deployment health is 200/ok, Events serves 200 and anonymous check-in endpoint
+access returns 403. No live attendance mutation was performed; audit behavior is
+verified by the isolated tests and independent review, not a live write test.
+This supersedes the pending-release wording below. No paid backup service was
+configured and the pilot gate remains open.
+
 **Authorized local attendance-audit implementation — 2026-09-08:** the user
 approved the bounded follow-up below. Manual and existing/new walk-in attendance
 now emit minimal checked-in/reversed audit events only for actual state changes,
