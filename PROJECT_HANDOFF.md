@@ -419,6 +419,29 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+**Online fictional backup and isolated restore — 2026-09-14: PASS.** User
+authorized continuing the described online backup/restore. Read-only connection
+verified fictional church 2 and audit pair 147/148 on PostgreSQL 16.15. Exported
+a repeatable-read snapshot, streamed a custom pg_dump directly into age 1.2.1,
+and restored using `ops/backup/restore.sh` into a private Unix-socket PostgreSQL
+16.14 instance. First comparison did not pass; normalizing session timezone to
+UTC and sorting serialized rows consistently resolved the comparison. The
+verified snapshot contains 28 public tables and 408 rows; every table's row count
+and SHA-256 row-content digest match. Audit pair actor/target/empty metadata,
+registration 31 unchecked state, migration currency and Django checks passed.
+Restore alone took 0.13 seconds for this small dataset, not a production RTO.
+Verified artifact: `~/Library/Application Support/UnityBackups/20260914T132526Z/`
+(`unity.dump.age` and private `verification.json`). Its age identity is separate
+at `~/.config/unity-backup/keys/20260914T132526Z.agekey`; both files are 0600
+under private directories, outside Git. No source writes or online cleanup.
+The isolated restored cluster was stopped and removed. No public-link decryption
+was tested because its separate application key was not supplied. No off-device
+backup/key copy, schedule or alert delivery has been verified: one manually
+verified local artifact now exists, not an operational disaster-recovery system.
+Next: user custody of the age identity in a password manager/offline copy and
+an approved separate-device copy of the encrypted backup; AWS remains deferred.
+User authorized committing this documentation evidence; push/deploy remain separate.
+
 **Online backup preparation — 2026-09-14:** user supplied the connection in
 owner-only `~/.config/unity-backup/source.json` outside Git and authorized a
 documentation commit. Verified valid JSON, a populated PostgreSQL connection

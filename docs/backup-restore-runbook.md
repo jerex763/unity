@@ -8,6 +8,10 @@ action. No operational backup has been verified. A local encrypted drill is an
 optional separately scoped alternative for fictional data; it does not provide
 off-device disaster recovery. Keep the schedule paused and the demo fictional-only.
 
+Update, 2026-09-14: one online fictional-database snapshot has now been encrypted
+and successfully restored locally (evidence below). Off-device custody, automated
+backup scheduling and alert delivery remain unverified; the schedule stays paused.
+
 Unity is designed to create one encrypted PostgreSQL backup every day. The daily
 schedule is paused under Issue #99 until the production database, private object
 storage, encryption recipient and failure alert are configured and a manual
@@ -130,6 +134,17 @@ local full-schema script compatibility, not an operational backup or successful
 recovery of an online public link. The separate key requirement below remains.
 
 ## Public-link encryption keys and restoration
+
+Online fictional-database drill on 2026-09-14: backup `20260914T132526Z` restored
+all 28 public tables and 408 rows with identical per-table counts and SHA-256
+content digests after normalizing timezone and row ordering. Source queries and
+pg_dump used the same exported read-only snapshot. Attendance audit assertions,
+migration checks and Django system checks passed. The encrypted artifact and
+verification manifest are retained under the private local UnityBackups folder;
+the age identity is stored separately under the private unity-backup configuration
+folder. The isolated restored cluster was removed. Both artifact and identity
+are still on the same computer; off-device recovery custody is not established.
+Public-link token decryption was not part of this drill.
 
 Recoverable public links add encrypted token material to the database. Their
 `PUBLIC_LINK_ENCRYPTION_KEYS` belong in a separately protected secret manager
