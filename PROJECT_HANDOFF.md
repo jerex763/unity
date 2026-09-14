@@ -419,6 +419,19 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+**Google Drive backup copy — 2026-09-15: PASS.** With user authorization,
+created folder `Unity Encrypted Backup 20260914T132526Z` (Drive folder ID
+`17Fa2YEufoJ7cAeR-O7SaywviQaKfUNSg`). User uploaded `unity.dump.age` and
+`verification.json`; both files are visible. Folder and each file's sharing
+dialog independently show Restricted access and only the owner. No key upload.
+User downloaded the backup to `~/Downloads/unity.dump.age`: its 130407 bytes
+and SHA-256 match the retained, successfully restored `20260914T132526Z`
+artifact and verification manifest. The original checksum also still matches.
+This completes encrypted backup upload/download integrity verification.
+Separate off-device key custody, public-link decryption recovery, scheduling
+and alerting remain unverified. User authorized committing and pushing this
+evidence; credentials, backup artifacts and unrelated user edits are excluded.
+
 **Online fictional backup and isolated restore — 2026-09-14: PASS.** User
 authorized continuing the described online backup/restore. Read-only connection
 verified fictional church 2 and audit pair 147/148 on PostgreSQL 16.15. Exported
