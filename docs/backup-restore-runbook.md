@@ -116,6 +116,19 @@ restores it and verifies both rows. It also checks that the encrypted file does
 not expose the fictional plaintext. This runs on every pull request so recovery
 does not silently regress.
 
+## Local full-schema evidence (2026-09-14)
+
+A fresh PostgreSQL 16.14 database was migrated and populated with synthetic
+church, inactive user, person, event, registration and attendance audit data.
+The existing backup/restore scripts with age 1.2.1 restored 28 public tables;
+all 129 serialized application records matched exactly, migration checks and
+Django system checks passed. The encrypted file did not contain the synthetic
+name marker. The 0.39-second restore measures a tiny fixture only. Both databases
+used a private local Unix socket, and the temporary cluster, backup and identity
+were removed after the drill. No online database was accessed. This establishes
+local full-schema script compatibility, not an operational backup or successful
+recovery of an online public link. The separate key requirement below remains.
+
 ## Public-link encryption keys and restoration
 
 Recoverable public links add encrypted token material to the database. Their

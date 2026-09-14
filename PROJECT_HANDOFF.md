@@ -419,6 +419,60 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+**Online backup preparation — 2026-09-14:** user supplied the connection in
+owner-only `~/.config/unity-backup/source.json` outside Git and authorized a
+documentation commit. Verified valid JSON, a populated PostgreSQL connection
+with host/database, and file permissions 0600 without displaying credentials.
+Connectivity and source identity have not yet been verified; no online database
+was accessed or copied. Durable backup-key custody remains a prerequisite.
+Commit scope is the audit/restore evidence only, excluding user-owned rule edits
+and credentials. No push or deployment is authorized by this commit request.
+
+**No-cost local full-schema restore drill — 2026-09-14: PASS.** Following the
+user's instruction to continue, migrated a fresh isolated PostgreSQL 16.14 source
+database and seeded fictional church, inactive user, person, event, registration
+and check-in/reversal records. Existing `ops/backup/backup.sh` and `restore.sh`
+encrypted/restored the full database using age 1.2.1 and a temporary identity.
+All 28 public tables restored; all 129 serialized application records matched
+exactly before/after. Ciphertext did not contain the synthetic name marker;
+`migrate --check` and Django system checks passed. Tiny-fixture restore took
+0.39 seconds (not a production recovery-time estimate). PostgreSQL listened
+only on a private local Unix socket. Both databases, the encrypted artifact
+and temporary key were removed after stopping the isolated instance. No online
+database, paid service, cloud schedule, or application deployment was touched.
+This supplements the two-row CI probe; it is not a retained operational backup,
+selected online-backup acceptance, or public-link key recovery test. Next
+operational gap remains an explicitly scoped online fictional-data backup with
+separate key custody and isolated restore. Paid AWS setup remains deferred.
+
+**Authorized live attendance audit acceptance — 2026-09-14: PASS.** The user
+explicitly approved one fictional registration, one check-in and one reversal.
+Using the authenticated `admin` account (user ID 1), the new-visitor walk-in
+flow in fictional event 8 created person 38 and registration 31, then checked
+it in. One Undo check-in restored its unchecked state. Admin registration list
+independently confirms registration 31 belongs to the newly labelled fictional
+audit visitor, with checked-in timestamp empty; existing registrations unchanged.
+Audit 147 (`event.checked_in`, 12:57:31.987203 UTC) and audit 148
+(`event.check_in_reversed`, 12:57:39.557890 UTC) both have actor 1, church 2,
+target type `events.eventregistration`, target ID 31, and distinct request IDs.
+Both full admin detail views display empty metadata (`-`) and contain none of
+the synthetic visitor name, contact or note supplied during creation. There
+are exactly two attendance records; total audit count rose 110 to 113 because
+audit 146 separately records `person.created` for person 38 (also empty metadata,
+no visitor details). This verifies the live audit database views, not Render
+runtime logs. Test person/registration are retained; no cleanup, commit, push or
+deployment was performed. This supersedes the live-write gap below; broader
+real-data and backup/restore gates remain open.
+
+**Read-only live attendance audit check — 2026-09-14:** authenticated demo
+Audit events admin lists 110 total records. Separate action filters across all
+dates return 0 `event.checked_in` and 0 `event.check_in_reversed` records.
+There is therefore no live pair available to verify actor, registration ID or
+metadata privacy; absence of records is not a passing acceptance result. No
+live data was changed. Next step is a separately authorized fictional test
+registration, one check-in and one reversal, followed by inspection of both
+audit details; test-data creation/cleanup gates still apply.
+
 **Attendance audit deployed — 2026-09-08:** application commit `c82ae86` is
 pushed to `codex/mvp-next`; CI `34187599342` passed. GitHub/Render deployment
 `6320736468` for that exact SHA succeeded at `2026-09-08T04:39:55Z`.
