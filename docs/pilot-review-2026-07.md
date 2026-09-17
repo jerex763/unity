@@ -18,7 +18,7 @@ must not be marked complete until the remaining gates have recorded evidence.
 | Encrypted backup restore | Pull-request **Backup restore** check using PostgreSQL 16 and fictional probes | Passed in CI |
 | Mobile worker use | Pastor, check-in worker and follow-up worker on their own phones | Passed with significant usability findings on 2026-08-28 |
 | Controlled worker session | All three workers reported independent completion of their fictional workflow | Passed on 2026-08-28 |
-| Isolated restore drill | Restore a selected encrypted backup outside production and verify aggregates | Pending |
+| Isolated restore drill | Online fictional snapshot `20260914T132526Z`: 28 tables / 408 rows, per-table digests, migration and Django checks | Passed 2026-09-14; Drive round-trip checksum passed 2026-09-15 |
 | AI release safety | No AI feature is in the pilot scope | Passed |
 
 ## Controlled activity record
@@ -143,3 +143,40 @@ delivery update below supersedes their status.
   A real-attendee activity is neither authorized nor completed in this demo.
 
 Detailed issue mapping: `docs/pilot-status-reconciliation-2026-09-08.md`.
+
+## Acceptance closeout — 2026-09-15
+
+This update supersedes the September 8 pending audit/restore statements above;
+it does not fill the real-activity record with agent-run tests.
+
+- The authorized live fictional check-in/reversal produced exactly two attendance
+  events (147/148) for registration 31 and actor 1, with empty metadata and no
+  visitor contact/name/note. This is a bounded attendance-audit acceptance, not
+  an activity-wide cross-church/confidential-access review.
+- A selected online fictional database snapshot was encrypted and restored in
+  isolation: 28 tables, 408 rows, all per-table content digests identical, migration
+  and Django checks passed. The temporary restored cluster was removed.
+- The encrypted artifact and verification report are in Google Drive. Folder and
+  both files are Restricted/owner-only. The downloaded encrypted artifact has the
+  same SHA-256 as the successfully restored original (130407 bytes).
+- Backup age-key recovery passed on 2026-09-17: user confirmed the tested copy
+  was retrieved from a password manager/offline device; age fully decrypted the
+  downloaded artifact and pg_restore parsed it without persisting plaintext.
+  Custody origin is user-attested, decryption directly verified.
+- Application public-link restoration passed on 2026-09-17: supplied application
+  key decrypted both ciphertexts from the downloaded backup in an isolated
+  restored database; church/event binding and token digests match. No token was
+  disclosed and the temporary database was removed. External custody of this
+  separate application key is not independently verified. No automatic backup
+  schedule or failure alert is operational.
+- Three-worker feedback already exists. Unknown device/browser/time details must
+  stay unknown; do not repeat the session merely to populate old blank fields.
+- Real-attendee activity and its complete permission/audit review remain future
+  gates. Temporary account/data cleanup requires separate authorization.
+
+Decision: record Backup restore as passed for the selected fictional snapshot;
+keep #32 open and the demo fictional-only. Keep #110's broader redesign deferred
+and #99's paid cloud setup paused. Next operational priority is confirming
+recoverable custody of the application public-link keys; choose
+a repeatable no-new-fee backup cadence before real-data adoption. Backup age-key
+recovery is complete to the evidence standard described above.

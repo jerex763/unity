@@ -2,27 +2,76 @@
 
 ## Policy
 
-As of 2026-09-08, the user has deferred new paid services and AWS setup. The
-cloud configuration steps below are a future runbook, not the current next
-action. No operational backup has been verified. A local encrypted drill is an
-optional separately scoped alternative for fictional data; it does not provide
-off-device disaster recovery. Keep the schedule paused and the demo fictional-only.
+Current policy, 2026-09-17: use the manual, no-new-fee procedure below for the
+fictional-data demo. Paid AWS setup is deferred and the GitHub backup schedule
+remains disabled. This policy does not authorize importing real participant data.
 
-Update, 2026-09-14: one online fictional-database snapshot has now been encrypted
-and successfully restored locally (evidence below). Off-device custody, automated
-backup scheduling and alert delivery remain unverified; the schedule stays paused.
+The selected online snapshot `20260914T132526Z` restored successfully: 28 tables,
+408 rows, matching table digests and passing Django/migration checks. The private
+Google Drive copy passed download SHA-256 comparison. A user-confirmed externally
+retrieved age identity decrypted the backup; the separately supplied application
+key decrypted both public-link ciphertexts after isolated restoration. External
+custody of that application key has not been independently verified. These are
+point-in-time results, not evidence of automatic recurring backups or alerts.
 
-Unity is designed to create one encrypted PostgreSQL backup every day. The daily
-schedule is paused under Issue #99 until the production database, private object
-storage, encryption recipient and failure alert are configured and a manual
-backup/restore drill succeeds. Once enabled, backups are retained for 30 days in
-private object storage. This gives an initial recovery point objective of 24
-hours; the team must set an explicit recovery time objective after the first
-production-sized restore.
+## Manual cadence for the fictional pilot
 
-Backups must contain only fictional data until the M0 exit gate passes. The
-scheduled workflow is not ready for production until every setup check below is
-complete.
+- After each session that changes fictional business data, take an encrypted
+  backup and complete the Drive copy verification before closing the session.
+- Before a database migration, data repair/deletion or encryption-key rotation,
+  verify a current recoverable backup. This does not grant authorization for the
+  migration, deletion or rotation itself. Documentation-only commits need no dump.
+- Once per week during active testing, the project owner checks the backup log.
+  If data changed since the last verified snapshot, complete a new backup. If no
+  data changed, record that fact; repeated identical dumps add little value.
+- Restore a selected retained snapshot once per month during active testing, and
+  after backup tooling or encryption-key changes. Each execution remains a scoped
+  action; this runbook creates no scheduled job or unattended authorization.
+
+The user is the operational owner; Codex can execute a requested session. No
+background monitoring or reminders are currently configured. Recovery coverage
+ends at the most recent verified snapshot, so changes since then can be lost.
+The longer-term daily/24-hour objective is not achieved by this manual policy.
+Reassess cadence, storage, key access and failure notification before real-data use.
+
+## Completion checklist for each manual backup
+
+1. Confirm source is the fictional demo using read-only checks. Never reuse the
+   restore target as an online source or restore over the online database.
+2. Create a dated encrypted artifact outside Git, keeping age/application keys
+   separately protected. Retain the decryption keys required by older snapshots.
+3. Record timestamp, encrypted byte size and SHA-256 in a non-secret manifest.
+4. Upload only ciphertext and the non-secret manifest into the private Drive
+   backup folder; verify owner-only/Restricted access for the new files.
+5. Download the ciphertext and compare its SHA-256 to the local verified artifact.
+6. Mark the run complete only after verification; restore drills additionally
+   check table contents, migrations and application-link decryptability in a
+   private local target. Never report tokens or participant records.
+
+Maintain at least the latest verified backup and its predecessor while the
+manual pilot is active. Review older artifacts after 30 days; deletion remains
+separately authorized. Keep required old keys until their snapshots are retired.
+Do not point the existing local backup script at the verified archive directory
+without considering its automatic `BACKUP_RETENTION_DAYS` deletion behavior;
+use a new dated destination for each manual run.
+
+If a run fails, record the failed stage without secrets, retain the last known
+successful backup, and report the failure in the current task. Do not label the
+attempt successful because upload alone completed. Postpone planned destructive
+work until recovery verification succeeds. There is no unattended failure alert.
+
+Backup log fields: snapshot UTC time, source/environment label, operator,
+ciphertext byte size/hash, private storage location, download-check result,
+last restore result, key-custody confirmation and unresolved failure. Never store
+connection strings, key values or raw public links in the log.
+
+## Future automated production policy (deferred)
+
+The intended daily encrypted backup and 30-day retention policy is a future
+objective under #99. Establish storage, protected key custody, failure delivery,
+retention, and tested recovery before enabling automation; set recovery-time
+expectations from a representative restore. The AWS steps below are historical
+implementation guidance, not an instruction to sign up or spend money now.
 
 ## Workflow prerequisite repair (#99)
 

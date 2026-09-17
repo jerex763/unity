@@ -33,6 +33,18 @@ ethnicity/race collection, and in-app payment processing. See
 
 ## 2. Current technical state
 
+Current acceptance summary (2026-09-17): live attendance audit, selected online
+fictional-backup restore, Drive private copy and round-trip checksum have passed.
+Backup age-key recovery was verified on 2026-09-17 using a copy the user confirms
+was retrieved from a password manager/offline device. The remaining gates are
+application public-link key custody (restoration passed 2026-09-17),
+repeatable backup/alert operation, real-activity permission/audit acceptance and
+separately scoped test cleanup. Three-worker fictional feedback already exists;
+do not repeat completed tests because older dated entries below still say pending.
+See `docs/pilot-review-2026-07.md` acceptance closeout. #32 remains open; #110
+retains deferred design scope; #99 paid cloud setup remains paused.
+
+
 Verified on 2026-09-07:
 
 - Latest application delivery is now `09c2a41`, pushed with explicit user
@@ -418,6 +430,62 @@ rules, and cleanup plan. Do not merely say “manual testing required.”
 GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
+
+**Fictional-pilot manual backup cadence — 2026-09-17:** documented the
+no-new-fee policy in `docs/backup-restore-runbook.md`: verified encrypted Drive
+copy after each data-changing session and before migrations/destructive/key
+operations, weekly review during active testing, monthly or key/tool-change
+isolated restore. Documentation-only changes need no new dump. The user owns
+execution; no scheduler, reminder or automatic alert was created. Each run needs
+upload/download hash verification; retain the latest known-good artifact on
+failure. Retention review does not authorize deletion. No claim of operational
+recurrence or real-data readiness. User authorized documentation commit/push.
+
+**Application public-link restore verification — 2026-09-17: PASS.** User
+populated the private application-key input. Rechecked the downloaded backup
+checksum and restored it using the recovered age identity into an isolated
+PostgreSQL instance listening only on a private Unix socket. Application
+`decrypt_link_token` successfully decrypted both stored ciphertexts and verified
+church/event binding and token digest. Snapshot contained 2 encrypted links,
+0 active legacy links without ciphertext, and 0 revoked links without ciphertext.
+No token, key or raw URL disclosed; no online connection or mutation. Closed-event
+registration rules were not bypassed or tested by this cryptographic check.
+The temporary cluster was stopped and removed. Supplied application key is 0600;
+its external custody origin is not independently verified. No commit/push.
+
+**Application public-link key recovery preparation — 2026-09-17:** user
+authorized the next isolated recovery verification. No application key is present
+in the current environment or backup configuration. Created empty owner-only
+`~/.config/unity-backup/public-link-keys.txt` outside Git for a user-retrieved
+copy of the preserved `PUBLIC_LINK_ENCRYPTION_KEYS` value. Verification will use
+the accepted downloaded backup and recovered age identity, then validate stored
+ciphertext through `decrypt_link_token` (tenant/event binding and token digest)
+without displaying a token or modifying online data. Closed-event business
+rules remain intact; cryptographic recoverability is distinct from reopening
+expired registration. Pending user-provided application key; no recovery pass
+claimed and no new commit/push.
+
+**Recovered backup-key verification — 2026-09-17: PASS.** User
+provided `~/Downloads/test/20260914T132526Z.agekey`. Used only this copy to
+decrypt the downloaded `unity.dump.age`, after rechecking its SHA-256 against
+the accepted manifest. age authenticated the full stream successfully and
+pg_restore parsed the complete archive to `/dev/null`; no plaintext file or
+database connection was created. Restricted copied key permissions to 0600.
+User subsequently explicitly confirmed this copy was retrieved from a password
+manager/offline device. Origin/custody is user-attested; successful decryption
+and archive parsing were directly verified. This satisfies the current manual
+backup age-key recovery check, not an independent inspection of that external
+store. Application public-link keys and automated operations remain separate.
+No key content disclosed; original/copy retained. No commit or push this turn.
+
+**Pilot acceptance reconciliation — 2026-09-15:** updated #32's body to mark
+selected fictional Backup restore complete and publish attendance/Drive evidence
+linked to pushed commit `8f0d8e5`. Issue remains OPEN. Permission acceptance is
+still unchecked; real-activity, key recovery custody, repeatable backup/alerts
+and separately authorized cleanup remain explicit. Updated the local pilot
+review and current summary to supersede stale pending-restore text. #110's
+delivered/deferred scope required no change; #99 remains deferred. No new tests,
+data operations, commit, push or deployment were performed for this closeout.
 
 **Google Drive backup copy — 2026-09-15: PASS.** With user authorization,
 created folder `Unity Encrypted Backup 20260914T132526Z` (Drive folder ID
