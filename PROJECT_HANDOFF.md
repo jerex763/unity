@@ -772,6 +772,12 @@ The user expects a Team Lead, not an order-taking code generator.
 
 ### Multi-agent routing
 
+Routing decision (2026-09-23): the user selected `gpt-6-astra` for main-agent /
+Team Lead coordination. `AGENTS.md` defines its ownership of priorities,
+architecture decisions, delegation and final acceptance. Existing execution and
+independent-review assignments remain in place; the preference neither switches
+the runtime model nor requires subagents for every task.
+
 Use subagents only when the current runtime permits it and the user/project
 instructions call for delegation. Keep tasks bounded and avoid simultaneous
 write-heavy agents in the shared worktree.

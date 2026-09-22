@@ -46,7 +46,21 @@ must be corrected.
   priority before ending the work session. Do not create timestamp-only churn
   when no durable state changed.
 
-## Subagent model routing
+## Team Lead and model routing
+
+- `gpt-6-astra`: preferred main agent / Team Lead. Own requirements, priorities,
+  architecture decisions, task scope, model routing, risk judgment, evidence
+  review, and final delivery. Handle small bounded tasks directly when delegation
+  would add overhead. For high-risk work, retain final judgment even when
+  implementation or independent review is delegated.
+- This is the project's routing preference, not a runtime model switch. Use only
+  models exposed by the current runtime; do not claim Astra or any other model
+  was selected merely because this file names it. If unavailable, state the
+  actual limitation and keep the same responsibility boundaries.
+- These assignments do not require spawning subagents. Delegate only when
+  authorized by the active instructions and useful for a concrete bounded task.
+
+### Execution and independent review
 
 - `gpt-5.3-codex-spark`: use only when the current runtime explicitly exposes
   it, for near-instant, low-risk, tightly scoped execution such as one granular
