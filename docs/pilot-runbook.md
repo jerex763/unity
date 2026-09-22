@@ -1,5 +1,75 @@
 # Pilot runbook
 
+## Next pilot decision — 2026-09-17
+
+**Status: preparation only; no real-data pilot is approved.** The three-worker
+fictional session below already happened. Its August deadline and preparation
+steps are historical, not instructions to repeat the session or recreate accounts.
+Current evidence is in `pilot-review-2026-07.md` and
+`pilot-permission-review-2026-09-17.md`.
+
+### Recommended scope
+
+Keep Google Forms/Sheets as the operational record for now. Prepare one event's
+registration → check-in → assigned newcomer follow-up workflow for a future
+limited pilot. Do not import Google responses, duplicate live attendance in the
+fictional demo, or collect care notes. If a concrete workflow question needs
+checking before approval, reproduce it with wholly invented records under a
+separately authorized test-data scope; pseudonyms derived from real attendees
+are not fictional data.
+
+This recommendation assumes the existing Google workflow remains usable and no
+urgent defect blocks it. A documented operational failure or approved environment
+for real data would justify reassessing the priority. Passing automated tests
+alone does not resolve data custody or day-of-event responsibility.
+
+### Decision sheet (fill before authorizing real use)
+
+Record role labels and decisions here, not personal names or attendee details.
+Keep actual owner/contact assignments in the owner's private operational record.
+
+| Decision | Proposed scope / unresolved item |
+|---|---|
+| Activity and date | Not selected; choose one event, no historical import |
+| Size | Proposed cap: 10 consenting adult volunteers; a planning limit, not a tested capacity claim |
+| Accountable owner | Not assigned; one person must own stop/resume and reconciliation |
+| Operators | Pastor/approver, check-in operator, assigned follow-up operator; confirm actual availability privately |
+| Environment | Not selected; current Render/Neon demo remains fictional-only |
+| Minimal data | Propose display name, one necessary contact channel, event registration/check-in, follow-up assignee/status/next action; confirm necessity before collection |
+| Exclusions | No care/prayer narrative, minors, bulk imports, message history, or new modules in this proposed first scope |
+| Participant notice | Not prepared; explain purpose, access, retention and how to request correction/removal before collection |
+| Retention | Not decided; specify an end/review date and authorized disposition before collection |
+| Recovery owner | Not assigned; confirm application-key custody and demonstrate the manual backup procedure for the approved environment |
+| Source of truth | Google remains authoritative before launch; explicitly select the pilot system of record and reconciliation owner before any dual entry |
+
+### Go / stop / acceptance
+
+Before launch, approve the filled scope and real-data environment, verify the
+deployed version and each operator's access, confirm participant notice and
+retention, and record a recoverable pre-session backup without secrets. No
+existing recovery drill authorizes copying this fictional demo into production.
+
+Stop for wrong-church/confidential visibility, unexpected editing rights,
+ambiguous or lost writes, or a blocking check-in failure. The accountable owner
+returns operations to the agreed Google workflow, records only redacted incident
+facts, and reconciles pending changes before any retry. Do not blindly replay
+check-ins, disable accounts or delete records as part of diagnosis.
+
+Accept the pilot only when the planned registration/check-in/follow-up tasks
+complete, authorized operators and target IDs match sampled audit transitions,
+audit metadata excludes names/contact details/notes, and the owner reconciles
+counts and confirms a recoverable post-session backup. Exactly two attendance
+events are expected only for a scoped check-in/undo pair, not for the entire
+session's audit log. Record failures and unresolved evidence; do not infer that
+no unauthorized access occurred merely because nobody reported it.
+
+No additional worker session is required just to fill historical device/timing
+blanks. Schedule human participation only after the scope is approved and a
+specific remaining operational question warrants it. Until then, leave #32 open
+and defer new features, paid storage, cleanup and live data changes.
+
+## Historical fictional worker session
+
 Use this checklist for Issue
 [#32](https://github.com/jerex763/unity/issues/32). The current Render/Neon demo
 is fictional-data-only: actual church workers may evaluate it, but every church,

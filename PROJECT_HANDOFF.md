@@ -431,6 +431,22 @@ GitHub open Issues verified on 2026-09-07:
 
 ### Immediate release work
 
+**Permission evidence follow-up — 2026-09-17:** committed/pushed preceding
+key-recovery/manual-backup documentation as `4872693`. Follow-up isolated SQLite
+permission/lifecycle/follow-up/audit suites: 78 passed, 1 PostgreSQL concurrency
+test skipped, 115 warnings. No new code defect found and no online data changed.
+See `docs/pilot-permission-review-2026-09-17.md` for boundary mapping and limits.
+Current automated review is complete; #32 stays open for the explicitly scoped
+real-activity decision/evidence, rather than repeatedly retesting fictional flows.
+Follow-up inspection confirmed CI for `4872693` succeeded, and the remote branch
+still points to that commit. `docs/pilot-runbook.md` now separates the completed
+historical worker session from a proposed one-event pilot decision sheet. Event,
+owner, real-data environment, retention and recovery ownership remain unresolved;
+Google remains the operational record and the demo remains fictional-only.
+The 2026-09-23 documentation delivery records these review/runbook updates;
+existing user rule edits remain outside its scope. Next: select the activity and responsible roles,
+then resolve the listed real-data prerequisites before any launch approval.
+
 **Fictional-pilot manual backup cadence — 2026-09-17:** documented the
 no-new-fee policy in `docs/backup-restore-runbook.md`: verified encrypted Drive
 copy after each data-changing session and before migrations/destructive/key
